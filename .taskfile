@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Copyright (c) 2026.
+# Created by Andy Pangaribuan. All Rights Reserved.
+# This product is protected by copyright and distributed under
+# licenses restricting copying, distribution and decompilation.
+
+
+
+#: open devbox shell
+function shell {
+  devbox shell
+}
+
+
+
+#: space
+[ -z "$TASKFILE_EXECUTOR" ] && sq taskfile --execute "$@"

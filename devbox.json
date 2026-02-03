@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.16.0/.schema/devbox.schema.json",
+  "packages": [
+    "rustup@1.28.2",
+    "libiconv@2.42",
+    "lldb@21.1.8"
+  ],
+  "shell": {
+    "init_hook": [
+      "rustup toolchain install 1.93.0",
+      "rustup default 1.93.0",
+      "rustup component add clippy rustfmt",
+      "cargo fetch"
+    ],
+    "scripts": {
+      "build": "cargo build",
+      "test": "cargo test",
+      "lint": "cargo clippy && cargo fmt --check"
+    }
+  }
+}
