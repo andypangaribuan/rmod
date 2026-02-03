@@ -2,6 +2,9 @@ PROJECT_DIR="${PROJECT_DIR:-$(pwd)}"
 rustupHomeDir="${PROJECT_DIR}/.rustup"
 mkdir -p "${rustupHomeDir}"
 
+export TASKFILE_EXECUTOR=""
+alias task="./.taskfile"
+
 export RUSTUP_HOME="${rustupHomeDir}"
 export CARGO_HOME="${PROJECT_DIR}/.cargo"
 

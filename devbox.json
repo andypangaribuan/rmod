@@ -1,10 +1,9 @@
 {
   "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.16.0/.schema/devbox.schema.json",
-  "packages": [
-    "rustup@1.28.2",
-    "libiconv@2.42",
-    "lldb@21.1.8"
-  ],
+  "packages": ["rustup@1.28.2", "libiconv@2.42", "lldb@21.1.8", "git"],
+  "env": {
+    "PROJECT_DIR": "$PWD"
+  },
   "shell": {
     "init_hook": [
       ". files/set-env.sh",
@@ -15,8 +14,9 @@
     ],
     "scripts": {
       "build": "cargo build",
-      "test": "cargo test",
-      "lint": "cargo clippy && cargo fmt --check"
+      "test": "cargo test -- --show-output",
+      "lint": "cargo clippy && cargo fmt --check",
+      "build-docs": "cargo doc"
     }
   }
 }

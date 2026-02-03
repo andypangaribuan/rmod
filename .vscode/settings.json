@@ -53,5 +53,11 @@
   ],
   "lldb.adapterEnv": {
     "DEVELOPER_DIR": "/Library/Developer/CommandLineTools"
+  },
+  "terminal.integrated.profiles.osx": {
+    "Host Zsh": {
+      "path": "/bin/zsh",
+      "args": ["-f"]
+    }
   }
 }
