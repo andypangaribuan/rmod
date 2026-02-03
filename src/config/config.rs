@@ -11,10 +11,13 @@
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Pool, Postgres};
 
-/// Sets up a PostgreSQL connection pool.
+/// Sets up a PostgreSQL connection pool and saves it to the global store.
 pub async fn db_setup(url: &str) -> Result<Pool<Postgres>, sqlx::Error> {
-    PgPoolOptions::new()
+    let pool = PgPoolOptions::new()
         .max_connections(10)
         .connect(url)
-        .await
+        .await?;
+
+    crate::store::set_db(pool.clone());
+    Ok(pool)
 }

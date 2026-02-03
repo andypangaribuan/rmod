@@ -15,7 +15,7 @@ static DB_POOL: OnceCell<Pool<Postgres>> = OnceCell::new();
 
 /// Sets the global database pool.
 /// Panics if the pool is already set.
-pub fn set_db(pool: Pool<Postgres>) {
+pub(crate) fn set_db(pool: Pool<Postgres>) {
     DB_POOL.set(pool).expect("DB Pool already set");
 }
 

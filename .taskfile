@@ -34,6 +34,7 @@ function lint {
   devbox run lint
 }
 
+
 #: run cspell to check the project words
 function spell {
   spell-rs
