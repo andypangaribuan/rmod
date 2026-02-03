@@ -8,19 +8,13 @@
  * All Rights Reserved.
  */
 
-#[cfg(test)]
-#[path = "test_lib.rs"]
-mod tests;
+use sqlx::postgres::PgPoolOptions;
+use sqlx::{Pool, Postgres};
 
-#[path = "mod_util.rs"]
-pub mod util;
-
-#[path = "config/config.rs"]
-pub mod config;
-
-#[path = "store/store.rs"]
-pub mod store;
-
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
+/// Sets up a PostgreSQL connection pool.
+pub async fn db_setup(url: &str) -> Result<Pool<Postgres>, sqlx::Error> {
+    PgPoolOptions::new()
+        .max_connections(10)
+        .connect(url)
+        .await
 }

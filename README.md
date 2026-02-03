@@ -6,7 +6,7 @@ git config user.email "iam.pangaribuan@gmail.com"
 
 # rmod
 
-Rust Mod
+Rust Mod, custome library to do something powerful.
 
 ## Prerequisites
 

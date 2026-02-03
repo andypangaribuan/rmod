@@ -14,7 +14,7 @@
     ],
     "scripts": {
       "build": "cargo build",
-      "test": "cargo test",
+      "test": "cargo test -q -- --test-threads=1",
       "lint": "cargo clippy && cargo fmt --check",
       "build-docs": "cargo doc"
     }
