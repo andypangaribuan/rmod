@@ -13,6 +13,24 @@ function shell {
 }
 
 
+#: do cargo build
+function build {
+  devbox run build
+}
+
+
+#: do cargo test
+function test {
+  devbox run test
+}
+
+
+#: do cargo clippy and fmt check
+function lint {
+  devbox run lint
+}
+
+
 
 #: space
 [ -z "$TASKFILE_EXECUTOR" ] && sq taskfile --execute "$@"
