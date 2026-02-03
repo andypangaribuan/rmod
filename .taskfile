@@ -7,8 +7,12 @@
 
 
 
-#: open devbox shell
+#: open devbox shell #: opt: --fresh (delete .cargo and .rustup directories first)
 function shell {
+  if [[ $1 == "--fresh" ]]; then
+    rm -rf .cargo .rustup
+  fi
+
   devbox shell
 }
 
