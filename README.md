@@ -1,3 +1,9 @@
+<!-- 
+# set your personal information
+git config user.name "Andy Pangaribuan"
+git config user.email "iam.pangaribuan@gmail.com"
+-->
+
 # rmod
 
 Rust Mod
