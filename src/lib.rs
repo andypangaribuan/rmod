@@ -21,6 +21,9 @@ pub mod config;
 #[path = "store/store.rs"]
 pub mod store;
 
+#[path = "fuse/fuse.rs"]
+pub mod fuse;
+
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }

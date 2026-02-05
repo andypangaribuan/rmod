@@ -7,19 +7,10 @@
 
 
 
-#: open devbox shell #: opt: --fresh (delete .cargo and .rustup directories first)
-function shell {
-  if [[ $1 == "--fresh" ]]; then
-    rm -rf .cargo .rustup
-  fi
-
-  devbox shell
-}
-
-
-#: do cargo build
-function build {
+#: do cargo build and lint
+function run {
   devbox run build
+  devbox run lint
 }
 
 
@@ -29,16 +20,24 @@ function test {
 }
 
 
-#: do cargo clippy and fmt check
-function lint {
-  devbox run lint
-}
-
-
 #: run cspell to check the project words
 function spell {
   spell-rs
 }
+
+
+#: space
+
+
+#: open devbox shell #: opt: --fresh (delete .cargo and .rustup directories first)
+function shell {
+  if [[ $1 == "--fresh" ]]; then
+    rm -rf .cargo .rustup
+  fi
+
+  devbox shell
+}
+
 
 
 #: space

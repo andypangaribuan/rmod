@@ -42,8 +42,8 @@ fn test_env_int() {
         env::set_var("APP_PORT", "8080");
         env::set_var("TIMEOUT", "30");
     }
-    let port: u16 = int("APP_PORT");
-    let timeout: u32 = int("TIMEOUT");
+    let port: i16 = int("APP_PORT");
+    let timeout: i32 = int("TIMEOUT");
     assert_eq!(port, 8080);
     assert_eq!(timeout, 30);
 }
@@ -57,8 +57,8 @@ fn test_env_int_default() {
     // Missing variable
     let retry: i32 = int_or("RETRY_COUNT", 5);
     // Invalid variable value
-    let max_conn: u16 = int_or("MAX_CONNECTIONS", 100);
-    
+    let max_conn: i16 = int_or("MAX_CONNECTIONS", 100);
+
     assert_eq!(retry, 5);
     assert_eq!(max_conn, 100);
 }
@@ -69,5 +69,5 @@ fn test_env_int_panic() {
     unsafe {
         env::set_var("INVALID_INT", "not-a-number");
     }
-    let _: u32 = int("INVALID_INT");
+    let _: i32 = int("INVALID_INT");
 }

@@ -33,25 +33,54 @@ pub fn string_or(name: &str, default: &str) -> String {
     }
 }
 
-/// Gets an environment variable as a generic type T (e.g., u16, u32).
+/// Gets an environment variable as an Option<String>.
+pub fn string_opt(name: &str) -> Option<String> {
+    env::var(name).ok()
+}
+
+pub trait Integer: FromStr
+where
+    <Self as FromStr>::Err: Display,
+{
+}
+impl Integer for i16 {}
+impl Integer for i32 {}
+impl Integer for u16 {}
+impl Integer for u32 {}
+
+/// Gets an environment variable as a generic type T (only u16 or u32).
 /// Panics if not set or if parsing fails.
 pub fn int<T>(name: &str) -> T
 where
-    T: FromStr,
+    T: Integer,
     <T as FromStr>::Err: Display,
 {
     let val = string(name);
-    val.parse::<T>()
-        .unwrap_or_else(|e| panic!("failed to parse {} as integer, value: {}, error: {}", name, val, e))
+    val.parse::<T>().unwrap_or_else(|e| {
+        panic!(
+            "failed to parse {} as integer, value: {}, error: {}",
+            name, val, e
+        )
+    })
 }
 
-/// Gets an environment variable as a generic type T, or returns a default value if not set or parsing fails.
+/// Gets an environment variable as a generic type T (only u16 or u32), or returns a default value if not set or parsing fails.
 pub fn int_or<T>(name: &str, default: T) -> T
 where
-    T: FromStr,
+    T: Integer,
+    <T as FromStr>::Err: Display,
 {
     match env::var(name) {
         Ok(v) => v.parse::<T>().unwrap_or(default),
         Err(_) => default,
     }
+}
+
+/// Gets an environment variable as a generic type T, or returns None if not set or parsing fails.
+pub fn int_opt<T>(name: &str) -> Option<T>
+where
+    T: Integer,
+    <T as FromStr>::Err: Display,
+{
+    env::var(name).ok().and_then(|v| v.parse::<T>().ok())
 }
