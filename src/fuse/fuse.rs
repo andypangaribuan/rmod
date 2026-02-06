@@ -32,7 +32,15 @@ pub struct FuseRContext {
 
 impl FuseRContext {
     pub fn new(req: Request<Body>) -> Self {
-        Self { req, data: Arc::new(Mutex::new(HashMap::new())), res_status: None, res_body: None, res_source: "".to_string(), response: None, body: None }
+        Self {
+            req,
+            data: Arc::new(Mutex::new(HashMap::new())),
+            res_status: None,
+            res_body: None,
+            res_source: "".to_string(),
+            response: None,
+            body: None,
+        }
     }
 
     pub fn json<T: serde::de::DeserializeOwned>(&self) -> Result<T, serde_path_to_error::Error<serde_json::Error>> {
@@ -82,7 +90,13 @@ impl Fuse {
         Self { router: Router::new() }
     }
 
-    pub fn endpoints(&mut self, liveness: FuseHandler, authentication: Option<FuseHandler>, defer: FuseHandler, mapping: HashMap<&str, Vec<FuseHandler>>) {
+    pub fn endpoints(
+        &mut self,
+        liveness: FuseHandler,
+        authentication: Option<FuseHandler>,
+        defer: FuseHandler,
+        mapping: HashMap<&str, Vec<FuseHandler>>,
+    ) {
         for (key, handlers) in mapping {
             let parts: Vec<&str> = key.split(": ").collect();
             if parts.len() != 2 {

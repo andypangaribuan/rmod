@@ -1,6 +1,6 @@
-max_width = 200
+max_width = 140
 use_small_heuristics = "Max"
-fn_call_width = 200
-attr_fn_like_width = 200
-struct_lit_width = 200
-chain_width = 200
+fn_call_width = 140
+attr_fn_like_width = 140
+struct_lit_width = 140
+chain_width = 140

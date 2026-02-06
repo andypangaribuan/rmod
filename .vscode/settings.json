@@ -3,7 +3,7 @@
   "editor.formatOnSave": true,
   "editor.guides.bracketPairs": true,
   "editor.formatOnPaste": true,
-  "editor.rulers": [200],
+  "editor.rulers": [140],
   "editor.foldingStrategy": "indentation",
   "psi-header.variables": [
     ["author", "Andy Pangaribuan"],
