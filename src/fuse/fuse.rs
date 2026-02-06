@@ -25,7 +25,7 @@ pub struct FuseRContext {
     pub data: Arc<Mutex<HashMap<String, Arc<dyn Any + Send + Sync>>>>,
     pub res_status: Option<StatusCode>,
     pub res_body: Option<Arc<dyn Any + Send + Sync>>,
-    pub response: Option<Response>,
+    response: Option<Response>,
     pub body: Option<Vec<u8>>,
 }
 
