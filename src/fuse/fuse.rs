@@ -23,6 +23,19 @@ use std::sync::{Arc, Mutex};
 pub type FuseResult = Result<(StatusCode, Arc<dyn Any + Send + Sync>), (StatusCode, Arc<dyn Any + Send + Sync>)>;
 pub type FuseHandler = fn(&mut FuseRContext) -> FuseResult;
 
+#[derive(Clone, Copy, Debug)]
+pub struct FuseResSource {
+    pub name: &'static str,
+    pub handler_index: Option<usize>,
+    pub endpoint_key: Option<&'static str>,
+}
+
+impl FuseResSource {
+    pub(crate) fn new(name: &'static str) -> Self {
+        Self { name, handler_index: None, endpoint_key: None }
+    }
+}
+
 pub struct Fuse {
     router: Router,
 }
@@ -32,7 +45,7 @@ pub struct FuseRContext {
     pub data: Arc<Mutex<HashMap<String, Arc<dyn Any + Send + Sync>>>>,
     pub res_status: Option<StatusCode>,
     pub res_body: Option<Arc<dyn Any + Send + Sync>>,
-    res_source: String,
+    pub res_source: FuseResSource,
     response: Option<Response>,
     pub body: Option<Vec<u8>>,
 }
@@ -63,7 +76,7 @@ impl Fuse {
         liveness: FuseHandler,
         authentication: Option<FuseHandler>,
         defer: FuseHandler,
-        mapping: HashMap<&str, Vec<FuseHandler>>,
+        mapping: HashMap<&'static str, Vec<FuseHandler>>,
     ) {
         for (key, handlers) in mapping {
             let parts: Vec<&str> = key.split(": ").collect();
@@ -83,7 +96,7 @@ impl Fuse {
                 _ => MethodFilter::GET,
             };
 
-            let endpoint_key = key.to_string();
+            let endpoint_key = key;
             let handlers = Arc::new(handlers);
 
             let handler_fn = move |req: Request<Body>| async move {
@@ -102,7 +115,7 @@ impl Fuse {
                             break_next = true;
                             ctx.res_status = Some(status);
                             ctx.res_body = Some(body);
-                            ctx.res_source = "liveness".to_string();
+                            ctx.res_source = FuseResSource::new("liveness");
                         }
                     }
                 }
@@ -115,7 +128,7 @@ impl Fuse {
                                 break_next = true;
                                 ctx.res_status = Some(status);
                                 ctx.res_body = Some(body);
-                                ctx.res_source = "authentication".to_string();
+                                ctx.res_source = FuseResSource::new("authentication");
                             }
                         }
                     }
@@ -128,7 +141,8 @@ impl Fuse {
                             Ok((status, body)) | Err((status, body)) => {
                                 ctx.res_status = Some(status);
                                 ctx.res_body = Some(body);
-                                ctx.res_source = format!("handler:{}:{}", i, endpoint_key);
+                                ctx.res_source =
+                                    FuseResSource { name: "handler", handler_index: Some(i), endpoint_key: Some(endpoint_key) };
 
                                 if !status.is_success() {
                                     break;
@@ -143,7 +157,7 @@ impl Fuse {
                     Ok((status, body)) | Err((status, body)) => {
                         ctx.res_status = Some(status);
                         ctx.res_body = Some(body);
-                        ctx.res_source = "defer".to_string();
+                        ctx.res_source = FuseResSource::new("defer");
                     }
                 }
 
@@ -179,7 +193,7 @@ impl FuseRContext {
             data: Arc::new(Mutex::new(HashMap::new())),
             res_status: None,
             res_body: None,
-            res_source: "".to_string(),
+            res_source: FuseResSource::new(""),
             response: None,
             body: None,
         }
@@ -207,9 +221,5 @@ impl FuseRContext {
 
     pub fn err<T: Send + Sync + 'static>(&self, status: StatusCode, body: T) -> FuseResult {
         Err((status, Arc::new(body)))
-    }
-
-    pub fn res_source(&self) -> &str {
-        &self.res_source
     }
 }
