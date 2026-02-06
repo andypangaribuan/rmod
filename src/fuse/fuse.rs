@@ -20,6 +20,13 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+pub type FuseResult = Result<(StatusCode, Arc<dyn Any + Send + Sync>), (StatusCode, Arc<dyn Any + Send + Sync>)>;
+pub type FuseHandler = fn(&mut FuseRContext) -> FuseResult;
+
+pub struct Fuse {
+    router: Router,
+}
+
 pub struct FuseRContext {
     pub req: Request<Body>,
     pub data: Arc<Mutex<HashMap<String, Arc<dyn Any + Send + Sync>>>>,
@@ -30,63 +37,24 @@ pub struct FuseRContext {
     pub body: Option<Vec<u8>>,
 }
 
-impl FuseRContext {
-    pub fn new(req: Request<Body>) -> Self {
-        Self {
-            req,
-            data: Arc::new(Mutex::new(HashMap::new())),
-            res_status: None,
-            res_body: None,
-            res_source: "".to_string(),
-            response: None,
-            body: None,
-        }
-    }
-
-    pub fn json<T: serde::de::DeserializeOwned>(&self) -> Result<T, serde_path_to_error::Error<serde_json::Error>> {
-        let bytes = self.body.as_deref().unwrap_or(&[]);
-        let mut de = serde_json::Deserializer::from_slice(bytes);
-        serde_path_to_error::deserialize(&mut de)
-    }
-
-    pub fn set<T: Send + Sync + 'static>(&self, key: &str, value: T) {
-        let mut data = self.data.lock().unwrap();
-        data.insert(key.to_string(), Arc::new(value));
-    }
-
-    pub fn get<T: Send + Sync + 'static>(&self, key: &str) -> Option<Arc<T>> {
-        let data = self.data.lock().unwrap();
-        data.get(key)?.clone().downcast::<T>().ok()
-    }
-
-    pub fn ok<T: Send + Sync + 'static>(&self, status: StatusCode, body: T) -> FuseResult {
-        Ok((status, Arc::new(body)))
-    }
-
-    pub fn err<T: Send + Sync + 'static>(&self, status: StatusCode, body: T) -> FuseResult {
-        Err((status, Arc::new(body)))
-    }
-
-    pub fn res_source(&self) -> &str {
-        &self.res_source
-    }
-}
-
-pub type FuseResult = Result<(StatusCode, Arc<dyn Any + Send + Sync>), (StatusCode, Arc<dyn Any + Send + Sync>)>;
-pub type FuseHandler = fn(&mut FuseRContext) -> FuseResult;
-
-pub struct Fuse {
-    router: Router,
-}
-
 impl Default for Fuse {
     fn default() -> Self {
         Self::new()
     }
 }
 
+pub async fn rest<F, S>(addr: &str, f: F, on_start: Option<S>)
+where
+    F: FnOnce(&mut Fuse),
+    S: FnOnce(),
+{
+    let mut fuse = Fuse::new();
+    f(&mut fuse);
+    fuse.run(addr, on_start).await;
+}
+
 impl Fuse {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self { router: Router::new() }
     }
 
@@ -195,7 +163,7 @@ impl Fuse {
         }
     }
 
-    pub async fn run<F: FnOnce()>(self, addr: &str, on_start: Option<F>) {
+    pub(crate) async fn run<F: FnOnce()>(self, addr: &str, on_start: Option<F>) {
         let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
         if let Some(f) = on_start {
             f();
@@ -204,12 +172,44 @@ impl Fuse {
     }
 }
 
-pub async fn rest<F, S>(addr: &str, f: F, on_start: Option<S>)
-where
-    F: FnOnce(&mut Fuse),
-    S: FnOnce(),
-{
-    let mut fuse = Fuse::new();
-    f(&mut fuse);
-    fuse.run(addr, on_start).await;
+impl FuseRContext {
+    pub(crate) fn new(req: Request<Body>) -> Self {
+        Self {
+            req,
+            data: Arc::new(Mutex::new(HashMap::new())),
+            res_status: None,
+            res_body: None,
+            res_source: "".to_string(),
+            response: None,
+            body: None,
+        }
+    }
+
+    pub fn json<T: serde::de::DeserializeOwned>(&self) -> Result<T, serde_path_to_error::Error<serde_json::Error>> {
+        let bytes = self.body.as_deref().unwrap_or(&[]);
+        let mut de = serde_json::Deserializer::from_slice(bytes);
+        serde_path_to_error::deserialize(&mut de)
+    }
+
+    pub fn set<T: Send + Sync + 'static>(&self, key: &str, value: T) {
+        let mut data = self.data.lock().unwrap();
+        data.insert(key.to_string(), Arc::new(value));
+    }
+
+    pub fn get<T: Send + Sync + 'static>(&self, key: &str) -> Option<Arc<T>> {
+        let data = self.data.lock().unwrap();
+        data.get(key)?.clone().downcast::<T>().ok()
+    }
+
+    pub fn ok<T: Send + Sync + 'static>(&self, status: StatusCode, body: T) -> FuseResult {
+        Ok((status, Arc::new(body)))
+    }
+
+    pub fn err<T: Send + Sync + 'static>(&self, status: StatusCode, body: T) -> FuseResult {
+        Err((status, Arc::new(body)))
+    }
+
+    pub fn res_source(&self) -> &str {
+        &self.res_source
+    }
 }
