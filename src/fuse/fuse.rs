@@ -205,17 +205,21 @@ impl Fuse {
         }
     }
 
-    pub async fn run(self, addr: &str) {
+    pub async fn run<F: FnOnce()>(self, addr: &str, on_start: Option<F>) {
         let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+        if let Some(f) = on_start {
+            f();
+        }
         axum::serve(listener, self.router).await.unwrap();
     }
 }
 
-pub async fn rest<F>(addr: &str, f: F)
+pub async fn rest<F, S>(addr: &str, f: F, on_start: Option<S>)
 where
     F: FnOnce(&mut Fuse),
+    S: FnOnce(),
 {
     let mut fuse = Fuse::new();
     f(&mut fuse);
-    fuse.run(addr).await;
+    fuse.run(addr, on_start).await;
 }
