@@ -128,7 +128,7 @@ impl Fuse {
                             Ok((status, body)) | Err((status, body)) => {
                                 ctx.res_status = Some(status);
                                 ctx.res_body = Some(body);
-                                ctx.res_source = format!("{}:{}", i, endpoint_key);
+                                ctx.res_source = format!("handler:{}:{}", i, endpoint_key);
 
                                 if !status.is_success() {
                                     break;
