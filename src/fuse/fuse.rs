@@ -25,6 +25,7 @@ pub struct FuseRContext {
     pub data: Arc<Mutex<HashMap<String, Arc<dyn Any + Send + Sync>>>>,
     pub res_status: Option<StatusCode>,
     pub res_body: Option<Arc<dyn Any + Send + Sync>>,
+    res_source: String,
     response: Option<Response>,
     pub body: Option<Vec<u8>>,
 }
@@ -36,6 +37,7 @@ impl FuseRContext {
             data: Arc::new(Mutex::new(HashMap::new())),
             res_status: None,
             res_body: None,
+            res_source: "".to_string(),
             response: None,
             body: None,
         }
@@ -58,17 +60,16 @@ impl FuseRContext {
         data.get(key)?.clone().downcast::<T>().ok()
     }
 
-    pub fn send<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) {
-        self.res_status = Some(status);
-        self.res_body = Some(Arc::new(body));
-    }
-
     pub fn ok<T: Send + Sync + 'static>(&self, status: StatusCode, body: T) -> FuseResult {
         Ok((status, Arc::new(body)))
     }
 
     pub fn err<T: Send + Sync + 'static>(&self, status: StatusCode, body: T) -> FuseResult {
         Err((status, Arc::new(body)))
+    }
+
+    pub fn res_source(&self) -> &str {
+        &self.res_source
     }
 }
 
@@ -118,6 +119,7 @@ impl Fuse {
                 _ => MethodFilter::GET,
             };
 
+            let endpoint_key = key.to_string();
             let handlers = Arc::new(handlers);
 
             let handler_fn = move |req: Request<Body>| async move {
@@ -140,6 +142,7 @@ impl Fuse {
                             break_next = true;
                             ctx.res_status = Some(status);
                             ctx.res_body = Some(body);
+                            ctx.res_source = "liveness".to_string();
                         }
                     }
                 }
@@ -152,28 +155,24 @@ impl Fuse {
                                 break_next = true;
                                 ctx.res_status = Some(status);
                                 ctx.res_body = Some(body);
+                                ctx.res_source = "authentication".to_string();
                             }
                         }
                     }
                 }
 
+                // 3. Handlers
                 if !break_next {
-                    // 3. Handlers
-                    if ctx.response.is_none() {
-                        for h in handlers.iter() {
-                            match h(&mut ctx) {
-                                Ok((status, body)) | Err((status, body)) => {
-                                    ctx.res_status = Some(status);
-                                    ctx.res_body = Some(body);
+                    for (i, h) in handlers.iter().enumerate() {
+                        match h(&mut ctx) {
+                            Ok((status, body)) | Err((status, body)) => {
+                                ctx.res_status = Some(status);
+                                ctx.res_body = Some(body);
+                                ctx.res_source = format!("{}:{}", i, endpoint_key);
 
-                                    if !status.is_success() {
-                                        break;
-                                    }
+                                if !status.is_success() {
+                                    break;
                                 }
-                            }
-
-                            if ctx.response.is_some() {
-                                break;
                             }
                         }
                     }
@@ -184,12 +183,11 @@ impl Fuse {
                     Ok((status, body)) | Err((status, body)) => {
                         ctx.res_status = Some(status);
                         ctx.res_body = Some(body);
+                        ctx.res_source = "defer".to_string();
                     }
                 }
 
-                if ctx.response.is_none()
-                    && let (Some(status), Some(body)) = (ctx.res_status, &ctx.res_body)
-                {
+                if let (Some(status), Some(body)) = (ctx.res_status, &ctx.res_body) {
                     if let Some(text) = body.downcast_ref::<String>() {
                         ctx.response = Some((status, text.clone()).into_response());
                     } else if let Some(text) = body.downcast_ref::<&'static str>() {
