@@ -43,11 +43,12 @@ impl FuseRContext {
         }
     }
 
-    pub fn json<T: serde::de::DeserializeOwned>(&self) -> Result<T, serde_json::Error> {
-        match &self.body {
-            Some(bytes) => serde_json::from_slice(bytes),
-            None => serde_json::from_slice(&[]),
-        }
+    pub fn json<T: serde::de::DeserializeOwned>(
+        &self,
+    ) -> Result<T, serde_path_to_error::Error<serde_json::Error>> {
+        let bytes = self.body.as_deref().unwrap_or(&[]);
+        let mut de = serde_json::Deserializer::from_slice(bytes);
+        serde_path_to_error::deserialize(&mut de)
     }
 
     pub fn set<T: Send + Sync + 'static>(&self, key: &str, value: T) {
