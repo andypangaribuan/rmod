@@ -56,12 +56,7 @@ where
     <T as FromStr>::Err: Display,
 {
     let val = string(name);
-    val.parse::<T>().unwrap_or_else(|e| {
-        panic!(
-            "failed to parse {} as integer, value: {}, error: {}",
-            name, val, e
-        )
-    })
+    val.parse::<T>().unwrap_or_else(|e| panic!("failed to parse {} as integer, value: {}, error: {}", name, val, e))
 }
 
 /// Gets an environment variable as a generic type T (only u16 or u32), or returns a default value if not set or parsing fails.

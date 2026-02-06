@@ -16,9 +16,7 @@ static DB_READ_POOL: OnceCell<Pool<Postgres>> = OnceCell::new();
 
 /// Sets the global database pools.
 pub(crate) fn set_db(write_pool: Pool<Postgres>, read_pool: Option<Pool<Postgres>>) {
-    DB_WRITE_POOL
-        .set(write_pool)
-        .expect("DB Write Pool already set");
+    DB_WRITE_POOL.set(write_pool).expect("DB Write Pool already set");
     if let Some(pool) = read_pool {
         DB_READ_POOL.set(pool).expect("DB Read Pool already set");
     }
@@ -31,8 +29,5 @@ pub fn db() -> &'static Pool<Postgres> {
 
 /// Gets the read database pool. Falls back to write pool if read pool is not initialized.
 pub fn db_read() -> &'static Pool<Postgres> {
-    DB_READ_POOL
-        .get()
-        .or_else(|| DB_WRITE_POOL.get())
-        .expect("DB Pools not initialized")
+    DB_READ_POOL.get().or_else(|| DB_WRITE_POOL.get()).expect("DB Pools not initialized")
 }

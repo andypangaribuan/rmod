@@ -32,20 +32,10 @@ pub struct FuseRContext {
 
 impl FuseRContext {
     pub fn new(req: Request<Body>) -> Self {
-        Self {
-            req,
-            data: Arc::new(Mutex::new(HashMap::new())),
-            res_status: None,
-            res_body: None,
-            res_source: "".to_string(),
-            response: None,
-            body: None,
-        }
+        Self { req, data: Arc::new(Mutex::new(HashMap::new())), res_status: None, res_body: None, res_source: "".to_string(), response: None, body: None }
     }
 
-    pub fn json<T: serde::de::DeserializeOwned>(
-        &self,
-    ) -> Result<T, serde_path_to_error::Error<serde_json::Error>> {
+    pub fn json<T: serde::de::DeserializeOwned>(&self) -> Result<T, serde_path_to_error::Error<serde_json::Error>> {
         let bytes = self.body.as_deref().unwrap_or(&[]);
         let mut de = serde_json::Deserializer::from_slice(bytes);
         serde_path_to_error::deserialize(&mut de)
@@ -74,8 +64,7 @@ impl FuseRContext {
     }
 }
 
-pub type FuseResult =
-    Result<(StatusCode, Arc<dyn Any + Send + Sync>), (StatusCode, Arc<dyn Any + Send + Sync>)>;
+pub type FuseResult = Result<(StatusCode, Arc<dyn Any + Send + Sync>), (StatusCode, Arc<dyn Any + Send + Sync>)>;
 pub type FuseHandler = fn(&mut FuseRContext) -> FuseResult;
 
 pub struct Fuse {
@@ -90,18 +79,10 @@ impl Default for Fuse {
 
 impl Fuse {
     pub fn new() -> Self {
-        Self {
-            router: Router::new(),
-        }
+        Self { router: Router::new() }
     }
 
-    pub fn endpoints(
-        &mut self,
-        liveness: FuseHandler,
-        authentication: Option<FuseHandler>,
-        defer: FuseHandler,
-        mapping: HashMap<&str, Vec<FuseHandler>>,
-    ) {
+    pub fn endpoints(&mut self, liveness: FuseHandler, authentication: Option<FuseHandler>, defer: FuseHandler, mapping: HashMap<&str, Vec<FuseHandler>>) {
         for (key, handlers) in mapping {
             let parts: Vec<&str> = key.split(": ").collect();
             if parts.len() != 2 {
@@ -125,13 +106,9 @@ impl Fuse {
 
             let handler_fn = move |req: Request<Body>| async move {
                 let (parts, body) = req.into_parts();
-                let bytes = axum::body::to_bytes(body, usize::MAX)
-                    .await
-                    .unwrap_or_default()
-                    .to_vec();
+                let bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap_or_default().to_vec();
 
-                let mut ctx =
-                    FuseRContext::new(Request::from_parts(parts, Body::from(bytes.clone())));
+                let mut ctx = FuseRContext::new(Request::from_parts(parts, Body::from(bytes.clone())));
                 ctx.body = Some(bytes);
 
                 let mut break_next = false;
@@ -196,8 +173,7 @@ impl Fuse {
                     }
                 }
 
-                ctx.response
-                    .unwrap_or_else(|| StatusCode::NOT_FOUND.into_response())
+                ctx.response.unwrap_or_else(|| StatusCode::NOT_FOUND.into_response())
             };
 
             let router = std::mem::take(&mut self.router);
