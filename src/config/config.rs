@@ -10,6 +10,7 @@
 
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::{Pool, Postgres};
+use std::time::Duration;
 
 pub struct DbConfig {
     pub host: String,
@@ -20,6 +21,8 @@ pub struct DbConfig {
     pub password: String,
     pub max_connections: u32,
     pub min_connections: u32,
+    pub acquire_timeout: u64,
+    pub idle_timeout: u64,
 }
 
 /// Sets up the PostgreSQL connection pools and saves them to the global store.
@@ -50,6 +53,8 @@ async fn create_db_pool(config: &DbConfig) -> Result<Pool<Postgres>, sqlx::Error
     let pool = PgPoolOptions::new()
         .max_connections(config.max_connections)
         .min_connections(config.min_connections)
+        .acquire_timeout(Duration::from_secs(config.acquire_timeout))
+        .idle_timeout(Duration::from_secs(config.idle_timeout))
         .connect_with(connect_options)
         .await?;
 
