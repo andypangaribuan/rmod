@@ -49,7 +49,7 @@ pub struct FuseRContext {
     pub data: Arc<Mutex<HashMap<String, Arc<dyn Any + Send + Sync>>>>,
     pub res_status: Option<StatusCode>,
     pub res_body: Option<Arc<dyn Any + Send + Sync>>,
-    pub res_body_error: Option<Arc<dyn Any + Send + Sync>>,
+    // pub res_body_error: Option<Arc<dyn Any + Send + Sync>>,
     pub res_source: FuseResSource,
     response: Option<Response>,
     pub body: Option<Vec<u8>>,
@@ -126,8 +126,9 @@ impl Fuse {
                     Err((status, body)) => {
                         break_next = true;
                         ctx.res_status = Some(status);
-                        ctx.res_body_error = Some(body.clone());
-                        ctx.res_body = Some(Arc::new(match_error(&body)));
+                        // ctx.res_body_error = Some(body.clone());
+                        ctx.res_body = Some(body.clone());
+                        // ctx.res_body = Some(Arc::new(match_error(&body)));
                         ctx.res_source = FuseResSource::new("liveness");
                     }
                 }
@@ -146,8 +147,9 @@ impl Fuse {
                             Err((status, body)) => {
                                 break_next = true;
                                 ctx.res_status = Some(status);
-                                ctx.res_body_error = Some(body.clone());
-                                ctx.res_body = Some(Arc::new(match_error(&body)));
+                                // ctx.res_body_error = Some(body.clone());
+                                ctx.res_body = Some(body.clone());
+                                // ctx.res_body = Some(Arc::new(match_error(&body)));
                                 ctx.res_source = FuseResSource::new("authentication");
                             }
                         }
@@ -169,8 +171,9 @@ impl Fuse {
                             }
                             Err((status, body)) => {
                                 ctx.res_status = Some(status);
-                                ctx.res_body_error = Some(body.clone());
-                                ctx.res_body = Some(Arc::new(match_error(&body)));
+                                // ctx.res_body_error = Some(body.clone());
+                                ctx.res_body = Some(body.clone());
+                                // ctx.res_body = Some(Arc::new(match_error(&body)));
                                 ctx.res_source =
                                     FuseResSource { name: "handler", handler_index: Some(i), endpoint_key: Some(endpoint_key) };
 
@@ -189,8 +192,9 @@ impl Fuse {
                     }
                     Err((status, body)) => {
                         ctx.res_status = Some(status);
-                        ctx.res_body_error = Some(body.clone());
-                        ctx.res_body = Some(Arc::new(match_error(&body)));
+                        // ctx.res_body_error = Some(body.clone());
+                        ctx.res_body = Some(body.clone());
+                        // ctx.res_body = Some(Arc::new(match_error(&body)));
                         ctx.res_source = FuseResSource::new("defer");
                     }
                 }
@@ -222,18 +226,18 @@ impl Fuse {
     }
 }
 
-fn match_error(body: &Arc<dyn Any + Send + Sync>) -> String {
-    if let Some(s) = body.downcast_ref::<String>() {
-        return s.clone();
-    }
-    if let Some(s) = body.downcast_ref::<&'static str>() {
-        return (*s).to_string();
-    }
-    if let Some(e) = body.downcast_ref::<sqlx::Error>() {
-        return e.to_string();
-    }
-    "internal server error".to_string()
-}
+// fn match_error(body: &Arc<dyn Any + Send + Sync>) -> String {
+//     if let Some(s) = body.downcast_ref::<String>() {
+//         return s.clone();
+//     }
+//     if let Some(s) = body.downcast_ref::<&'static str>() {
+//         return (*s).to_string();
+//     }
+//     if let Some(e) = body.downcast_ref::<sqlx::Error>() {
+//         return e.to_string();
+//     }
+//     "internal server error".to_string()
+// }
 
 impl FuseRContext {
     pub(crate) fn new(req: Request<Body>) -> Self {
@@ -242,7 +246,7 @@ impl FuseRContext {
             data: Arc::new(Mutex::new(HashMap::new())),
             res_status: None,
             res_body: None,
-            res_body_error: None,
+            // res_body_error: None,
             res_source: FuseResSource::new(""),
             response: None,
             body: None,
