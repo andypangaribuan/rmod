@@ -23,6 +23,7 @@ pub mod store;
 
 #[path = "fuse/fuse.rs"]
 pub mod fuse;
+pub use fuse::fuse_handler;
 
 #[path = "db/db.rs"]
 pub mod db;

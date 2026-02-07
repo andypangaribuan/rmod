@@ -24,18 +24,7 @@ use std::sync::{Arc, Mutex};
 pub type FuseResult = Result<(StatusCode, Arc<dyn Any + Send + Sync>), (StatusCode, Arc<dyn Any + Send + Sync>)>;
 pub type FuseHandler = for<'a> fn(&'a mut FuseRContext) -> BoxFuture<'a, FuseResult>;
 
-#[macro_export]
-macro_rules! fuse_handler {
-    (
-        $(#[$meta:meta])*
-        $vis:vis async fn $name:ident($ctx:ident: &mut $ctx_type:ident) -> $res_type:ident $body:block
-    ) => {
-        $(#[$meta])*
-        $vis fn $name($ctx: &mut $crate::fuse::$ctx_type) -> $crate::fuse::BoxFuture<'_, $crate::fuse::$res_type> {
-            Box::pin(async move $body)
-        }
-    };
-}
+pub use rmod_macros::fuse_handler;
 
 #[derive(Clone, Copy, Debug)]
 pub struct FuseResSource {
