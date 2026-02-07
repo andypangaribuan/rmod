@@ -39,16 +39,13 @@ pub async fn db_setup(write: DbConfig, read: Option<DbConfig>) -> Result<(), sql
 }
 
 async fn create_db_pool(config: &DbConfig) -> Result<Pool<Postgres>, sqlx::Error> {
-    let mut connect_options = PgConnectOptions::new()
+    let connect_options = PgConnectOptions::new()
         .host(&config.host)
         .port(config.port)
         .username(&config.username)
         .password(&config.password)
-        .database(&config.database);
-
-    if let Some(schema) = &config.schema {
-        connect_options = connect_options.options([("search_path", schema)]);
-    }
+        .database(&config.database)
+        .options([("search_path", config.schema.as_deref().unwrap_or("public"))]);
 
     let pool = PgPoolOptions::new()
         .max_connections(config.max_connections)
