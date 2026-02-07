@@ -31,30 +31,30 @@ macro_rules! db_args {
 pub use db_args as args;
 
 /// Executes a query and returns a single row.
-pub async fn fetch_one<T>(sql: &str, args: PgArguments) -> Result<T, sqlx::Error>
+pub async fn fetch_one<T>(key: &str, sql: &str, args: PgArguments) -> Result<T, sqlx::Error>
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
 {
-    sqlx::query_as_with(sql, args).fetch_one(store::db_read()).await
+    sqlx::query_as_with(sql, args).fetch_one(store::db_read(key)).await
 }
 
 /// Executes a query and returns an optional row.
-pub async fn fetch_optional<T>(sql: &str, args: PgArguments) -> Result<Option<T>, sqlx::Error>
+pub async fn fetch_optional<T>(key: &str, sql: &str, args: PgArguments) -> Result<Option<T>, sqlx::Error>
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
 {
-    sqlx::query_as_with(sql, args).fetch_optional(store::db_read()).await
+    sqlx::query_as_with(sql, args).fetch_optional(store::db_read(key)).await
 }
 
 /// Executes a query and returns all rows.
-pub async fn fetch_all<T>(sql: &str, args: PgArguments) -> Result<Vec<T>, sqlx::Error>
+pub async fn fetch_all<T>(key: &str, sql: &str, args: PgArguments) -> Result<Vec<T>, sqlx::Error>
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
 {
-    sqlx::query_as_with(sql, args).fetch_all(store::db_read()).await
+    sqlx::query_as_with(sql, args).fetch_all(store::db_read(key)).await
 }
 
 /// Executes a query that does not return rows (e.g., INSERT, UPDATE, DELETE).
-pub async fn execute(sql: &str, args: PgArguments) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
-    sqlx::query_with(sql, args).execute(store::db()).await
+pub async fn execute(key: &str, sql: &str, args: PgArguments) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    sqlx::query_with(sql, args).execute(store::db(key)).await
 }
