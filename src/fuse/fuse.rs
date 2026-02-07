@@ -16,13 +16,26 @@ use axum::{
     response::{IntoResponse, Response},
     routing::{MethodFilter, Router, on},
 };
-use futures_util::future::BoxFuture;
+pub use futures_util::future::BoxFuture;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 pub type FuseResult = Result<(StatusCode, Arc<dyn Any + Send + Sync>), (StatusCode, Arc<dyn Any + Send + Sync>)>;
 pub type FuseHandler = for<'a> fn(&'a mut FuseRContext) -> BoxFuture<'a, FuseResult>;
+
+#[macro_export]
+macro_rules! fuse_handler {
+    (
+        $(#[$meta:meta])*
+        $vis:vis async fn $name:ident($ctx:ident: &mut $ctx_type:ident) -> $res_type:ident $body:block
+    ) => {
+        $(#[$meta])*
+        $vis fn $name($ctx: &mut $crate::fuse::$ctx_type) -> $crate::fuse::BoxFuture<'_, $crate::fuse::$res_type> {
+            Box::pin(async move $body)
+        }
+    };
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct FuseResSource {
@@ -167,6 +180,8 @@ impl Fuse {
                         ctx.response = Some((status, text.clone()).into_response());
                     } else if let Some(text) = body.downcast_ref::<&'static str>() {
                         ctx.response = Some((status, (*text).to_string()).into_response());
+                    } else if let Some(json) = body.downcast_ref::<serde_json::Value>() {
+                        ctx.response = Some((status, axum::Json(json.clone())).into_response());
                     }
                 }
 
