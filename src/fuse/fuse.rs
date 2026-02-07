@@ -16,12 +16,13 @@ use axum::{
     response::{IntoResponse, Response},
     routing::{MethodFilter, Router, on},
 };
+use futures_util::future::BoxFuture;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 pub type FuseResult = Result<(StatusCode, Arc<dyn Any + Send + Sync>), (StatusCode, Arc<dyn Any + Send + Sync>)>;
-pub type FuseHandler = fn(&mut FuseRContext) -> FuseResult;
+pub type FuseHandler = for<'a> fn(&'a mut FuseRContext) -> BoxFuture<'a, FuseResult>;
 
 #[derive(Clone, Copy, Debug)]
 pub struct FuseResSource {
@@ -109,7 +110,7 @@ impl Fuse {
                 let mut break_next = false;
 
                 // 1. Liveness
-                match liveness(&mut ctx) {
+                match liveness(&mut ctx).await {
                     Ok((status, body)) | Err((status, body)) => {
                         if !status.is_success() {
                             break_next = true;
@@ -122,7 +123,7 @@ impl Fuse {
 
                 // 2. Authentication
                 if !break_next && let Some(v) = authentication {
-                    match v(&mut ctx) {
+                    match v(&mut ctx).await {
                         Ok((status, body)) | Err((status, body)) => {
                             if !status.is_success() {
                                 break_next = true;
@@ -137,7 +138,7 @@ impl Fuse {
                 // 3. Handlers
                 if !break_next {
                     for (i, h) in handlers.iter().enumerate() {
-                        match h(&mut ctx) {
+                        match h(&mut ctx).await {
                             Ok((status, body)) | Err((status, body)) => {
                                 ctx.res_status = Some(status);
                                 ctx.res_body = Some(body);
@@ -153,7 +154,7 @@ impl Fuse {
                 }
 
                 // 3. Defer
-                match defer(&mut ctx) {
+                match defer(&mut ctx).await {
                     Ok((status, body)) | Err((status, body)) => {
                         ctx.res_status = Some(status);
                         ctx.res_body = Some(body);

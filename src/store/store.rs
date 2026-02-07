@@ -53,23 +53,23 @@ fn get_first_pools() -> &'static DbPools {
 }
 
 /// Gets the write database pool for a specific key.
-pub fn db(key: &str) -> &'static Pool<Postgres> {
+pub(crate) fn db(key: &str) -> &'static Pool<Postgres> {
     &get_pools(key).write
 }
 
 /// Gets the read database pool for a specific key. Falls back to write pool if read pool is not initialized.
-pub fn db_read(key: &str) -> &'static Pool<Postgres> {
+pub(crate) fn db_read(key: &str) -> &'static Pool<Postgres> {
     let pools = get_pools(key);
     pools.read.as_ref().unwrap_or(&pools.write)
 }
 
 /// Gets the write database pool for the first initialized key.
-pub fn db1() -> &'static Pool<Postgres> {
+pub(crate) fn db1() -> &'static Pool<Postgres> {
     &get_first_pools().write
 }
 
 /// Gets the read database pool for the first initialized key.
-pub fn db1_read() -> &'static Pool<Postgres> {
+pub(crate) fn db1_read() -> &'static Pool<Postgres> {
     let pools = get_first_pools();
     pools.read.as_ref().unwrap_or(&pools.write)
 }

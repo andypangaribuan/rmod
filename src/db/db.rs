@@ -30,16 +30,16 @@ macro_rules! db_args {
 
 pub use db_args as args;
 
-/// Executes a query and returns a single row.
-pub async fn fetch_one<T>(key: &str, sql: &str, args: PgArguments) -> Result<T, sqlx::Error>
-where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
-{
-    sqlx::query_as_with(sql, args).fetch_one(store::db_read(key)).await
-}
+// Executes a query and returns a single row.
+// pub async fn fetch_one<T>(key: &str, sql: &str, args: PgArguments) -> Result<T, sqlx::Error>
+// where
+//     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
+// {
+//     sqlx::query_as_with(sql, args).fetch_one(store::db_read(key)).await
+// }
 
 /// Executes a query and returns an optional row.
-pub async fn fetch_optional<T>(key: &str, sql: &str, args: PgArguments) -> Result<Option<T>, sqlx::Error>
+pub async fn fetch<T>(key: &str, sql: &str, args: PgArguments) -> Result<Option<T>, sqlx::Error>
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
 {
@@ -54,16 +54,16 @@ where
     sqlx::query_as_with(sql, args).fetch_all(store::db_read(key)).await
 }
 
-/// Executes a query using the first initialized database pool and returns a single row.
-pub async fn fetch1_one<T>(sql: &str, args: PgArguments) -> Result<T, sqlx::Error>
-where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
-{
-    sqlx::query_as_with(sql, args).fetch_one(store::db1_read()).await
-}
+// Executes a query using the first initialized database pool and returns a single row.
+// pub async fn fetch1_one<T>(sql: &str, args: PgArguments) -> Result<T, sqlx::Error>
+// where
+//     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
+// {
+//     sqlx::query_as_with(sql, args).fetch_one(store::db1_read()).await
+// }
 
 /// Executes a query using the first initialized database pool and returns an optional row.
-pub async fn fetch1_optional<T>(sql: &str, args: PgArguments) -> Result<Option<T>, sqlx::Error>
+pub async fn fetch1<T>(sql: &str, args: PgArguments) -> Result<Option<T>, sqlx::Error>
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
 {
