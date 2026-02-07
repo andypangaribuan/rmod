@@ -17,8 +17,10 @@ use axum::{
     routing::{MethodFilter, Router, on},
 };
 pub use futures_util::future::BoxFuture;
-use sqlx;
+// use sqlx;
+
 use std::any::Any;
+use std::backtrace::Backtrace;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -49,8 +51,9 @@ pub struct FuseRContext {
     pub data: Arc<Mutex<HashMap<String, Arc<dyn Any + Send + Sync>>>>,
     pub res_status: Option<StatusCode>,
     pub res_body: Option<Arc<dyn Any + Send + Sync>>,
-    // pub res_body_error: Option<Arc<dyn Any + Send + Sync>>,
+    pub res_backtrace: Option<Arc<Backtrace>>,
     pub res_source: FuseResSource,
+
     response: Option<Response>,
     pub body: Option<Vec<u8>>,
 }
@@ -111,105 +114,7 @@ impl Fuse {
                 let mut ctx = FuseRContext::new(Request::from_parts(parts, Body::from(bytes.clone())));
                 ctx.body = Some(bytes);
 
-                let mut break_next = false;
-
-                // 1. Liveness
-                match liveness(&mut ctx).await {
-                    Ok((status, body)) => {
-                        if !status.is_success() {
-                            break_next = true;
-                            ctx.res_status = Some(status);
-                            ctx.res_body = Some(body);
-                            ctx.res_source = FuseResSource::new("liveness");
-                        }
-                    }
-                    Err((status, body)) => {
-                        break_next = true;
-                        ctx.res_status = Some(status);
-                        // ctx.res_body_error = Some(body.clone());
-                        ctx.res_body = Some(body.clone());
-                        // ctx.res_body = Some(Arc::new(match_error(&body)));
-                        ctx.res_source = FuseResSource::new("liveness");
-                    }
-                }
-
-                if !break_next {
-                    if let Some(v) = authentication {
-                        match v(&mut ctx).await {
-                            Ok((status, body)) => {
-                                if !status.is_success() {
-                                    break_next = true;
-                                    ctx.res_status = Some(status);
-                                    ctx.res_body = Some(body);
-                                    ctx.res_source = FuseResSource::new("authentication");
-                                }
-                            }
-                            Err((status, body)) => {
-                                break_next = true;
-                                ctx.res_status = Some(status);
-                                // ctx.res_body_error = Some(body.clone());
-                                ctx.res_body = Some(body.clone());
-                                // ctx.res_body = Some(Arc::new(match_error(&body)));
-                                ctx.res_source = FuseResSource::new("authentication");
-                            }
-                        }
-                    }
-                }
-
-                if !break_next {
-                    for (i, h) in handlers.iter().enumerate() {
-                        match h(&mut ctx).await {
-                            Ok((status, body)) => {
-                                ctx.res_status = Some(status);
-                                ctx.res_body = Some(body);
-                                ctx.res_source =
-                                    FuseResSource { name: "handler", handler_index: Some(i), endpoint_key: Some(endpoint_key) };
-
-                                if !status.is_success() {
-                                    break;
-                                }
-                            }
-                            Err((status, body)) => {
-                                ctx.res_status = Some(status);
-                                // ctx.res_body_error = Some(body.clone());
-                                ctx.res_body = Some(body.clone());
-                                // ctx.res_body = Some(Arc::new(match_error(&body)));
-                                ctx.res_source =
-                                    FuseResSource { name: "handler", handler_index: Some(i), endpoint_key: Some(endpoint_key) };
-
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // 4. Defer
-                match defer(&mut ctx).await {
-                    Ok((status, body)) => {
-                        ctx.res_status = Some(status);
-                        ctx.res_body = Some(body);
-                        ctx.res_source = FuseResSource::new("defer");
-                    }
-                    Err((status, body)) => {
-                        ctx.res_status = Some(status);
-                        // ctx.res_body_error = Some(body.clone());
-                        ctx.res_body = Some(body.clone());
-                        // ctx.res_body = Some(Arc::new(match_error(&body)));
-                        ctx.res_source = FuseResSource::new("defer");
-                    }
-                }
-
-                if let (Some(status), Some(body)) = (ctx.res_status, &ctx.res_body) {
-                    if let Some(text) = body.downcast_ref::<String>() {
-                        ctx.response = Some((status, text.clone()).into_response());
-                    } else if let Some(text) = body.downcast_ref::<&'static str>() {
-                        ctx.response = Some((status, (*text).to_string()).into_response());
-                    } else if let Some(json) = body.downcast_ref::<serde_json::Value>() {
-                        ctx.response = Some((status, axum::Json(json.clone())).into_response());
-                    }
-                }
-
-                ctx.response.unwrap_or_else(|| StatusCode::NOT_FOUND.into_response())
+                ctx.res_handle(liveness, authentication, defer, handlers, endpoint_key).await
             };
 
             let router = std::mem::take(&mut self.router);
@@ -225,20 +130,6 @@ impl Fuse {
         axum::serve(listener, self.router).await.unwrap();
     }
 }
-
-// fn match_error(body: &Arc<dyn Any + Send + Sync>) -> String {
-//     if let Some(s) = body.downcast_ref::<String>() {
-//         return s.clone();
-//     }
-//     if let Some(s) = body.downcast_ref::<&'static str>() {
-//         return (*s).to_string();
-//     }
-//     if let Some(e) = body.downcast_ref::<sqlx::Error>() {
-//         return e.to_string();
-//     }
-//     "internal server error".to_string()
-// }
-
 impl FuseRContext {
     pub(crate) fn new(req: Request<Body>) -> Self {
         Self {
@@ -246,11 +137,257 @@ impl FuseRContext {
             data: Arc::new(Mutex::new(HashMap::new())),
             res_status: None,
             res_body: None,
-            // res_body_error: None,
+            res_backtrace: None,
             res_source: FuseResSource::new(""),
+
             response: None,
             body: None,
         }
+    }
+
+    #[inline(never)]
+    pub async fn res_handle(
+        &mut self,
+        liveness: FuseHandler,
+        authentication: Option<FuseHandler>,
+        defer: FuseHandler,
+        handlers: Arc<Vec<FuseHandler>>,
+        endpoint_key: &'static str,
+    ) -> Response {
+        let mut break_next = false;
+
+        // 1. Liveness
+        match liveness(self).await {
+            Ok((status, body)) => {
+                if !status.is_success() {
+                    break_next = true;
+                    self.res_status = Some(status);
+                    self.res_body = Some(body);
+                    self.res_source = FuseResSource::new("liveness");
+                }
+            }
+            Err((status, body)) => {
+                break_next = true;
+                self.res_status = Some(status);
+                self.res_body = Some(body.clone());
+                if self.res_backtrace.is_none() {
+                    self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+                }
+                self.res_source = FuseResSource::new("liveness");
+            }
+        }
+
+        if !break_next && let Some(v) = authentication {
+            match v(self).await {
+                Ok((status, body)) => {
+                    if !status.is_success() {
+                        break_next = true;
+                        self.res_status = Some(status);
+                        self.res_body = Some(body);
+                        self.res_source = FuseResSource::new("authentication");
+                    }
+                }
+                Err((status, body)) => {
+                    break_next = true;
+                    self.res_status = Some(status);
+                    self.res_body = Some(body.clone());
+                    if self.res_backtrace.is_none() {
+                        self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+                    }
+                    self.res_source = FuseResSource::new("authentication");
+                }
+            }
+        }
+
+        if !break_next {
+            for (i, h) in handlers.iter().enumerate() {
+                match h(self).await {
+                    Ok((status, body)) => {
+                        self.res_status = Some(status);
+                        self.res_body = Some(body);
+                        self.res_source = FuseResSource { name: "handler", handler_index: Some(i), endpoint_key: Some(endpoint_key) };
+
+                        if !status.is_success() {
+                            break;
+                        }
+                    }
+                    Err((status, body)) => {
+                        self.res_status = Some(status);
+                        self.res_body = Some(body.clone());
+                        if self.res_backtrace.is_none() {
+                            self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+                        }
+                        self.res_source = FuseResSource { name: "handler", handler_index: Some(i), endpoint_key: Some(endpoint_key) };
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 4. Defer
+        match defer(self).await {
+            Ok((status, body)) => {
+                self.res_status = Some(status);
+                self.res_body = Some(body);
+                self.res_source = FuseResSource::new("defer");
+            }
+            Err((status, body)) => {
+                self.res_status = Some(status);
+                self.res_body = Some(body.clone());
+                if self.res_backtrace.is_none() {
+                    self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+                }
+                self.res_source = FuseResSource::new("defer");
+            }
+        }
+
+        if let (Some(status), Some(body)) = (self.res_status, &self.res_body) {
+            if let Some(text) = body.downcast_ref::<String>() {
+                self.response = Some((status, text.clone()).into_response());
+            } else if let Some(text) = body.downcast_ref::<&'static str>() {
+                self.response = Some((status, (*text).to_string()).into_response());
+            } else if let Some(json) = body.downcast_ref::<serde_json::Value>() {
+                self.response = Some((status, axum::Json(json.clone())).into_response());
+            }
+        }
+
+        self.response.take().unwrap_or_else(|| StatusCode::NOT_FOUND.into_response())
+    }
+
+    pub fn body_text(&self) -> String {
+        if let Some(body) = &self.res_body {
+            if let Some(s) = body.downcast_ref::<String>() {
+                return s.clone();
+            }
+            if let Some(s) = body.downcast_ref::<&'static str>() {
+                return (*s).to_string();
+            }
+            if let Some(e) = body.downcast_ref::<sqlx::Error>() {
+                return e.to_string();
+            }
+        }
+        "".to_string()
+    }
+
+    pub fn is_db_decode_error(&self) -> bool {
+        if let Some(body) = &self.res_body
+            && let Some(e) = body.downcast_ref::<sqlx::Error>()
+        {
+            return matches!(e, sqlx::Error::ColumnDecode { .. });
+        }
+        false
+    }
+
+    pub fn backtrace_text(&self) -> String {
+        if let Some(bt) = &self.res_backtrace {
+            return format!("{:?}", bt);
+        }
+        "".to_string()
+    }
+
+    #[inline(never)]
+    pub fn backtrace_json(&self) -> serde_json::Value {
+        if let Some(bt) = &self.res_backtrace {
+            let bt_str = format!("{:#?}", bt);
+            let mut frames = Vec::new();
+
+            // 1. Try to parse the "raw" list format: { fn: "...", file: "...", line: ... }
+            if bt_str.contains("{ fn: \"") {
+                for frame_block in bt_str.split("{ fn: \"") {
+                    let frame_block = frame_block.trim();
+                    if frame_block.is_empty() || frame_block.starts_with("Backtrace") {
+                        continue;
+                    }
+
+                    let mut frame_map = serde_json::Map::new();
+                    if let Some(fn_end) = frame_block.find('\"') {
+                        frame_map.insert("fn".to_string(), serde_json::json!(&frame_block[..fn_end]));
+
+                        if let Some(file_start) = frame_block.find("file: \"") {
+                            let file_str = &frame_block[file_start + 7..];
+                            if let Some(file_end) = file_str.find('\"') {
+                                let file_path = &file_str[..file_end];
+
+                                if let Some(line_start) = file_str.find("line: ") {
+                                    let line_str = &file_str[line_start + 6..];
+                                    let line_end = line_str.find(|c: char| !c.is_numeric()).unwrap_or(line_str.len());
+                                    let line_num = &line_str[..line_end];
+                                    frame_map.insert("at".to_string(), serde_json::json!(format!("{}:{}", file_path, line_num)));
+                                } else {
+                                    frame_map.insert("at".to_string(), serde_json::json!(file_path));
+                                }
+                            }
+                        }
+                    }
+
+                    if !frame_map.is_empty() {
+                        frames.push(serde_json::Value::Object(frame_map));
+                    }
+                }
+            }
+
+            // 2. Fallback to the multi-line "at " format
+            if frames.is_empty() {
+                let mut current_frame: Option<serde_json::Map<String, serde_json::Value>> = None;
+                for line in bt_str.lines() {
+                    let line = line.trim();
+                    if line.is_empty() {
+                        continue;
+                    }
+
+                    if let Some(stripped) = line.strip_prefix("at ") {
+                        if let Some(mut frame) = current_frame.take() {
+                            frame.insert("at".to_string(), serde_json::json!(stripped.trim()));
+                            frames.push(serde_json::Value::Object(frame));
+                        }
+                    } else {
+                        if let Some(frame) = current_frame.take() {
+                            frames.push(serde_json::Value::Object(frame));
+                        }
+
+                        let mut frame = serde_json::Map::new();
+                        frame.insert("fn".to_string(), serde_json::json!(line));
+                        current_frame = Some(frame);
+                    }
+                }
+                if let Some(frame) = current_frame {
+                    frames.push(serde_json::Value::Object(frame));
+                }
+            }
+
+            let mut result = serde_json::json!(frames);
+            if let Some(arr) = result.as_array_mut() {
+                let mut first_rmod_idx = None;
+                let mut last_relevant_idx = None;
+
+                for (i, frame) in arr.iter().enumerate() {
+                    if let Some(obj) = frame.as_object()
+                        && let Some(f_name) = obj.get("fn").and_then(|v| v.as_str())
+                        && f_name.contains("rmod::")
+                    {
+                        if first_rmod_idx.is_none() {
+                            first_rmod_idx = Some(i);
+                        }
+
+                        last_relevant_idx = Some(i);
+                    }
+                }
+
+                if let Some(start) = first_rmod_idx {
+                    let end = last_relevant_idx.unwrap_or(start);
+                    if start <= end {
+                        *arr = arr[start..=end].to_vec();
+                    } else {
+                        *arr = arr[start..=start].to_vec();
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        serde_json::json!([])
     }
 
     pub fn json<T: serde::de::DeserializeOwned>(&self) -> Result<T, serde_path_to_error::Error<serde_json::Error>> {
@@ -269,11 +406,27 @@ impl FuseRContext {
         data.get(key)?.clone().downcast::<T>().ok()
     }
 
-    pub fn ok<T: Send + Sync + 'static>(&self, status: StatusCode, body: T) -> FuseResult {
+    #[inline(never)]
+    pub fn ok<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) -> FuseResult {
+        self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
         Ok((status, Arc::new(body)))
     }
 
-    pub fn err<T: Send + Sync + 'static>(&self, status: StatusCode, body: T) -> FuseResult {
+    #[inline(never)]
+    pub fn err<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) -> FuseResult {
+        self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
         Err((status, Arc::new(body)))
+    }
+
+    #[inline(never)]
+    pub fn ok_val<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) -> (StatusCode, Arc<dyn Any + Send + Sync>) {
+        self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+        (status, Arc::new(body))
+    }
+
+    #[inline(never)]
+    pub fn err_val<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) -> (StatusCode, Arc<dyn Any + Send + Sync>) {
+        self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+        (status, Arc::new(body))
     }
 }
