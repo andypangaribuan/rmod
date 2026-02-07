@@ -25,15 +25,9 @@ pub struct DbConfig {
     pub idle_timeout: Option<i16>,
 }
 
-/// Sets up the PostgreSQL connection pools and saves them to the global store.
 pub async fn db_setup(write: DbConfig, read: Option<DbConfig>) -> Result<(), sqlx::Error> {
     let write_pool = create_db_pool(&write).await?;
-    let mut read_pool = None;
-
-    if let Some(config) = read {
-        read_pool = Some(create_db_pool(&config).await?);
-    }
-
+    let read_pool = if let Some(config) = read { Some(create_db_pool(&config).await?) } else { None };
     crate::store::set_db(write_pool, read_pool);
     Ok(())
 }
