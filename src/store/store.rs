@@ -64,12 +64,12 @@ pub fn db_read(key: &str) -> &'static Pool<Postgres> {
 }
 
 /// Gets the write database pool for the first initialized key.
-pub fn db_first() -> &'static Pool<Postgres> {
+pub fn db1() -> &'static Pool<Postgres> {
     &get_first_pools().write
 }
 
 /// Gets the read database pool for the first initialized key.
-pub fn db_read_first() -> &'static Pool<Postgres> {
+pub fn db1_read() -> &'static Pool<Postgres> {
     let pools = get_first_pools();
     pools.read.as_ref().unwrap_or(&pools.write)
 }
