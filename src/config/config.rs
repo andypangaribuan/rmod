@@ -21,8 +21,8 @@ pub struct DbConfig {
     pub password: String,
     pub max_connections: u32,
     pub min_connections: u32,
-    pub acquire_timeout: u64,
-    pub idle_timeout: u64,
+    pub acquire_timeout: Option<i16>,
+    pub idle_timeout: Option<i16>,
 }
 
 /// Sets up the PostgreSQL connection pools and saves them to the global store.
@@ -53,8 +53,8 @@ async fn create_db_pool(config: &DbConfig) -> Result<Pool<Postgres>, sqlx::Error
     let pool = PgPoolOptions::new()
         .max_connections(config.max_connections)
         .min_connections(config.min_connections)
-        .acquire_timeout(Duration::from_secs(config.acquire_timeout))
-        .idle_timeout(Duration::from_secs(config.idle_timeout))
+        .acquire_timeout(Duration::from_secs(config.acquire_timeout.unwrap_or(30) as u64))
+        .idle_timeout(Duration::from_secs(config.idle_timeout.unwrap_or(10) as u64))
         .connect_with(connect_options)
         .await?;
 
