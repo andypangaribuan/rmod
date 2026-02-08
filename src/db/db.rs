@@ -14,14 +14,38 @@ pub use sqlx::Arguments;
 pub use sqlx::FromRow;
 pub use sqlx::postgres::PgArguments;
 
+pub struct PgArgs {
+    pub(crate) inner: PgArguments,
+}
+
+impl Default for PgArgs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PgArgs {
+    pub fn new() -> Self {
+        Self { inner: PgArguments::default() }
+    }
+
+    pub fn push<T>(&mut self, val: T) -> &mut Self
+    where
+        T: for<'q> sqlx::Encode<'q, sqlx::Postgres> + sqlx::Type<sqlx::Postgres> + Send,
+    {
+        use sqlx::Arguments;
+        let _ = self.inner.add(val);
+        self
+    }
+}
+
 #[macro_export]
 macro_rules! db_args {
     ($($x:expr),*) => {
         {
-            use $crate::db::Arguments;
-            let mut args = $crate::db::PgArguments::default();
+            let mut args = $crate::db::PgArgs::new();
             $(
-                args.add($x);
+                args.push($x);
             )*
             args
         }
@@ -39,19 +63,19 @@ pub use db_args as args;
 // }
 
 /// Executes a query and returns an optional row.
-pub async fn fetch<T>(key: &str, sql: &str, args: PgArguments) -> Result<Option<T>, sqlx::Error>
+pub async fn fetch<T>(key: &str, sql: &str, args: PgArgs) -> Result<Option<T>, sqlx::Error>
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
 {
-    sqlx::query_as_with(sql, args).fetch_optional(store::db_read(key)).await
+    sqlx::query_as_with(sql, args.inner).fetch_optional(store::db_read(key)).await
 }
 
 /// Executes a query and returns all rows.
-pub async fn fetch_all<T>(key: &str, sql: &str, args: PgArguments) -> Result<Vec<T>, sqlx::Error>
+pub async fn fetch_all<T>(key: &str, sql: &str, args: PgArgs) -> Result<Vec<T>, sqlx::Error>
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
 {
-    sqlx::query_as_with(sql, args).fetch_all(store::db_read(key)).await
+    sqlx::query_as_with(sql, args.inner).fetch_all(store::db_read(key)).await
 }
 
 // Executes a query using the first initialized database pool and returns a single row.
@@ -63,27 +87,27 @@ where
 // }
 
 /// Executes a query using the first initialized database pool and returns an optional row.
-pub async fn fetch1<T>(sql: &str, args: PgArguments) -> Result<Option<T>, sqlx::Error>
+pub async fn fetch1<T>(sql: &str, args: PgArgs) -> Result<Option<T>, sqlx::Error>
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
 {
-    sqlx::query_as_with(sql, args).fetch_optional(store::db1_read()).await
+    sqlx::query_as_with(sql, args.inner).fetch_optional(store::db1_read()).await
 }
 
 /// Executes a query using the first initialized database pool and returns all rows.
-pub async fn fetch1_all<T>(sql: &str, args: PgArguments) -> Result<Vec<T>, sqlx::Error>
+pub async fn fetch1_all<T>(sql: &str, args: PgArgs) -> Result<Vec<T>, sqlx::Error>
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
 {
-    sqlx::query_as_with(sql, args).fetch_all(store::db1_read()).await
+    sqlx::query_as_with(sql, args.inner).fetch_all(store::db1_read()).await
 }
 
 /// Executes a query that does not return rows (e.g., INSERT, UPDATE, DELETE).
-pub async fn execute(key: &str, sql: &str, args: PgArguments) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
-    sqlx::query_with(sql, args).execute(store::db(key)).await
+pub async fn execute(key: &str, sql: &str, args: PgArgs) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    sqlx::query_with(sql, args.inner).execute(store::db(key)).await
 }
 
 /// Executes a query using the first initialized database pool that does not return rows (e.g., INSERT, UPDATE, DELETE).
-pub async fn execute1(sql: &str, args: PgArguments) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
-    sqlx::query_with(sql, args).execute(store::db1()).await
+pub async fn execute1(sql: &str, args: PgArgs) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    sqlx::query_with(sql, args.inner).execute(store::db1()).await
 }
