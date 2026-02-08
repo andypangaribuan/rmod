@@ -63,19 +63,19 @@ pub use db_args as args;
 // }
 
 /// Executes a query and returns an optional row.
-pub async fn fetch<T>(key: &str, sql: &str, args: PgArgs) -> Result<Option<T>, sqlx::Error>
+pub async fn get<T>(key: &str, sql: &str, args: PgArgs) -> Result<Option<T>, sqlx::Error>
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
 {
-    sqlx::query_as_with(sql, args.inner).fetch_optional(store::db_read(key)).await
+    sqlx::query_as_with(sql, args.inner).fetch_optional(store::xdb_read(key)).await
 }
 
 /// Executes a query and returns all rows.
-pub async fn fetch_all<T>(key: &str, sql: &str, args: PgArgs) -> Result<Vec<T>, sqlx::Error>
+pub async fn get_all<T>(key: &str, sql: &str, args: PgArgs) -> Result<Vec<T>, sqlx::Error>
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
 {
-    sqlx::query_as_with(sql, args.inner).fetch_all(store::db_read(key)).await
+    sqlx::query_as_with(sql, args.inner).fetch_all(store::xdb_read(key)).await
 }
 
 // Executes a query using the first initialized database pool and returns a single row.
@@ -87,27 +87,27 @@ where
 // }
 
 /// Executes a query using the first initialized database pool and returns an optional row.
-pub async fn fetch1<T>(sql: &str, args: PgArgs) -> Result<Option<T>, sqlx::Error>
+pub async fn fetch<T>(sql: &str, args: PgArgs) -> Result<Option<T>, sqlx::Error>
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
 {
-    sqlx::query_as_with(sql, args.inner).fetch_optional(store::db1_read()).await
+    sqlx::query_as_with(sql, args.inner).fetch_optional(store::db_read()).await
 }
 
 /// Executes a query using the first initialized database pool and returns all rows.
-pub async fn fetch1_all<T>(sql: &str, args: PgArgs) -> Result<Vec<T>, sqlx::Error>
+pub async fn fetch_all<T>(sql: &str, args: PgArgs) -> Result<Vec<T>, sqlx::Error>
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
 {
-    sqlx::query_as_with(sql, args.inner).fetch_all(store::db1_read()).await
+    sqlx::query_as_with(sql, args.inner).fetch_all(store::db_read()).await
 }
 
 /// Executes a query that does not return rows (e.g., INSERT, UPDATE, DELETE).
-pub async fn execute(key: &str, sql: &str, args: PgArgs) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
-    sqlx::query_with(sql, args.inner).execute(store::db(key)).await
+pub async fn perform(key: &str, sql: &str, args: PgArgs) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    sqlx::query_with(sql, args.inner).execute(store::xdb(key)).await
 }
 
 /// Executes a query using the first initialized database pool that does not return rows (e.g., INSERT, UPDATE, DELETE).
-pub async fn execute1(sql: &str, args: PgArgs) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
-    sqlx::query_with(sql, args.inner).execute(store::db1()).await
+pub async fn execute(sql: &str, args: PgArgs) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    sqlx::query_with(sql, args.inner).execute(store::db()).await
 }
