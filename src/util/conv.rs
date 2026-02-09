@@ -9,6 +9,7 @@
  */
 
 #[cfg(test)]
+#[path = "test/conv.rs"]
 mod tests;
 
 use chrono::{DateTime, Utc};
