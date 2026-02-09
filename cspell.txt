@@ -2,3 +2,10 @@ rmod
 chrono
 conv
 sqlx
+pkcs
+hmac
+encryptor
+decryptor
+ciphertext
+datelike
+timelike
