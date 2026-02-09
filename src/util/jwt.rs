@@ -23,16 +23,17 @@ type HmacSha256 = Hmac<Sha256>;
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Claims {
     pub sub: String,
+    pub iss: String,
     pub iat: u32,
     pub exp: u32,
 }
 
-pub fn encode(sub: String, secret: &str, exp_delta: TimeDelta) -> String {
+pub fn encode(sub: String, iss: String, secret: &str, exp_delta: TimeDelta) -> String {
     let timenow = Utc::now();
     let iat = timenow.timestamp() as u32;
     let exp = (timenow + exp_delta).timestamp() as u32;
 
-    let claims = Claims { sub, iat, exp };
+    let claims = Claims { sub, iss, iat, exp };
 
     let header = serde_json::json!({"alg": "HS256", "typ": "JWT"});
     let header_json = serde_json::to_string(&header).unwrap();

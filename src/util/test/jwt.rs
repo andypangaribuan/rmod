@@ -14,10 +14,11 @@ use chrono::TimeDelta;
 #[test]
 fn test_jwt_encode_decode() {
     let sub = "1234567890".to_string();
+    let iss = "rmod".to_string();
     let exp_delta = TimeDelta::hours(24);
     let secret = "secret";
 
-    let token = encode(sub.clone(), secret, exp_delta);
+    let token = encode(sub.clone(), iss.clone(), secret, exp_delta);
     let decoded = decode(&token, secret).unwrap();
 
     println!("token: {}", token);
@@ -29,11 +30,12 @@ fn test_jwt_encode_decode() {
 #[test]
 fn test_jwt_invalid_secret() {
     let sub = "1234567890".to_string();
+    let iss = "rmod".to_string();
     let exp_delta = TimeDelta::hours(24);
     let secret = "secret";
     let wrong_secret = "wrong_secret";
 
-    let token = encode(sub, secret, exp_delta);
+    let token = encode(sub, iss, secret, exp_delta);
     let result = decode(&token, wrong_secret);
 
     assert!(result.is_err());
