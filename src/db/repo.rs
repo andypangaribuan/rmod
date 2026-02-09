@@ -11,6 +11,21 @@
 use crate::db::{FromRow, PgArgs};
 use std::marker::PhantomData;
 
+fn build_select_sql(table_name: &str, where_clause: &str) -> String {
+    let with_deleted_at = crate::store::get_db_with_deleted_at();
+    if where_clause.trim().is_empty() {
+        if with_deleted_at {
+            format!("SELECT * FROM {} WHERE deleted_at IS NULL", table_name)
+        } else {
+            format!("SELECT * FROM {}", table_name)
+        }
+    } else if with_deleted_at {
+        format!("SELECT * FROM {} WHERE ({}) AND deleted_at IS NULL", table_name, where_clause)
+    } else {
+        format!("SELECT * FROM {} WHERE {}", table_name, where_clause)
+    }
+}
+
 pub struct Repo<T> {
     pub table_name: &'static str,
     pub columns: &'static str,
@@ -27,41 +42,25 @@ where
 
     /// Fetches an optional row using the first initialized database pool.
     pub async fn fetch(&self, where_clause: &str, args: PgArgs) -> Result<Option<T>, sqlx::Error> {
-        let sql = if where_clause.trim().is_empty() {
-            format!("SELECT * FROM {}", self.table_name)
-        } else {
-            format!("SELECT * FROM {} WHERE {}", self.table_name, where_clause)
-        };
+        let sql = build_select_sql(self.table_name, where_clause);
         crate::db::fetch::<T>(&sql, args).await
     }
 
     /// Fetches all rows using the first initialized database pool.
     pub async fn fetch_all(&self, where_clause: &str, args: PgArgs) -> Result<Vec<T>, sqlx::Error> {
-        let sql = if where_clause.trim().is_empty() {
-            format!("SELECT * FROM {}", self.table_name)
-        } else {
-            format!("SELECT * FROM {} WHERE {}", self.table_name, where_clause)
-        };
+        let sql = build_select_sql(self.table_name, where_clause);
         crate::db::fetch_all::<T>(&sql, args).await
     }
 
     /// Fetches an optional row from a specific database.
     pub async fn get(&self, key: &str, where_clause: &str, args: PgArgs) -> Result<Option<T>, sqlx::Error> {
-        let sql = if where_clause.trim().is_empty() {
-            format!("SELECT * FROM {}", self.table_name)
-        } else {
-            format!("SELECT * FROM {} WHERE {}", self.table_name, where_clause)
-        };
+        let sql = build_select_sql(self.table_name, where_clause);
         crate::db::get::<T>(key, &sql, args).await
     }
 
     /// Fetches all rows from a specific database.
     pub async fn get_all(&self, key: &str, where_clause: &str, args: PgArgs) -> Result<Vec<T>, sqlx::Error> {
-        let sql = if where_clause.trim().is_empty() {
-            format!("SELECT * FROM {}", self.table_name)
-        } else {
-            format!("SELECT * FROM {} WHERE {}", self.table_name, where_clause)
-        };
+        let sql = build_select_sql(self.table_name, where_clause);
         crate::db::get_all::<T>(key, &sql, args).await
     }
 
