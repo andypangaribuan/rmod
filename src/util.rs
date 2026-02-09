@@ -11,4 +11,8 @@
 pub mod conv;
 pub mod crypto;
 pub mod env;
-pub mod uid;
+
+#[path = "util/uid.rs"]
+mod _uid;
+
+pub use _uid::*;
