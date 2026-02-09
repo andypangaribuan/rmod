@@ -9,7 +9,6 @@
  */
 
 #[cfg(test)]
-#[path = "test_env.rs"]
 mod tests;
 
 use std::env;

@@ -10,49 +10,15 @@
 
 use crate::store;
 
+pub mod repo;
+pub use repo::Repo;
+
 pub use sqlx::Arguments;
 pub use sqlx::FromRow;
 pub use sqlx::postgres::PgArguments;
 
-pub struct PgArgs {
-    pub(crate) inner: PgArguments,
-}
-
-impl Default for PgArgs {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl PgArgs {
-    pub fn new() -> Self {
-        Self { inner: PgArguments::default() }
-    }
-
-    pub fn push<T>(&mut self, val: T) -> &mut Self
-    where
-        T: for<'q> sqlx::Encode<'q, sqlx::Postgres> + sqlx::Type<sqlx::Postgres> + Send,
-    {
-        use sqlx::Arguments;
-        let _ = self.inner.add(val);
-        self
-    }
-}
-
-#[macro_export]
-macro_rules! db_args {
-    ($($x:expr),*) => {
-        {
-            let mut args = $crate::db::PgArgs::new();
-            $(
-                args.push($x);
-            )*
-            args
-        }
-    };
-}
-
-pub use db_args as args;
+pub mod args;
+pub use args::{PgArgs, args};
 
 // Executes a query and returns a single row.
 // pub async fn fetch_one<T>(key: &str, sql: &str, args: PgArguments) -> Result<T, sqlx::Error>

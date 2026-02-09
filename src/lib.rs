@@ -8,26 +8,9 @@
  * All Rights Reserved.
  */
 
-#[cfg(test)]
-#[path = "test_lib.rs"]
-mod tests;
-
-#[path = "mod_util.rs"]
-pub mod util;
-
-#[path = "config/config.rs"]
 pub mod config;
-
-#[path = "store/store.rs"]
-pub mod store;
-
-#[path = "fuse/fuse.rs"]
 pub mod fuse;
+pub mod store;
+pub mod util;
 pub use fuse::fuse_handler;
-
-#[path = "db/db.rs"]
 pub mod db;
-
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
