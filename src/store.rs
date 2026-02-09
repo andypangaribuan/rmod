@@ -13,13 +13,13 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
 
-pub static DB_WITH_DELETED_AT: AtomicBool = AtomicBool::new(false);
+static DB_WITH_DELETED_AT: AtomicBool = AtomicBool::new(false);
 
 pub fn set_db_with_deleted_at(val: bool) {
     DB_WITH_DELETED_AT.store(val, Ordering::Relaxed);
 }
 
-pub fn get_db_with_deleted_at() -> bool {
+pub(crate) fn get_db_with_deleted_at() -> bool {
     DB_WITH_DELETED_AT.load(Ordering::Relaxed)
 }
 
