@@ -9,6 +9,10 @@
  */
 
 use aes::Aes256;
+use argon2::{
+    Algorithm, Argon2, Params, Version,
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
+};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use cbc::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit, block_padding::Pkcs7};
 use pbkdf2::pbkdf2_hmac;
@@ -68,6 +72,30 @@ pub fn decrypt(encoded_data: &str, passphrase: &str, salt: &[u8]) -> Result<Vec<
     Ok(decrypted_data.to_vec())
 }
 
+pub fn argon2id_hash(password: &str, salt: Option<&[u8]>) -> Result<String, String> {
+    let params = Params::new(30 * 1024, 6, 3, Some(32)).map_err(|e| e.to_string())?;
+    let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
+
+    let salt_string = match salt {
+        Some(s) => SaltString::encode_b64(s).map_err(|e| e.to_string())?,
+        None => SaltString::generate(&mut OsRng),
+    };
+
+    let password_hash = argon2.hash_password(password.as_bytes(), &salt_string).map_err(|e| e.to_string())?;
+
+    Ok(password_hash.to_string())
+}
+
+pub fn argon2id_match(password: &str, encoded_hash: &str) -> Result<bool, String> {
+    let hash = PasswordHash::new(encoded_hash).map_err(|e| e.to_string())?;
+
+    match Argon2::default().verify_password(password.as_bytes(), &hash) {
+        Ok(_) => Ok(true),
+        Err(argon2::password_hash::Error::Password) => Ok(false),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -87,5 +115,26 @@ mod tests {
         println!("decrypted: {}", decrypted_str);
 
         assert_eq!(data, decrypted_str.as_bytes());
+    }
+
+    #[test]
+    fn test_argon2id() {
+        let password = "my-secret-password";
+        let hash = argon2id_hash(password, None).unwrap();
+        println!("hash: {}", hash);
+
+        assert!(argon2id_match(password, &hash).unwrap());
+        assert!(!argon2id_match("wrong-password", &hash).unwrap());
+    }
+
+    #[test]
+    fn test_argon2id_with_salt() {
+        let password = "my-secret-password";
+        let salt = b"some-salt-123456";
+        let hash = argon2id_hash(password, Some(salt)).unwrap();
+        println!("hash with salt: {}", hash);
+
+        assert!(argon2id_match(password, &hash).unwrap());
+        assert!(hash.contains("$argon2id$v=19$m=30720,t=6,p=3$"));
     }
 }
