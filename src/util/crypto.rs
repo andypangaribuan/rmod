@@ -119,7 +119,7 @@ mod tests {
 
     #[test]
     fn test_argon2id() {
-        let password = "my-secret-password";
+        let password = "strong-password";
         let hash = argon2id_hash(password, None).unwrap();
         println!("hash: {}", hash);
 

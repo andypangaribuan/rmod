@@ -27,7 +27,7 @@ pub fn fuse_handler(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         #(#attrs)*
-        #vis fn #name(ctx: &mut FuseRContext) -> rmod::fuse::BoxFuture<'_, FuseResult> {
+        #vis fn #name(ctx: &mut rmod::fuse::FuseRContext) -> rmod::fuse::BoxFuture<'_, rmod::fuse::FuseResult> {
             Box::pin(async move #body)
         }
     };
