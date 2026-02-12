@@ -13,7 +13,9 @@
       "cargo fetch"
     ],
     "scripts": {
+      "check": "cargo check",
       "build": "cargo build",
+      "clean": "cargo clean",
       "test": "cargo test -q -- --test-threads=1",
       "lint": "cargo clippy && cargo fmt --check",
       "build-docs": "cargo doc"

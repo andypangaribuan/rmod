@@ -9,8 +9,15 @@
 
 #: do cargo build and lint
 function run {
+  devbox run check
   devbox run build
   devbox run lint
+}
+
+
+#: clean the project
+function clean {
+  devbox run clean
 }
 
 
