@@ -8,68 +8,82 @@
  * All Rights Reserved.
  */
 
-use aes::Aes256;
+use aes_gcm::{
+    Aes256Gcm, Nonce,
+    aead::{Aead, KeyInit, Payload},
+};
 use argon2::{
     Algorithm, Argon2, Params, Version,
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
-use cbc::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit, block_padding::Pkcs7};
-use pbkdf2::pbkdf2_hmac;
-use rand::RngExt;
-use sha2::Sha256;
-
-type Aes256CbcEnc = cbc::Encryptor<Aes256>;
-type Aes256CbcDec = cbc::Decryptor<Aes256>;
 
 const KEY_LEN: usize = 32; // AES-256
-const IV_LEN: usize = 16; // AES block size
-const ITERATIONS: u32 = 100_000;
+const IV_LEN: usize = 12; // GCM standard nonce size
 
-/// Encrypts data using AES-256-CBC with PKCS7 padding.
-/// Key is derived from passphrase using PBKDF2-SHA256 with provided salt.
-/// A random IV is generated and prepended to the ciphertext.
-pub fn encrypt(data: &[u8], passphrase: &str, salt: &[u8]) -> Result<String, String> {
-    let mut key = [0u8; KEY_LEN];
-    pbkdf2_hmac::<Sha256>(passphrase.as_bytes(), salt, ITERATIONS, &mut key);
-
-    let mut iv = [0u8; IV_LEN];
-    rand::rng().fill(&mut iv);
-
-    let ciphertext = {
-        let mut buffer = vec![0u8; data.len() + IV_LEN]; // Sufficient space for PKCS7 padding
-        buffer[..data.len()].copy_from_slice(data);
-
-        let cipher = Aes256CbcEnc::new(&key.into(), &iv.into());
-        cipher.encrypt_padded_mut::<Pkcs7>(&mut buffer, data.len()).map_err(|e| format!("encryption failed: {:?}", e))?.to_vec()
-    };
-
-    let mut result = Vec::with_capacity(IV_LEN + ciphertext.len());
-    result.extend_from_slice(&iv);
-    result.extend_from_slice(&ciphertext);
-
-    Ok(STANDARD.encode(result))
+/// Encrypts data using AES-256-GCM.
+/// Key and IV (nonce) are expected to be base64 encoded strings.
+/// Output is a base64 encoded string containing [ciphertext | tag].
+pub fn encrypt(data: &[u8], key_b64: &str, iv_b64: &str) -> Result<String, String> {
+    let key_bytes = STANDARD.decode(key_b64).map_err(|e| format!("invalid key base64: {}", e))?;
+    let iv_bytes = STANDARD.decode(iv_b64).map_err(|e| format!("invalid iv base64: {}", e))?;
+    _encrypt(data, &key_bytes, &iv_bytes)
 }
 
-/// Decrypts data using AES-256-CBC with PKCS7 padding.
-/// Data is expected to be base64 encoded string containing [IV (16 bytes) | ciphertext].
-pub fn decrypt(encoded_data: &str, passphrase: &str, salt: &[u8]) -> Result<Vec<u8>, String> {
-    let encrypted_data = STANDARD.decode(encoded_data).map_err(|e| format!("invalid base64: {}", e))?;
+/// Encrypts data using AES-256-GCM.
+/// Key and IV (nonce) are expected to be raw strings.
+/// Output is a base64 encoded string containing [ciphertext | tag].
+pub fn encrypt_raw(data: &[u8], key: &str, iv: &str) -> Result<String, String> {
+    _encrypt(data, key.as_bytes(), iv.as_bytes())
+}
 
-    if encrypted_data.len() < IV_LEN {
-        return Err("data too short".to_string());
+fn _encrypt(data: &[u8], key_bytes: &[u8], iv_bytes: &[u8]) -> Result<String, String> {
+    if key_bytes.len() != KEY_LEN {
+        return Err(format!("invalid key length: expected {} bytes, got {}", KEY_LEN, key_bytes.len()));
     }
 
-    let (iv, ciphertext) = encrypted_data.split_at(IV_LEN);
+    if iv_bytes.len() != IV_LEN && iv_bytes.len() != 16 {
+        return Err(format!("invalid iv length: expected {} or 16 bytes, got {}", IV_LEN, iv_bytes.len()));
+    }
 
-    let mut key = [0u8; KEY_LEN];
-    pbkdf2_hmac::<Sha256>(passphrase.as_bytes(), salt, ITERATIONS, &mut key);
+    let cipher = Aes256Gcm::new_from_slice(key_bytes).map_err(|e| format!("cipher initialization failed: {:?}", e))?;
+    let nonce = Nonce::from_slice(iv_bytes);
 
-    let mut buffer = ciphertext.to_vec();
-    let cipher = Aes256CbcDec::new(&key.into(), iv.into());
-    let decrypted_data = cipher.decrypt_padded_mut::<Pkcs7>(&mut buffer).map_err(|e| format!("decryption failed: {:?}", e))?;
+    let ciphertext = cipher.encrypt(nonce, Payload { msg: data, aad: &[] }).map_err(|e| format!("encryption failed: {:?}", e))?;
 
-    Ok(decrypted_data.to_vec())
+    Ok(STANDARD.encode(ciphertext))
+}
+
+/// Decrypts data using AES-256-GCM.
+/// Key and IV (nonce) are expected to be base64 encoded strings.
+/// Input is a base64 encoded string containing [ciphertext | tag].
+pub fn decrypt(encoded_data: &str, key_b64: &str, iv_b64: &str) -> Result<Vec<u8>, String> {
+    let key_bytes = STANDARD.decode(key_b64).map_err(|e| format!("invalid key base64: {}", e))?;
+    let iv_bytes = STANDARD.decode(iv_b64).map_err(|e| format!("invalid iv base64: {}", e))?;
+    _decrypt(encoded_data, &key_bytes, &iv_bytes)
+}
+
+/// Decrypts data using AES-256-GCM.
+/// Key and IV (nonce) are expected to be raw strings.
+/// Input is a base64 encoded string containing [ciphertext | tag].
+pub fn decrypt_raw(encoded_data: &str, key: &str, iv: &str) -> Result<Vec<u8>, String> {
+    _decrypt(encoded_data, key.as_bytes(), iv.as_bytes())
+}
+
+fn _decrypt(encoded_data: &str, key_bytes: &[u8], iv_bytes: &[u8]) -> Result<Vec<u8>, String> {
+    let encrypted_data = STANDARD.decode(encoded_data).map_err(|e| format!("invalid data base64: {}", e))?;
+
+    if key_bytes.len() != KEY_LEN {
+        return Err(format!("invalid key length: expected {} bytes, got {}", KEY_LEN, key_bytes.len()));
+    }
+
+    let cipher = Aes256Gcm::new_from_slice(key_bytes).map_err(|e| format!("cipher initialization failed: {:?}", e))?;
+    let nonce = Nonce::from_slice(iv_bytes);
+
+    let decrypted_data =
+        cipher.decrypt(nonce, Payload { msg: &encrypted_data, aad: &[] }).map_err(|e| format!("decryption failed: {:?}", e))?;
+
+    Ok(decrypted_data)
 }
 
 pub fn argon2id_hash(password: &str, salt: Option<&[u8]>) -> Result<String, String> {
@@ -99,15 +113,47 @@ pub fn argon2id_match(password: &str, encoded_hash: &str) -> Result<bool, String
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::Utc;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
     fn test_it_works() {
-        let passphrase = "very-secure-secret-100";
-        let salt = b"some salt";
+        let key_b64 = STANDARD.encode("this-is-a-32-byte-secret-key-123");
+        let iv_b64 = STANDARD.encode("12-byte-iv--");
         let data = b"hello world";
 
-        let encrypted = encrypt(data, passphrase, salt).unwrap();
-        let decrypted = decrypt(&encrypted, passphrase, salt).unwrap();
+        let encrypted = encrypt(data, &key_b64, &iv_b64).unwrap();
+        let decrypted = decrypt(&encrypted, &key_b64, &iv_b64).unwrap();
+
+        let decrypted_str = String::from_utf8(decrypted).expect("Invalid UTF-8 sequence");
+
+        println!("encrypted: {}", encrypted);
+        println!("decrypted: {}", decrypted_str);
+
+        // timestamp into nanoseconds precision
+        let timestamp_nanos = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards").as_nanos();
+        println!("Timestamp (nanoseconds): {}", timestamp_nanos);
+
+        let now = Utc::now();
+        println!("Timestamp (human): {}", now.format("%Y-%m-%dT%H:%M:%S%.9f%:z"));
+        let now_again = Utc::now();
+        println!("Timestamp (human 2): {}", now_again.to_rfc3339());
+        println!("Timestamp (human 2): {}", now_again.to_rfc3339_opts(chrono::SecondsFormat::Secs, true));
+        println!("Timestamp (human 2): {}", now_again.to_rfc3339_opts(chrono::SecondsFormat::Millis, true));
+        println!("Timestamp (human 2): {}", now_again.to_rfc3339_opts(chrono::SecondsFormat::Micros, true));
+        println!("Timestamp (human 3): {}", now_again.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true));
+
+        assert_eq!(data, decrypted_str.as_bytes());
+    }
+
+    #[test]
+    fn test_raw_it_works() {
+        let key = "this-is-a-32-byte-secret-key-123";
+        let iv = "12-byte-iv--";
+        let data = b"hello world";
+
+        let encrypted = encrypt_raw(data, key, iv).unwrap();
+        let decrypted = decrypt_raw(&encrypted, key, iv).unwrap();
 
         let decrypted_str = String::from_utf8(decrypted).expect("Invalid UTF-8 sequence");
 
