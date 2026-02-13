@@ -114,7 +114,6 @@ pub fn argon2id_match(password: &str, encoded_hash: &str) -> Result<bool, String
 mod tests {
     use super::*;
     use chrono::Utc;
-    use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
     fn test_it_works() {
@@ -130,18 +129,17 @@ mod tests {
         println!("encrypted: {}", encrypted);
         println!("decrypted: {}", decrypted_str);
 
-        // timestamp into nanoseconds precision
-        let timestamp_nanos = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards").as_nanos();
-        println!("Timestamp (nanoseconds): {}", timestamp_nanos);
+        let timenow = Utc::now();
+        println!("Timestamp (secs)   : {}", timenow.timestamp());
+        println!("Timestamp (millis) : {}", timenow.timestamp_millis());
+        println!("Timestamp (nanos)  : {}", timenow.timestamp_nanos_opt().unwrap());
 
-        let now = Utc::now();
-        println!("Timestamp (human): {}", now.format("%Y-%m-%dT%H:%M:%S%.9f%:z"));
-        let now_again = Utc::now();
-        println!("Timestamp (human 2): {}", now_again.to_rfc3339());
-        println!("Timestamp (human 2): {}", now_again.to_rfc3339_opts(chrono::SecondsFormat::Secs, true));
-        println!("Timestamp (human 2): {}", now_again.to_rfc3339_opts(chrono::SecondsFormat::Millis, true));
-        println!("Timestamp (human 2): {}", now_again.to_rfc3339_opts(chrono::SecondsFormat::Micros, true));
-        println!("Timestamp (human 3): {}", now_again.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true));
+        println!("Timestamp (second) : {}", timenow.format("%Y-%m-%dT%H:%M:%S%.9f%:z"));
+        println!("Timestamp (rfc3339): {}", timenow.to_rfc3339());
+        println!("Timestamp (secs)   : {}", timenow.to_rfc3339_opts(chrono::SecondsFormat::Secs, true));
+        println!("Timestamp (millis) : {}", timenow.to_rfc3339_opts(chrono::SecondsFormat::Millis, true));
+        println!("Timestamp (micros) : {}", timenow.to_rfc3339_opts(chrono::SecondsFormat::Micros, true));
+        println!("Timestamp (nanos)  : {}", timenow.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true));
 
         assert_eq!(data, decrypted_str.as_bytes());
     }
