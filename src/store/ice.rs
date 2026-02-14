@@ -8,11 +8,6 @@
  * All Rights Reserved.
  */
 
-#[path = "store/store.rs"]
-mod _store;
-
-#[path = "store/ice.rs"]
-mod _ice;
-
-pub use _ice::*;
-pub use _store::*;
+pub fn exists(key: &str) -> bool {
+    super::db_exists(key)
+}

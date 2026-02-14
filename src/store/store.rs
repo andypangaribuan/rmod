@@ -59,6 +59,11 @@ fn get_pools(key: &str) -> &'static DbPools {
     store.map.get(key).copied().unwrap_or_else(|| panic!("DB Pool with key '{}' not initialized", key))
 }
 
+pub(crate) fn db_exists(key: &str) -> bool {
+    let store = get_db_store().lock().unwrap();
+    store.map.contains_key(key)
+}
+
 fn get_first_pools() -> &'static DbPools {
     let store = get_db_store().lock().unwrap();
     let key = store.keys.first().expect("No DB Pools initialized");
