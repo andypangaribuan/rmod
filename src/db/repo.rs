@@ -40,15 +40,15 @@ where
     }
 
     /// Fetches an optional row from a specific database.
-    pub async fn get(&self, key: &str, where_clause: &str, args: PgArgs) -> Result<Option<T>, sqlx::Error> {
+    pub async fn fetch_on(&self, key: &str, where_clause: &str, args: PgArgs) -> Result<Option<T>, sqlx::Error> {
         let sql = build_select_sql(self.table_name, where_clause);
-        crate::db::get::<T>(key, &sql, args).await
+        crate::db::fetch_on::<T>(key, &sql, args).await
     }
 
     /// Fetches all rows from a specific database.
-    pub async fn get_all(&self, key: &str, where_clause: &str, args: PgArgs) -> Result<Vec<T>, sqlx::Error> {
+    pub async fn fetch_all_on(&self, key: &str, where_clause: &str, args: PgArgs) -> Result<Vec<T>, sqlx::Error> {
         let sql = build_select_sql(self.table_name, where_clause);
-        crate::db::get_all::<T>(key, &sql, args).await
+        crate::db::fetch_all_on::<T>(key, &sql, args).await
     }
 
     /// Executes a query using the first initialized database pool (e.g., INSERT, UPDATE, DELETE).
@@ -57,8 +57,8 @@ where
     }
 
     /// Executes a query on a specific database.
-    pub async fn perform(&self, key: &str, sql: &str, args: PgArgs) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
-        crate::db::perform(key, sql, args).await
+    pub async fn execute_on(&self, key: &str, sql: &str, args: PgArgs) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+        crate::db::execute_on(key, sql, args).await
     }
 
     /// Automatically generates and executes an INSERT statement for this table.
@@ -69,10 +69,10 @@ where
         crate::db::execute(&sql, args).await
     }
 
-    pub async fn add(&self, key: &str, args: PgArgs) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    pub async fn insert_on(&self, key: &str, args: PgArgs) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
         let count = self.columns.split(',').count();
         let placeholders = (1..=count).map(|i| format!("${}", i)).collect::<Vec<_>>().join(", ");
         let sql = format!("INSERT INTO {} ({}) VALUES ({})", self.table_name, self.columns, placeholders);
-        crate::db::perform(key, &sql, args).await
+        crate::db::execute_on(key, &sql, args).await
     }
 }
