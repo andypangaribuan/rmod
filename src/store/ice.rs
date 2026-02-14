@@ -13,5 +13,5 @@ pub fn exists(key: &str) -> bool {
 }
 
 pub fn set_db_with_deleted_at(val: bool) {
-    super::make_db_with_deleted_at(val)
+    super::update_db_with_deleted_at(val)
 }
