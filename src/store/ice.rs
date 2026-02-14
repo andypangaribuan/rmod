@@ -8,7 +8,7 @@
  * All Rights Reserved.
  */
 
-pub fn exists(key: &str) -> bool {
+pub fn is_db_exists(key: &str) -> bool {
     super::db_exists(key)
 }
 
