@@ -65,17 +65,6 @@ fn get_first_pools() -> &'static DbPools {
     store.map.get(key).copied().unwrap()
 }
 
-/// Gets the write database pool for a specific key.
-pub(crate) fn db_on(key: &str) -> &'static Pool<Postgres> {
-    &get_pools(key).write
-}
-
-/// Gets the read database pool for a specific key. Falls back to write pool if read pool is not initialized.
-pub(crate) fn db_read_on(key: &str) -> &'static Pool<Postgres> {
-    let pools = get_pools(key);
-    pools.read.as_ref().unwrap_or(&pools.write)
-}
-
 /// Gets the write database pool for the first initialized key.
 pub(crate) fn db() -> &'static Pool<Postgres> {
     &get_first_pools().write
@@ -84,5 +73,16 @@ pub(crate) fn db() -> &'static Pool<Postgres> {
 /// Gets the read database pool for the first initialized key.
 pub(crate) fn db_read() -> &'static Pool<Postgres> {
     let pools = get_first_pools();
+    pools.read.as_ref().unwrap_or(&pools.write)
+}
+
+/// Gets the write database pool for a specific key.
+pub(crate) fn db_on(key: &str) -> &'static Pool<Postgres> {
+    &get_pools(key).write
+}
+
+/// Gets the read database pool for a specific key. Falls back to write pool if read pool is not initialized.
+pub(crate) fn db_read_on(key: &str) -> &'static Pool<Postgres> {
+    let pools = get_pools(key);
     pools.read.as_ref().unwrap_or(&pools.write)
 }
