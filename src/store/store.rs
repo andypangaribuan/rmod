@@ -15,7 +15,7 @@ use std::sync::{Mutex, OnceLock};
 
 static DB_WITH_DELETED_AT: AtomicBool = AtomicBool::new(false);
 
-pub fn set_db_with_deleted_at(val: bool) {
+pub(crate) fn make_db_with_deleted_at(val: bool) {
     DB_WITH_DELETED_AT.store(val, Ordering::Relaxed);
 }
 

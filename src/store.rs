@@ -15,4 +15,4 @@ mod _store;
 mod _ice;
 
 pub use _ice::*;
-pub use _store::*;
+pub(crate) use _store::*;
