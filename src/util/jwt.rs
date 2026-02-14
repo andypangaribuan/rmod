@@ -73,3 +73,15 @@ pub fn decode(token: &str, secret: &str) -> Result<Claims, String> {
 
     Ok(payload)
 }
+
+pub fn unsafe_decode(token: &str) -> Option<Claims> {
+    let parts: Vec<&str> = token.split('.').collect();
+    if parts.len() != 3 {
+        return None;
+    }
+
+    let payload_bytes = URL_SAFE_NO_PAD.decode(parts[1]).ok()?;
+    let payload: Claims = serde_json::from_slice(&payload_bytes).ok()?;
+
+    Some(payload)
+}
