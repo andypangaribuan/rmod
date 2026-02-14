@@ -29,18 +29,19 @@ struct DbPools {
 }
 
 struct DbContainer {
-    map: HashMap<String, &'static DbPools>,
     keys: Vec<String>,
+    map: HashMap<String, &'static DbPools>,
+    updated_at: HashMap<String, i64>,
 }
 
 static DB_STORE: OnceLock<Mutex<DbContainer>> = OnceLock::new();
 
 fn get_db_store() -> &'static Mutex<DbContainer> {
-    DB_STORE.get_or_init(|| Mutex::new(DbContainer { map: HashMap::new(), keys: Vec::new() }))
+    DB_STORE.get_or_init(|| Mutex::new(DbContainer { keys: Vec::new(), map: HashMap::new(), updated_at: HashMap::new() }))
 }
 
 /// Sets the database pools for a specific key.
-pub(crate) fn set_db(key: &str, write_pool: Pool<Postgres>, read_pool: Option<Pool<Postgres>>) {
+pub(crate) fn set_db(key: &str, updated_at: i64, write_pool: Pool<Postgres>, read_pool: Option<Pool<Postgres>>) {
     let pools = Box::leak(Box::new(DbPools { write: write_pool, read: read_pool }));
 
     let mut store = get_db_store().lock().unwrap();
@@ -49,6 +50,7 @@ pub(crate) fn set_db(key: &str, write_pool: Pool<Postgres>, read_pool: Option<Po
     }
 
     store.map.insert(key.to_string(), pools);
+    store.updated_at.insert(key.to_string(), updated_at);
     store.keys.push(key.to_string());
 }
 
@@ -64,12 +66,12 @@ fn get_first_pools() -> &'static DbPools {
 }
 
 /// Gets the write database pool for a specific key.
-pub(crate) fn xdb(key: &str) -> &'static Pool<Postgres> {
+pub(crate) fn db_on(key: &str) -> &'static Pool<Postgres> {
     &get_pools(key).write
 }
 
 /// Gets the read database pool for a specific key. Falls back to write pool if read pool is not initialized.
-pub(crate) fn xdb_read(key: &str) -> &'static Pool<Postgres> {
+pub(crate) fn db_read_on(key: &str) -> &'static Pool<Postgres> {
     let pools = get_pools(key);
     pools.read.as_ref().unwrap_or(&pools.write)
 }
