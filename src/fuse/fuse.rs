@@ -80,7 +80,7 @@ impl Fuse {
 
     pub fn endpoints(
         &mut self,
-        liveness: FuseHandler,
+        liveness: Option<FuseHandler>,
         authentication: Option<FuseHandler>,
         defer: FuseHandler,
         mapping: HashMap<&'static str, Vec<FuseHandler>>,
@@ -147,7 +147,7 @@ impl FuseRContext {
     #[inline(never)]
     pub async fn res_handle(
         &mut self,
-        liveness: FuseHandler,
+        liveness: Option<FuseHandler>,
         authentication: Option<FuseHandler>,
         defer: FuseHandler,
         handlers: Arc<Vec<FuseHandler>>,
@@ -156,23 +156,25 @@ impl FuseRContext {
         let mut break_next = false;
 
         // 1. Liveness
-        match liveness(self).await {
-            Ok((status, body)) => {
-                if !status.is_success() {
+        if let Some(v) = liveness {
+            match v(self).await {
+                Ok((status, body)) => {
+                    if !status.is_success() {
+                        break_next = true;
+                        self.res_status = Some(status);
+                        self.res_body = Some(body);
+                        self.res_source = FuseResSource::new("liveness");
+                    }
+                }
+                Err((status, body)) => {
                     break_next = true;
                     self.res_status = Some(status);
-                    self.res_body = Some(body);
+                    self.res_body = Some(body.clone());
+                    if self.res_backtrace.is_none() {
+                        self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+                    }
                     self.res_source = FuseResSource::new("liveness");
                 }
-            }
-            Err((status, body)) => {
-                break_next = true;
-                self.res_status = Some(status);
-                self.res_body = Some(body.clone());
-                if self.res_backtrace.is_none() {
-                    self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
-                }
-                self.res_source = FuseResSource::new("liveness");
             }
         }
 
