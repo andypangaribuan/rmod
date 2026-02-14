@@ -68,4 +68,11 @@ where
         let sql = format!("INSERT INTO {} ({}) VALUES ({})", self.table_name, self.columns, placeholders);
         crate::db::execute(&sql, args).await
     }
+
+    pub async fn add(&self, key: &str, args: PgArgs) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+        let count = self.columns.split(',').count();
+        let placeholders = (1..=count).map(|i| format!("${}", i)).collect::<Vec<_>>().join(", ");
+        let sql = format!("INSERT INTO {} ({}) VALUES ({})", self.table_name, self.columns, placeholders);
+        crate::db::perform(key, &sql, args).await
+    }
 }
