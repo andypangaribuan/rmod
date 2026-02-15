@@ -22,8 +22,9 @@ impl Default for JobScheduler {
 }
 
 struct Job {
-    pub duration: Duration,
-    pub handler: fn(),
+    duration: Duration,
+    handler: fn(),
+    is_every: bool,
 }
 
 impl JobScheduler {
@@ -31,22 +32,29 @@ impl JobScheduler {
         Self { jobs: Vec::new() }
     }
 
-    pub fn add(&mut self, duration: &str, handler: fn()) {
+    pub fn add(&mut self, duration: &str, handler: fn(), is_every: bool) {
         let duration = parse_duration(duration);
-        self.jobs.push(Job { duration, handler });
+        self.jobs.push(Job { duration, handler, is_every });
     }
 
     pub fn start(self) {
         for job in self.jobs {
-            tokio::spawn(async move {
-                let mut interval = interval(job.duration);
-                interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
+            if job.is_every {
+                tokio::spawn(async move {
+                    let mut interval = interval(job.duration);
+                    interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
-                loop {
-                    interval.tick().await;
+                    loop {
+                        interval.tick().await;
+                        (job.handler)();
+                    }
+                });
+            } else {
+                tokio::spawn(async move {
+                    tokio::time::sleep(job.duration).await;
                     (job.handler)();
-                }
-            });
+                });
+            }
         }
     }
 }
