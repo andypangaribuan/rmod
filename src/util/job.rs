@@ -8,18 +8,9 @@
  * All Rights Reserved.
  */
 
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 use tokio::time::{MissedTickBehavior, interval};
-
-pub struct JobScheduler {
-    jobs: Vec<Job>,
-}
-
-impl Default for JobScheduler {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 struct Job {
     duration: Duration,
@@ -27,67 +18,38 @@ struct Job {
     is_every: bool,
 }
 
-impl JobScheduler {
-    pub fn new() -> Self {
-        Self { jobs: Vec::new() }
-    }
+static JOBS: OnceLock<Mutex<Vec<Job>>> = OnceLock::new();
 
-    pub fn add(&mut self, duration: &str, handler: fn(), is_every: bool) {
-        let duration = parse_duration(duration);
-        self.jobs.push(Job { duration, handler, is_every });
-    }
-
-    pub fn start(self) {
-        for job in self.jobs {
-            if job.is_every {
-                tokio::spawn(async move {
-                    let mut interval = interval(job.duration);
-                    interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
-
-                    loop {
-                        interval.tick().await;
-                        (job.handler)();
-                    }
-                });
-            } else {
-                tokio::spawn(async move {
-                    tokio::time::sleep(job.duration).await;
-                    (job.handler)();
-                });
-            }
-        }
-    }
+fn get_jobs() -> &'static Mutex<Vec<Job>> {
+    JOBS.get_or_init(|| Mutex::new(Vec::new()))
 }
 
-fn parse_duration(duration: &str) -> Duration {
-    let mut val = duration.to_string();
-    let mut unit = "s";
+pub fn add(duration: &str, handler: fn(), is_every: bool) {
+    let mut jobs = get_jobs().lock().unwrap();
+    let duration = crate::util::conv::to_duration(duration);
+    jobs.push(Job { duration, handler, is_every });
+}
 
-    if val.ends_with("ms") {
-        unit = "ms";
-        val = val[..val.len() - 2].to_string();
-    } else if val.ends_with('s') {
-        unit = "s";
-        val = val[..val.len() - 1].to_string();
-    } else if val.ends_with('m') {
-        unit = "m";
-        val = val[..val.len() - 1].to_string();
-    } else if val.ends_with('h') {
-        unit = "h";
-        val = val[..val.len() - 1].to_string();
-    } else if val.ends_with('d') {
-        unit = "d";
-        val = val[..val.len() - 1].to_string();
-    }
+pub fn start() {
+    let mut jobs_lock = get_jobs().lock().unwrap();
+    let jobs = std::mem::take(&mut *jobs_lock);
 
-    let val = val.parse::<u64>().unwrap_or(0);
+    for job in jobs {
+        if job.is_every {
+            tokio::spawn(async move {
+                let mut interval = interval(job.duration);
+                interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
-    match unit {
-        "ms" => Duration::from_millis(val),
-        "s" => Duration::from_secs(val),
-        "m" => Duration::from_secs(val * 60),
-        "h" => Duration::from_secs(val * 3600),
-        "d" => Duration::from_secs(val * 86400),
-        _ => Duration::from_secs(val),
+                loop {
+                    interval.tick().await;
+                    (job.handler)();
+                }
+            });
+        } else {
+            tokio::spawn(async move {
+                tokio::time::sleep(job.duration).await;
+                (job.handler)();
+            });
+        }
     }
 }
