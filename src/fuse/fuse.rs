@@ -151,14 +151,14 @@ impl FuseRContext {
         let mut break_next = false;
 
         // 1. Precondition
-        for h in precondition.iter() {
+        for (i, h) in precondition.iter().enumerate() {
             match h(self).await {
                 Ok((status, body)) => {
                     if !status.is_success() {
                         break_next = true;
                         self.res_status = Some(status);
                         self.res_body = Some(body);
-                        self.res_source = FuseResSource::new("precondition");
+                        self.res_source = FuseResSource { name: "precondition", handler_index: Some(i), endpoint_key: Some(endpoint_key) };
                     }
                 }
                 Err((status, body)) => {
@@ -168,7 +168,7 @@ impl FuseRContext {
                     if self.res_backtrace.is_none() {
                         self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
                     }
-                    self.res_source = FuseResSource::new("precondition");
+                    self.res_source = FuseResSource { name: "precondition", handler_index: Some(i), endpoint_key: Some(endpoint_key) };
                 }
             }
 
@@ -208,7 +208,7 @@ impl FuseRContext {
             Ok((status, body)) => {
                 self.res_status = Some(status);
                 self.res_body = Some(body);
-                self.res_source = FuseResSource::new("defer");
+                self.res_source = FuseResSource { name: "defer", handler_index: None, endpoint_key: Some(endpoint_key) };
             }
             Err((status, body)) => {
                 self.res_status = Some(status);
@@ -216,7 +216,7 @@ impl FuseRContext {
                 if self.res_backtrace.is_none() {
                     self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
                 }
-                self.res_source = FuseResSource::new("defer");
+                self.res_source = FuseResSource { name: "defer", handler_index: None, endpoint_key: Some(endpoint_key) };
             }
         }
 
