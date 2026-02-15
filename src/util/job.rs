@@ -8,6 +8,7 @@
  * All Rights Reserved.
  */
 
+use chrono::Local;
 use futures_util::future::BoxFuture;
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
@@ -42,8 +43,12 @@ pub fn start() {
                 interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
                 loop {
+                    println!("{} start: internal tick", Local::now().format("%Y-%m-%d %H:%M:%S%.3f %:z"));
                     interval.tick().await;
+                    println!("{} end : internal tick", Local::now().format("%Y-%m-%d %H:%M:%S%.3f %:z"));
+                    println!("{} start: job handler", Local::now().format("%Y-%m-%d %H:%M:%S%.3f %:z"));
                     (job.handler)().await;
+                    println!("{} end : job handler", Local::now().format("%Y-%m-%d %H:%M:%S%.3f %:z"));
                 }
             });
         } else {
