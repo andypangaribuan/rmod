@@ -8,16 +8,9 @@
  * All Rights Reserved.
  */
 
-pub mod conv;
-pub mod crypto;
-pub mod defer;
-pub use defer::Defer;
-pub mod env;
-pub mod job;
-pub mod jwt;
-pub mod support;
-
-#[path = "util/uid.rs"]
-mod _uid;
-
-pub use _uid::*;
+#[macro_export]
+macro_rules! log {
+    ($($arg:tt)*) => {
+        println!("{} {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f %:z"), format!($($arg)*));
+    };
+}
