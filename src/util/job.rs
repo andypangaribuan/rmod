@@ -38,13 +38,13 @@ pub fn start() {
 
     for job in jobs {
         tokio::spawn(async move {
-            let duration_ms = job.duration.as_millis();
-
-            if job.zero_start && duration_ms > 0 {
-                let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis();
-                let next_ms = ((now_ms / duration_ms) + 1) * duration_ms;
-                let delay_ms = (next_ms - now_ms) as u64;
-                tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+            if job.zero_start {
+                let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
+                let now_ns = now.as_nanos();
+                let minute_ns = 60_000_000_000u128;
+                let next_ns = ((now_ns / minute_ns) + 1) * minute_ns;
+                let delay_ns = (next_ns - now_ns) as u64;
+                tokio::time::sleep(Duration::from_nanos(delay_ns)).await;
             }
 
             if job.is_every {
