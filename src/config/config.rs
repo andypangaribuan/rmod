@@ -25,10 +25,10 @@ pub struct DbConfig {
     pub idle_timeout: Option<i16>,
 }
 
-pub async fn db_setup(key: &str, updated_at: i64, write: DbConfig, read: Option<DbConfig>) -> Result<(), sqlx::Error> {
+pub async fn db_setup(key: &str, write: DbConfig, read: Option<DbConfig>, updated_at: i64, state: &str) -> Result<(), sqlx::Error> {
     let write_pool = create_db_pool(&write).await?;
     let read_pool = if let Some(config) = read { Some(create_db_pool(&config).await?) } else { None };
-    crate::store::set_db(key, updated_at, write_pool, read_pool);
+    crate::store::set_db(key, write_pool, read_pool, updated_at, state);
     Ok(())
 }
 

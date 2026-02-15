@@ -12,6 +12,10 @@ pub fn is_db_exists(key: &str) -> bool {
     super::db_exists(key)
 }
 
+pub fn get_db_state(key: &str) -> String {
+    super::db_state(key)
+}
+
 pub fn set_db_with_deleted_at(val: bool) {
     super::update_db_with_deleted_at(val)
 }
