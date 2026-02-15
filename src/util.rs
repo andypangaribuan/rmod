@@ -11,6 +11,7 @@
 pub mod conv;
 pub mod crypto;
 pub mod env;
+pub mod job;
 pub mod jwt;
 
 #[path = "util/uid.rs"]
