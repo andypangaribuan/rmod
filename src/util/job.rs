@@ -8,13 +8,14 @@
  * All Rights Reserved.
  */
 
+use futures_util::future::BoxFuture;
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 use tokio::time::{MissedTickBehavior, interval};
 
 struct Job {
     duration: Duration,
-    handler: fn(),
+    handler: fn() -> BoxFuture<'static, ()>,
     is_every: bool,
 }
 
@@ -24,7 +25,7 @@ fn get_jobs() -> &'static Mutex<Vec<Job>> {
     JOBS.get_or_init(|| Mutex::new(Vec::new()))
 }
 
-pub fn add(duration: &str, handler: fn(), is_every: bool) {
+pub fn add(duration: &str, handler: fn() -> BoxFuture<'static, ()>, is_every: bool) {
     let mut jobs = get_jobs().lock().unwrap();
     let duration = crate::util::conv::to_duration(duration);
     jobs.push(Job { duration, handler, is_every });
@@ -42,13 +43,13 @@ pub fn start() {
 
                 loop {
                     interval.tick().await;
-                    (job.handler)();
+                    (job.handler)().await;
                 }
             });
         } else {
             tokio::spawn(async move {
                 tokio::time::sleep(job.duration).await;
-                (job.handler)();
+                (job.handler)().await;
             });
         }
     }
