@@ -31,13 +31,13 @@ pub use rmod_macros::fuse_handler;
 #[derive(Clone, Copy, Debug)]
 pub struct FuseResSource {
     pub name: &'static str,
-    pub handler_index: Option<usize>,
-    pub endpoint_key: Option<&'static str>,
+    pub handler_index: usize,
+    pub endpoint_key: &'static str,
 }
 
 impl FuseResSource {
     pub(crate) fn new(name: &'static str) -> Self {
-        Self { name, handler_index: None, endpoint_key: None }
+        Self { name, handler_index: 0, endpoint_key: "" }
     }
 }
 
@@ -150,7 +150,6 @@ impl FuseRContext {
     ) -> Response {
         let mut break_next = false;
 
-        // 1. Precondition
         for (i, h) in precondition.iter().enumerate() {
             match h(self).await {
                 Ok((status, body)) => {
@@ -158,7 +157,7 @@ impl FuseRContext {
                         break_next = true;
                         self.res_status = Some(status);
                         self.res_body = Some(body);
-                        self.res_source = FuseResSource { name: "precondition", handler_index: Some(i), endpoint_key: Some(endpoint_key) };
+                        self.res_source = FuseResSource { name: "precondition", handler_index: i, endpoint_key };
                     }
                 }
                 Err((status, body)) => {
@@ -168,7 +167,7 @@ impl FuseRContext {
                     if self.res_backtrace.is_none() {
                         self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
                     }
-                    self.res_source = FuseResSource { name: "precondition", handler_index: Some(i), endpoint_key: Some(endpoint_key) };
+                    self.res_source = FuseResSource { name: "precondition", handler_index: i, endpoint_key };
                 }
             }
 
@@ -183,7 +182,7 @@ impl FuseRContext {
                     Ok((status, body)) => {
                         self.res_status = Some(status);
                         self.res_body = Some(body);
-                        self.res_source = FuseResSource { name: "handler", handler_index: Some(i), endpoint_key: Some(endpoint_key) };
+                        self.res_source = FuseResSource { name: "handler", handler_index: i, endpoint_key };
 
                         if !status.is_success() {
                             break;
@@ -195,7 +194,7 @@ impl FuseRContext {
                         if self.res_backtrace.is_none() {
                             self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
                         }
-                        self.res_source = FuseResSource { name: "handler", handler_index: Some(i), endpoint_key: Some(endpoint_key) };
+                        self.res_source = FuseResSource { name: "handler", handler_index: i, endpoint_key };
 
                         break;
                     }
@@ -203,12 +202,11 @@ impl FuseRContext {
             }
         }
 
-        // 4. Defer
         match defer(self).await {
             Ok((status, body)) => {
                 self.res_status = Some(status);
                 self.res_body = Some(body);
-                self.res_source = FuseResSource { name: "defer", handler_index: None, endpoint_key: Some(endpoint_key) };
+                self.res_source = FuseResSource { name: "defer", handler_index: 0, endpoint_key };
             }
             Err((status, body)) => {
                 self.res_status = Some(status);
@@ -216,7 +214,7 @@ impl FuseRContext {
                 if self.res_backtrace.is_none() {
                     self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
                 }
-                self.res_source = FuseResSource { name: "defer", handler_index: None, endpoint_key: Some(endpoint_key) };
+                self.res_source = FuseResSource { name: "defer", handler_index: 0, endpoint_key };
             }
         }
 
