@@ -6,7 +6,7 @@ git config user.email "iam.pangaribuan@gmail.com"
 
 # rmod
 
-Rust Mod, custome library to do something powerful.
+Lightweight, modular Rust toolkit designed for composable and maintainable architecture.
 
 ## Prerequisites
 
