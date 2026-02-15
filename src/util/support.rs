@@ -11,6 +11,6 @@
 #[macro_export]
 macro_rules! log {
     ($($arg:tt)*) => {
-        println!("{} {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f %:z"), format!($($arg)*));
+        println!("{} {}", $crate::chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f %:z"), format!($($arg)*));
     };
 }
