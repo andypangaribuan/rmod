@@ -78,13 +78,7 @@ impl Fuse {
         Self { router: Router::new() }
     }
 
-    pub fn endpoints(
-        &mut self,
-        liveness: Option<FuseHandler>,
-        authentication: Option<FuseHandler>,
-        defer: FuseHandler,
-        mapping: HashMap<&'static str, Vec<FuseHandler>>,
-    ) {
+    pub fn endpoints(&mut self, precondition: Vec<FuseHandler>, defer: FuseHandler, mapping: HashMap<&'static str, Vec<FuseHandler>>) {
         for (key, handlers) in mapping {
             let parts: Vec<&str> = key.split(": ").collect();
             if parts.len() != 2 {
@@ -106,6 +100,8 @@ impl Fuse {
             let endpoint_key = key;
             let handlers = Arc::new(handlers);
 
+            let precondition = Arc::new(precondition.clone());
+
             let handler_fn = move |req: Request<Body>| async move {
                 let (parts, body) = req.into_parts();
                 let bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap_or_default().to_vec();
@@ -113,7 +109,7 @@ impl Fuse {
                 let mut ctx = FuseRContext::new(Request::from_parts(parts, Body::from(bytes.clone())));
                 ctx.body = Some(bytes);
 
-                ctx.res_handle(liveness, authentication, defer, handlers, endpoint_key).await
+                ctx.res_handle(precondition, defer, handlers, endpoint_key).await
             };
 
             let router = std::mem::take(&mut self.router);
@@ -147,23 +143,22 @@ impl FuseRContext {
     #[inline(never)]
     pub async fn res_handle(
         &mut self,
-        liveness: Option<FuseHandler>,
-        authentication: Option<FuseHandler>,
+        precondition: Arc<Vec<FuseHandler>>,
         defer: FuseHandler,
         handlers: Arc<Vec<FuseHandler>>,
         endpoint_key: &'static str,
     ) -> Response {
         let mut break_next = false;
 
-        // 1. Liveness
-        if let Some(v) = liveness {
-            match v(self).await {
+        // 1. Precondition
+        for h in precondition.iter() {
+            match h(self).await {
                 Ok((status, body)) => {
                     if !status.is_success() {
                         break_next = true;
                         self.res_status = Some(status);
                         self.res_body = Some(body);
-                        self.res_source = FuseResSource::new("liveness");
+                        self.res_source = FuseResSource::new("precondition");
                     }
                 }
                 Err((status, body)) => {
@@ -173,30 +168,12 @@ impl FuseRContext {
                     if self.res_backtrace.is_none() {
                         self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
                     }
-                    self.res_source = FuseResSource::new("liveness");
+                    self.res_source = FuseResSource::new("precondition");
                 }
             }
-        }
 
-        if !break_next && let Some(v) = authentication {
-            match v(self).await {
-                Ok((status, body)) => {
-                    if !status.is_success() {
-                        break_next = true;
-                        self.res_status = Some(status);
-                        self.res_body = Some(body);
-                        self.res_source = FuseResSource::new("authentication");
-                    }
-                }
-                Err((status, body)) => {
-                    break_next = true;
-                    self.res_status = Some(status);
-                    self.res_body = Some(body.clone());
-                    if self.res_backtrace.is_none() {
-                        self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
-                    }
-                    self.res_source = FuseResSource::new("authentication");
-                }
+            if break_next {
+                break;
             }
         }
 
