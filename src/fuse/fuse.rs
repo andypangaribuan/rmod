@@ -29,6 +29,46 @@ pub type FuseHandler = for<'a> fn(&'a mut FuseRContext) -> BoxFuture<'a, FuseRes
 
 pub use rmod_macros::fuse_handler;
 
+#[macro_export]
+macro_rules! handlers {
+    ([$($h:expr),* $(,)?]) => {
+        vec![$($h as $crate::fuse::FuseHandler),*]
+    };
+    ($h:expr) => {
+        vec![$h as $crate::fuse::FuseHandler]
+    };
+}
+
+#[macro_export]
+macro_rules! endpoints {
+    ($($t:tt)*) => {
+        {
+            let mut map = ::std::collections::HashMap::<&'static str, Vec<$crate::fuse::FuseHandler>>::new();
+            $crate::endpoints_inner!(map, $($t)*);
+            map
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! endpoints_inner {
+    ($map:ident $(,)?) => {};
+    ($map:ident, $key:expr => [$($h:expr),* $(,)?], $($rest:tt)*) => {
+        $map.insert($key, vec![$($h as $crate::fuse::FuseHandler),*]);
+        $crate::endpoints_inner!($map, $($rest)*);
+    };
+    ($map:ident, $key:expr => $h:expr, $($rest:tt)*) => {
+        $map.insert($key, vec![$h as $crate::fuse::FuseHandler]);
+        $crate::endpoints_inner!($map, $($rest)*);
+    };
+    ($map:ident, $key:expr => [$($h:expr),* $(,)?]) => {
+        $map.insert($key, vec![$($h as $crate::fuse::FuseHandler),*]);
+    };
+    ($map:ident, $key:expr => $h:expr) => {
+        $map.insert($key, vec![$h as $crate::fuse::FuseHandler]);
+    };
+}
+
 mod r_context_client_ip;
 
 #[derive(Clone, Copy, Debug)]
