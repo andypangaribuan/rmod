@@ -33,18 +33,32 @@ struct DbContainer {
     map: HashMap<String, &'static DbPools>,
     updated_at: HashMap<String, i64>,
     state: HashMap<String, String>,
+    conn_str: HashMap<String, String>,
 }
 
 static DB_STORE: OnceLock<Mutex<DbContainer>> = OnceLock::new();
 
 fn get_db_store() -> &'static Mutex<DbContainer> {
     DB_STORE.get_or_init(|| {
-        Mutex::new(DbContainer { keys: Vec::new(), map: HashMap::new(), updated_at: HashMap::new(), state: HashMap::new() })
+        Mutex::new(DbContainer {
+            keys: Vec::new(),
+            map: HashMap::new(),
+            updated_at: HashMap::new(),
+            state: HashMap::new(),
+            conn_str: HashMap::new(),
+        })
     })
 }
 
 /// Sets the database pools for a specific key.
-pub(crate) fn set_db(key: &str, write_pool: Pool<Postgres>, read_pool: Option<Pool<Postgres>>, updated_at: i64, state: &str) {
+pub(crate) fn set_db(
+    key: &str,
+    write_pool: Pool<Postgres>,
+    read_pool: Option<Pool<Postgres>>,
+    updated_at: i64,
+    state: &str,
+    conn_str: &str,
+) {
     let pools = Box::leak(Box::new(DbPools { write: write_pool, read: read_pool }));
 
     let mut store = get_db_store().lock().unwrap();
@@ -56,6 +70,7 @@ pub(crate) fn set_db(key: &str, write_pool: Pool<Postgres>, read_pool: Option<Po
     store.map.insert(key.to_string(), pools);
     store.updated_at.insert(key.to_string(), updated_at);
     store.state.insert(key.to_string(), state.to_string());
+    store.conn_str.insert(key.to_string(), conn_str.to_string());
 }
 
 fn get_pools(key: &str) -> &'static DbPools {
@@ -68,9 +83,19 @@ pub(crate) fn db_exists(key: &str) -> bool {
     store.map.contains_key(key)
 }
 
+pub(crate) fn db_updated_at(key: &str) -> i64 {
+    let store = get_db_store().lock().unwrap();
+    *store.updated_at.get(key).unwrap_or(&0)
+}
+
 pub(crate) fn db_state(key: &str) -> String {
     let store = get_db_store().lock().unwrap();
     store.state.get(key).unwrap_or(&"".to_string()).clone()
+}
+
+pub(crate) fn db_conn_str(key: &str) -> String {
+    let store = get_db_store().lock().unwrap();
+    store.conn_str.get(key).unwrap_or(&"".to_string()).clone()
 }
 
 fn get_first_pools() -> &'static DbPools {
