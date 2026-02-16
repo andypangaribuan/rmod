@@ -22,17 +22,15 @@ impl FuseRContext {
         }
 
         // 2. X-Original-Forwarded-For
-        if let Some(val) = headers.get("x-original-forwarded-for").and_then(|v| v.to_str().ok()) {
-            if let Some(ip) = self.retrieve_forwarded_ip(val) {
-                return ip;
-            }
+        if let Some(ip) =
+            headers.get("x-original-forwarded-for").and_then(|v| v.to_str().ok()).and_then(|val| self.retrieve_forwarded_ip(val))
+        {
+            return ip;
         }
 
         // 3. X-Forwarded-For
-        if let Some(val) = headers.get("x-forwarded-for").and_then(|v| v.to_str().ok()) {
-            if let Some(ip) = self.retrieve_forwarded_ip(val) {
-                return ip;
-            }
+        if let Some(ip) = headers.get("x-forwarded-for").and_then(|v| v.to_str().ok()).and_then(|val| self.retrieve_forwarded_ip(val)) {
+            return ip;
         }
 
         // 4. Special headers
@@ -46,30 +44,19 @@ impl FuseRContext {
         // 5. Other forwarded headers
         let forwarded_headers = ["x-forwarded", "forwarded-for", "forwarded"];
         for header in forwarded_headers {
-            if let Some(val) = headers.get(header).and_then(|v| v.to_str().ok()) {
-                if let Some(ip) = self.retrieve_forwarded_ip(val) {
-                    return ip;
-                }
+            if let Some(ip) = headers.get(header).and_then(|v| v.to_str().ok()).and_then(|val| self.retrieve_forwarded_ip(val)) {
+                return ip;
             }
         }
 
         // 6. Remote Address fallback
-        self.req
-            .extensions()
-            .get::<ConnectInfo<std::net::SocketAddr>>()
-            .map(|ConnectInfo(addr)| addr.ip().to_string())
-            .unwrap_or_else(|| "".to_string())
+        self.req.extensions().get::<ConnectInfo<std::net::SocketAddr>>().map(|ConnectInfo(addr)| addr.ip().to_string()).unwrap_or_default()
     }
 
     fn retrieve_forwarded_ip(&self, header_val: &str) -> Option<String> {
         for address in header_val.split(',') {
-            let address = address.trim();
-            if !address.is_empty() {
-                if let Ok(ip) = address.parse::<IpAddr>() {
-                    if !self.is_private_ip(ip) {
-                        return Some(address.to_string());
-                    }
-                }
+            if let Some(ip) = address.trim().parse::<IpAddr>().ok().filter(|&ip| !self.is_private_ip(ip)) {
+                return Some(ip.to_string());
             }
         }
         None
