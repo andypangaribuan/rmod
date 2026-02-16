@@ -21,12 +21,15 @@ pub use futures_util::future::BoxFuture;
 use std::any::Any;
 use std::backtrace::Backtrace;
 use std::collections::HashMap;
+
 use std::sync::{Arc, Mutex};
 
 pub type FuseResult = Result<(StatusCode, Arc<dyn Any + Send + Sync>), (StatusCode, Arc<dyn Any + Send + Sync>)>;
 pub type FuseHandler = for<'a> fn(&'a mut FuseRContext) -> BoxFuture<'a, FuseResult>;
 
 pub use rmod_macros::fuse_handler;
+
+mod r_context_client_ip;
 
 #[derive(Clone, Copy, Debug)]
 pub struct FuseResSource {
