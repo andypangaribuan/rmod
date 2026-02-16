@@ -24,6 +24,10 @@ pub fn get_db_conn_str(key: &str) -> String {
     super::db_conn_str(key)
 }
 
+pub fn set_db_payload(key: &str, updated_at: i64, state: &str, conn_str: &str) {
+    super::update_db_payload(key, updated_at, state, conn_str)
+}
+
 pub fn set_db_with_deleted_at(val: bool) {
     super::update_db_with_deleted_at(val)
 }

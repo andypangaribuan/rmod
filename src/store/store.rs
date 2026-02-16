@@ -98,6 +98,13 @@ pub(crate) fn db_conn_str(key: &str) -> String {
     store.conn_str.get(key).unwrap_or(&"".to_string()).clone()
 }
 
+pub(crate) fn update_db_payload(key: &str, updated_at: i64, state: &str, conn_str: &str) {
+    let mut store = get_db_store().lock().unwrap();
+    store.updated_at.insert(key.to_string(), updated_at);
+    store.state.insert(key.to_string(), state.to_string());
+    store.conn_str.insert(key.to_string(), conn_str.to_string());
+}
+
 fn get_first_pools() -> &'static DbPools {
     let store = get_db_store().lock().unwrap();
     let key = store.keys.first().expect("No DB Pools initialized");
