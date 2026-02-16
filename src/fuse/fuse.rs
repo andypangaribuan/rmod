@@ -22,6 +22,7 @@ use std::any::Any;
 use std::backtrace::Backtrace;
 use std::collections::HashMap;
 
+use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 
 pub type FuseResult = Result<(StatusCode, Arc<dyn Any + Send + Sync>), (StatusCode, Arc<dyn Any + Send + Sync>)>;
@@ -165,7 +166,7 @@ impl Fuse {
         if let Some(f) = on_start {
             f();
         }
-        axum::serve(listener, self.router).await.unwrap();
+        axum::serve(listener, self.router.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
     }
 }
 
