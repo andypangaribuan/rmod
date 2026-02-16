@@ -62,9 +62,9 @@ pub(crate) fn set_db(
     let pools = Box::leak(Box::new(DbPools { write: write_pool, read: read_pool }));
 
     let mut store = get_db_store().lock().unwrap();
-    if store.map.contains_key(key) {
-        panic!("DB Pool with key '{}' already set", key);
-    }
+    // if store.map.contains_key(key) {
+    //     panic!("DB Pool with key '{}' already set", key);
+    // }
 
     store.keys.push(key.to_string());
     store.map.insert(key.to_string(), pools);

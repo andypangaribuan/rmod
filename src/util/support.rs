@@ -26,3 +26,7 @@ where
     let mut seen = HashSet::new();
     items.into_iter().map(f).filter(|k| seen.insert(k.clone())).collect()
 }
+
+pub fn have_in<T: PartialEq>(value: T, list: Vec<T>) -> bool {
+    list.contains(&value)
+}
