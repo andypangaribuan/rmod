@@ -125,6 +125,7 @@ impl Fuse {
         axum::serve(listener, self.router).await.unwrap();
     }
 }
+
 impl FuseRContext {
     pub(crate) fn new(req: Request<Body>) -> Self {
         Self {
