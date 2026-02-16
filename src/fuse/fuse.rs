@@ -30,7 +30,7 @@ pub type FuseHandler = for<'a> fn(&'a mut FuseRContext) -> BoxFuture<'a, FuseRes
 pub use rmod_macros::fuse_handler;
 
 #[macro_export]
-macro_rules! handlers {
+macro_rules! fuse_handlers {
     ([$($h:expr),* $(,)?]) => {
         vec![$($h as $crate::fuse::FuseHandler),*]
     };
@@ -40,7 +40,7 @@ macro_rules! handlers {
 }
 
 #[macro_export]
-macro_rules! endpoints {
+macro_rules! fuse_endpoints {
     ($($t:tt)*) => {
         {
             let mut map = ::std::collections::HashMap::<&'static str, Vec<$crate::fuse::FuseHandler>>::new();
