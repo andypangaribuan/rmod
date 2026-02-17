@@ -154,6 +154,11 @@ mod tests {
     fn test_uid() {
         println!("uid: {}", uid());
 
+        let a = 0.1;
+        let b = 0.2;
+        let result = a + b;
+        println!("a + b: {}", result);
+
         let uid0 = uid_n(0);
         assert_eq!(uid0.len(), 10); // 10 (timestamp) + 0 random
 
