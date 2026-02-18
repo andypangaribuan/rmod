@@ -14,6 +14,7 @@ pub mod defer;
 pub use defer::Defer;
 pub mod env;
 pub mod future;
+pub use future::FutureBurst;
 pub use future::FuturePool;
 pub mod http;
 pub use http::Http;

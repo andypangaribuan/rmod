@@ -72,3 +72,44 @@ where
         Self::new()
     }
 }
+
+pub struct FutureBurst;
+
+impl FutureBurst {
+    pub async fn run<T, R, F, Fut>(data: Vec<T>, max_parallel: usize, f: F) -> Vec<(usize, R)>
+    where
+        T: Send + 'static,
+        R: Send + 'static,
+        F: Fn(usize, T) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = R> + Send + 'static,
+    {
+        let mut join_set = JoinSet::new();
+        let mut results = Vec::with_capacity(data.len());
+        let f = std::sync::Arc::new(f);
+        let max_parallel = if max_parallel == 0 { 1 } else { max_parallel };
+
+        for (idx, item) in data.into_iter().enumerate() {
+            while join_set.len() >= max_parallel {
+                if let Some(res) = join_set.join_next().await {
+                    if let Ok(val) = res {
+                        results.push(val);
+                    }
+                }
+            }
+
+            let f_clone = std::sync::Arc::clone(&f);
+            join_set.spawn(async move {
+                let res = f_clone(idx, item).await;
+                (idx, res)
+            });
+        }
+
+        while let Some(res) = join_set.join_next().await {
+            if let Ok(val) = res {
+                results.push(val);
+            }
+        }
+
+        results
+    }
+}

@@ -169,3 +169,27 @@ async fn test_future_pool_vector_loop() {
         }
     }
 }
+
+#[tokio::test]
+async fn test_future_burst() {
+    use crate::util::FutureBurst;
+
+    let data = vec!["a", "b", "c", "d", "e"];
+    let max_parallel = 2;
+
+    let results = FutureBurst::run(data, max_parallel, |idx, val| async move {
+        println!("start : idx={}, val={}", idx, val);
+        let ms = rand::random_range(50..=100);
+        sleep(Duration::from_millis(ms)).await;
+        let new_val = val.to_uppercase();
+        println!("end   : idx={}, val={}", idx, new_val);
+        new_val
+    })
+    .await;
+
+    assert_eq!(results.len(), 5);
+
+    let mut values: Vec<String> = results.into_iter().map(|(_, v)| v).collect();
+    values.sort();
+    assert_eq!(values, vec!["A", "B", "C", "D", "E"]);
+}
