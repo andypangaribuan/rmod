@@ -12,8 +12,6 @@ use super::*;
 
 #[test]
 fn test_log_macro() {
-    // We can't easily capture stdout here without extra crates,
-    // but we can verify it compiles and runs without panicking.
     crate::log!("test log message");
     crate::log!("test log with arg: {}", 123);
 }
