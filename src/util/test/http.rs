@@ -12,6 +12,8 @@ use crate::util::FuturePool;
 use crate::util::future_burst;
 use crate::util::http;
 use std::collections::HashMap;
+    use crate::util::http;
+    use std::time::Duration;
 
 #[tokio::test]
 async fn test_http_get() {
@@ -95,8 +97,6 @@ async fn test_http_smart_functions() {
 
 #[tokio::test]
 async fn test_http_custom_timeout() {
-    use crate::util::http;
-    use std::time::Duration;
 
     let url = "https://timeout.httpbin.org/get";
     // Register a client for this domain with a very short timeout
