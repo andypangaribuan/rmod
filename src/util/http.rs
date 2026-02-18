@@ -13,6 +13,7 @@ use reqwest::{Client, Method, Response, header::HeaderMap};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 static CLIENTS: Lazy<Mutex<HashMap<String, Arc<Http>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
@@ -26,7 +27,10 @@ struct Http {
 
 impl Http {
     fn new() -> Self {
-        Self { client: Client::new() }
+        let client =
+            Client::builder().timeout(Duration::from_secs(30)).connect_timeout(Duration::from_secs(10)).build().unwrap_or_default();
+
+        Self { client }
     }
 
     fn new_arc() -> Arc<Self> {
