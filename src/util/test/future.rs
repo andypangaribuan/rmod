@@ -8,7 +8,7 @@
  * All Rights Reserved.
  */
 
-use crate::util::future::FuturePool;
+use crate::util::FuturePool;
 use std::time::Duration;
 use tokio::time::sleep;
 
