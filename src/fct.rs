@@ -8,10 +8,7 @@
  * All Rights Reserved.
  */
 
-pub mod config;
-pub mod fuse;
-pub mod store;
-pub mod util;
-pub use fuse::fuse_handler;
-pub mod db;
-pub mod fct;
+#[path = "fct/fct.rs"]
+mod _fct;
+
+pub use _fct::*;
