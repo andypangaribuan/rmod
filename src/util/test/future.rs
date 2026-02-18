@@ -78,3 +78,64 @@ async fn test_future_pool_with_result() {
         }
     }
 }
+
+#[tokio::test]
+async fn test_future_pool_mixed_types() {
+    #[derive(Debug, PartialEq)]
+    enum Mixed {
+        ValInt(i32),
+        ValStr(&'static str),
+    }
+
+    let mut pool = FuturePool::new();
+
+    pool.add("task_int", async { Mixed::ValInt(42) });
+
+    pool.add("task_str", async { Mixed::ValStr("hello") });
+
+    let results = pool.join_all().await;
+
+    for (key, res) in results {
+        match key {
+            "task_int" => assert_eq!(res, Mixed::ValInt(42)),
+            "task_str" => assert_eq!(res, Mixed::ValStr("hello")),
+            _ => panic!("unexpected key"),
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_future_pool_with_struct() {
+    #[derive(Debug, PartialEq)]
+    struct User {
+        id: i32,
+        name: String,
+    }
+
+    #[derive(Debug, PartialEq)]
+    struct MyError {
+        code: i32,
+        message: String,
+    }
+
+    let mut pool = FuturePool::new();
+
+    pool.add("user_1", async { Ok::<User, MyError>(User { id: 1, name: "Andy".into() }) });
+
+    pool.add("user_2", async { Err::<User, MyError>(MyError { code: 404, message: "Not Found".into() }) });
+
+    let results = pool.join_all().await;
+    assert_eq!(results.len(), 2);
+
+    for (key, res) in results {
+        match key {
+            "user_1" => {
+                assert_eq!(res, Ok(User { id: 1, name: "Andy".into() }));
+            }
+            "user_2" => {
+                assert_eq!(res, Err(MyError { code: 404, message: "Not Found".into() }));
+            }
+            _ => panic!("unexpected key"),
+        }
+    }
+}
