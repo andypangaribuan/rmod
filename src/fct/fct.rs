@@ -19,8 +19,8 @@ macro_rules! fct {
     };
 }
 
-use rust_decimal::Decimal;
 use rust_decimal::prelude::FromPrimitive;
+use rust_decimal::{Decimal, RoundingStrategy};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, sqlx::Type)]
@@ -30,6 +30,15 @@ pub struct FCT(pub Decimal);
 impl FCT {
     pub fn new(val: Decimal) -> Self {
         Self(val)
+    }
+
+    pub fn to_str(&self, precision: usize) -> String {
+        if precision == 0 {
+            self.0.normalize().to_string()
+        } else {
+            let val = self.0.round_dp_with_strategy(precision as u32, RoundingStrategy::ToZero);
+            format!("{:.*}", precision, val)
+        }
     }
 }
 

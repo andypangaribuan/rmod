@@ -83,3 +83,20 @@ fn test_addition() {
     println!("f64(0.1) + fct(0.2): {}", l12);
     assert_eq!(l12, fct!(0.3));
 }
+
+#[test]
+fn test_to_str() {
+    let v1 = fct!(3.30000000000000);
+    assert_eq!(v1.to_str(0), "3.3");
+    assert_eq!(v1.to_str(6), "3.300000");
+    assert_eq!(v1.to_str(7), "3.3000000");
+
+    let v2 = fct!(3.30000090000000);
+    assert_eq!(v2.to_str(0), "3.3000009");
+    assert_eq!(v2.to_str(6), "3.300000");
+    assert_eq!(v2.to_str(7), "3.3000009");
+
+    let v3 = fct!(3);
+    assert_eq!(v3.to_str(0), "3");
+    assert_eq!(v3.to_str(2), "3.00");
+}
