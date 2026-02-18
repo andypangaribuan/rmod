@@ -8,6 +8,10 @@
  * All Rights Reserved.
  */
 
+#[cfg(test)]
+#[path = "test/crypto.rs"]
+mod tests;
+
 use aes_gcm::{
     Aes256Gcm, Nonce,
     aead::{Aead, KeyInit, Payload},
@@ -109,7 +113,3 @@ pub fn argon2id_match(password: &str, encoded_hash: &str) -> Result<bool, String
         Err(e) => Err(e.to_string()),
     }
 }
-
-#[cfg(test)]
-#[path = "test/crypto.rs"]
-mod tests;
