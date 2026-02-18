@@ -17,7 +17,6 @@ pub mod future;
 pub use future::FuturePool;
 pub use future::future_burst;
 pub mod http;
-pub use http::Http;
 pub mod job;
 pub mod jwt;
 pub mod support;

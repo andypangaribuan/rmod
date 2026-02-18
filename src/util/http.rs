@@ -20,32 +20,24 @@ static CLIENTS: Lazy<Mutex<HashMap<String, Arc<Http>>>> = Lazy::new(|| Mutex::ne
 #[path = "test/http.rs"]
 mod tests;
 
-pub struct Http {
+struct Http {
     client: Client,
 }
 
 impl Http {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self { client: Client::new() }
     }
 
-    pub fn new_arc() -> Arc<Self> {
+    fn new_arc() -> Arc<Self> {
         Arc::new(Self::new())
     }
 
-    pub fn builder() -> reqwest::ClientBuilder {
-        Client::builder()
-    }
-
-    pub fn from_client(client: Client) -> Self {
-        Self { client }
-    }
-
-    pub async fn get(&self, url: &str, headers: Option<HashMap<String, String>>) -> Result<Response, reqwest::Error> {
+    async fn get(&self, url: &str, headers: Option<HashMap<String, String>>) -> Result<Response, reqwest::Error> {
         self.request(Method::GET, url, headers, None::<()>).await
     }
 
-    pub async fn post<T: Serialize>(
+    async fn post<T: Serialize>(
         &self,
         url: &str,
         headers: Option<HashMap<String, String>>,
@@ -54,7 +46,7 @@ impl Http {
         self.request(Method::POST, url, headers, body).await
     }
 
-    pub async fn put<T: Serialize>(
+    async fn put<T: Serialize>(
         &self,
         url: &str,
         headers: Option<HashMap<String, String>>,
@@ -63,7 +55,7 @@ impl Http {
         self.request(Method::PUT, url, headers, body).await
     }
 
-    pub async fn patch<T: Serialize>(
+    async fn patch<T: Serialize>(
         &self,
         url: &str,
         headers: Option<HashMap<String, String>>,
@@ -72,7 +64,7 @@ impl Http {
         self.request(Method::PATCH, url, headers, body).await
     }
 
-    pub async fn delete(&self, url: &str, headers: Option<HashMap<String, String>>) -> Result<Response, reqwest::Error> {
+    async fn delete(&self, url: &str, headers: Option<HashMap<String, String>>) -> Result<Response, reqwest::Error> {
         self.request(Method::DELETE, url, headers, None::<()>).await
     }
 

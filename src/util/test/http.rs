@@ -8,18 +8,17 @@
  * All Rights Reserved.
  */
 
-use crate::util::Http;
+use crate::util::http;
 use std::collections::HashMap;
 
 #[tokio::test]
 async fn test_http_get() {
-    let http = Http::new();
     let url = "https://httpbin.org/get";
 
     let mut headers = HashMap::new();
     headers.insert("X-Test-Header".to_string(), "test-value".to_string());
 
-    let res = http.get(url, Some(headers)).await.unwrap();
+    let res = http::get(url, Some(headers)).await.unwrap();
     assert!(res.status().is_success());
 
     let body: serde_json::Value = res.json().await.unwrap();
@@ -28,7 +27,6 @@ async fn test_http_get() {
 
 #[tokio::test]
 async fn test_http_post() {
-    let http = Http::new();
     let url = "https://httpbin.org/post";
 
     let body = serde_json::json!({
@@ -36,7 +34,7 @@ async fn test_http_post() {
         "role": "Developer"
     });
 
-    let res = http.post(url, None, Some(body)).await.unwrap();
+    let res = http::post(url, None, Some(body)).await.unwrap();
     assert!(res.status().is_success());
 
     let res_body: serde_json::Value = res.json().await.unwrap();
@@ -47,14 +45,11 @@ async fn test_http_post() {
 async fn test_http_parallel_requests() {
     use crate::util::FuturePool;
 
-    let http_arc = Http::new_arc();
     let mut pool = FuturePool::new();
-
     let urls = vec!["https://httpbin.org/get", "https://httpbin.org/ip", "https://httpbin.org/user-agent"];
 
     for url in urls {
-        let http = http_arc.clone();
-        pool.add(url, async move { http.get(url, None).await });
+        pool.add(url, async move { http::get(url, None).await });
     }
 
     let results = pool.join_all().await;
@@ -70,17 +65,13 @@ async fn test_http_parallel_requests() {
 async fn test_http_future_burst() {
     use crate::util::future_burst;
 
-    let http_arc = Http::new_arc();
     let urls = vec!["https://httpbin.org/get", "https://httpbin.org/ip", "https://httpbin.org/user-agent", "https://httpbin.org/headers"];
 
-    let results = future_burst(urls, 2, move |idx, url| {
-        let http = http_arc.clone();
-        async move {
-            println!("idx: {}, calling: {}", idx, url);
-            let res = http.get(url, None).await;
-            println!("idx: {}, done   : {}", idx, url);
-            res
-        }
+    let results = future_burst(urls, 2, |idx, url| async move {
+        println!("idx: {}, calling: {}", idx, url);
+        let res = http::get(url, None).await;
+        println!("idx: {}, done   : {}", idx, url);
+        res
     })
     .await;
 
@@ -94,8 +85,6 @@ async fn test_http_future_burst() {
 
 #[tokio::test]
 async fn test_http_smart_functions() {
-    use crate::util::http;
-
     let url = "https://httpbin.org/get";
     let res = http::get(url, None).await.unwrap();
     assert!(res.status().is_success());
