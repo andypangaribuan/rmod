@@ -8,6 +8,7 @@
  * All Rights Reserved.
  */
 
+use crate::util::FuturePool;
 use crate::util::http;
 use std::collections::HashMap;
 
@@ -43,8 +44,6 @@ async fn test_http_post() {
 
 #[tokio::test]
 async fn test_http_parallel_requests() {
-    use crate::util::FuturePool;
-
     let mut pool = FuturePool::new();
     let urls = vec!["https://httpbin.org/get", "https://httpbin.org/ip", "https://httpbin.org/user-agent"];
 
