@@ -15,6 +15,8 @@ pub use defer::Defer;
 pub mod env;
 pub mod future;
 pub use future::FuturePool;
+pub mod http;
+pub use http::Http;
 pub mod job;
 pub mod jwt;
 pub mod support;
