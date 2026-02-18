@@ -14,7 +14,6 @@ use std::collections::HashMap;
 #[tokio::test]
 async fn test_http_get() {
     let http = Http::new();
-    // Using a reliable public API for testing
     let url = "https://httpbin.org/get";
 
     let mut headers = HashMap::new();
@@ -42,4 +41,27 @@ async fn test_http_post() {
 
     let res_body: serde_json::Value = res.json().await.unwrap();
     assert_eq!(res_body["json"]["name"], "Andy");
+}
+
+#[tokio::test]
+async fn test_http_parallel_requests() {
+    use crate::util::FuturePool;
+
+    let http_arc = Http::new_arc();
+    let mut pool = FuturePool::new();
+
+    let urls = vec!["https://httpbin.org/get", "https://httpbin.org/ip", "https://httpbin.org/user-agent"];
+
+    for url in urls {
+        let http = http_arc.clone();
+        pool.add(url, async move { http.get(url, None).await });
+    }
+
+    let results = pool.join_all().await;
+    assert_eq!(results.len(), 3);
+
+    for (url, res) in results {
+        let response = res.expect("Request failed");
+        assert!(response.status().is_success(), "Failed for URL: {}", url);
+    }
 }

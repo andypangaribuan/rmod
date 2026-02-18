@@ -11,6 +11,7 @@
 use reqwest::{Client, Method, Response, header::HeaderMap};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 #[cfg(test)]
 #[path = "test/http.rs"]
@@ -23,6 +24,10 @@ pub struct Http {
 impl Http {
     pub fn new() -> Self {
         Self { client: Client::new() }
+    }
+
+    pub fn new_arc() -> Arc<Self> {
+        Arc::new(Self::new())
     }
 
     pub fn builder() -> reqwest::ClientBuilder {
