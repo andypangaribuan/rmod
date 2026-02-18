@@ -9,6 +9,7 @@
  */
 
 use crate::util::FuturePool;
+use crate::util::future_burst;
 use crate::util::http;
 use std::collections::HashMap;
 
@@ -62,8 +63,6 @@ async fn test_http_parallel_requests() {
 
 #[tokio::test]
 async fn test_http_future_burst() {
-    use crate::util::future_burst;
-
     let urls = vec!["https://httpbin.org/get", "https://httpbin.org/ip", "https://httpbin.org/user-agent", "https://httpbin.org/headers"];
 
     let results = future_burst(urls, 2, |idx, url| async move {
