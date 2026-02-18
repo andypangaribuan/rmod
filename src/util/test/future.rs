@@ -58,3 +58,23 @@ async fn test_future_pool_incremental() {
 
     assert!(pool.join_next().await.is_none());
 }
+
+#[tokio::test]
+async fn test_future_pool_with_result() {
+    let mut pool = FuturePool::new();
+
+    pool.add("success", async { Ok::<i32, &str>(10) });
+
+    pool.add("fail", async { Err::<i32, &str>("error message") });
+
+    let results = pool.join_all().await;
+    assert_eq!(results.len(), 2);
+
+    for (key, res) in results {
+        match key {
+            "success" => assert_eq!(res, Ok(10)),
+            "fail" => assert_eq!(res, Err("error message")),
+            _ => panic!("unexpected key"),
+        }
+    }
+}
