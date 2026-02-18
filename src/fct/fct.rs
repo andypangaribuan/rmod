@@ -20,6 +20,7 @@ macro_rules! fct {
 }
 
 use rust_decimal::Decimal;
+use rust_decimal::prelude::FromPrimitive;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -62,3 +63,100 @@ impl std::fmt::Display for FCT {
         write!(f, "{}", self.0)
     }
 }
+
+macro_rules! impl_op {
+    ($trait:ident, $method:ident) => {
+        impl std::ops::$trait for FCT {
+            type Output = Self;
+            fn $method(self, rhs: Self) -> Self::Output {
+                Self(self.0.$method(rhs.0))
+            }
+        }
+    };
+}
+
+macro_rules! impl_op_assign {
+    ($trait:ident, $method:ident) => {
+        impl std::ops::$trait for FCT {
+            fn $method(&mut self, rhs: Self) {
+                self.0.$method(rhs.0)
+            }
+        }
+    };
+}
+
+impl_op!(Add, add);
+impl_op!(Sub, sub);
+impl_op!(Mul, mul);
+impl_op!(Div, div);
+impl_op!(Rem, rem);
+
+impl_op_assign!(AddAssign, add_assign);
+impl_op_assign!(SubAssign, sub_assign);
+impl_op_assign!(MulAssign, mul_assign);
+impl_op_assign!(DivAssign, div_assign);
+impl_op_assign!(RemAssign, rem_assign);
+
+impl std::iter::Sum for FCT {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Self::default(), |a, b| a + b)
+    }
+}
+
+impl<'a> std::iter::Sum<&'a FCT> for FCT {
+    fn sum<I: Iterator<Item = &'a Self>>(iter: I) -> Self {
+        iter.fold(Self::default(), |a, b| a + *b)
+    }
+}
+
+macro_rules! impl_op_primitive {
+    ($trait:ident, $method:ident, $($t:ty),*) => {
+        $(
+            impl std::ops::$trait<$t> for FCT {
+                type Output = Self;
+                fn $method(self, rhs: $t) -> Self::Output {
+                    Self(self.0.$method(Decimal::from(rhs)))
+                }
+            }
+
+            impl std::ops::$trait<FCT> for $t {
+                type Output = FCT;
+                fn $method(self, rhs: FCT) -> Self::Output {
+                    FCT(Decimal::from(self).$method(rhs.0))
+                }
+            }
+        )*
+    };
+}
+
+impl_op_primitive!(Add, add, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+impl_op_primitive!(Sub, sub, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+impl_op_primitive!(Mul, mul, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+impl_op_primitive!(Div, div, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+impl_op_primitive!(Rem, rem, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+
+macro_rules! impl_op_float {
+    ($trait:ident, $method:ident, $($t:ty, $from:ident),*) => {
+        $(
+            impl std::ops::$trait<$t> for FCT {
+                type Output = Self;
+                fn $method(self, rhs: $t) -> Self::Output {
+                    Self(self.0.$method(Decimal::$from(rhs).unwrap_or_default()))
+                }
+            }
+
+            impl std::ops::$trait<FCT> for $t {
+                type Output = FCT;
+                fn $method(self, rhs: FCT) -> Self::Output {
+                    FCT(Decimal::$from(self).unwrap_or_default().$method(rhs.0))
+                }
+            }
+        )*
+    };
+}
+
+impl_op_float!(Add, add, f32, from_f32, f64, from_f64);
+impl_op_float!(Sub, sub, f32, from_f32, f64, from_f64);
+impl_op_float!(Mul, mul, f32, from_f32, f64, from_f64);
+impl_op_float!(Div, div, f32, from_f32, f64, from_f64);
+impl_op_float!(Rem, rem, f32, from_f32, f64, from_f64);
