@@ -91,3 +91,17 @@ async fn test_http_future_burst() {
         assert!(response.status().is_success(), "Failed at index: {}", idx);
     }
 }
+
+#[tokio::test]
+async fn test_http_smart_functions() {
+    use crate::util::http;
+
+    let url = "https://httpbin.org/get";
+    let res = http::get(url, None).await.unwrap();
+    assert!(res.status().is_success());
+
+    let url_post = "https://httpbin.org/post";
+    let body = serde_json::json!({ "smart": true });
+    let res_post = http::post(url_post, None, Some(body)).await.unwrap();
+    assert!(res_post.status().is_success());
+}

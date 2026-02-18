@@ -8,10 +8,13 @@
  * All Rights Reserved.
  */
 
+use once_cell::sync::Lazy;
 use reqwest::{Client, Method, Response, header::HeaderMap};
 use serde::Serialize;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+
+static CLIENTS: Lazy<Mutex<HashMap<String, Arc<Http>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 #[cfg(test)]
 #[path = "test/http.rs"]
@@ -106,4 +109,31 @@ impl Default for Http {
     fn default() -> Self {
         Self::new()
     }
+}
+
+fn get_client(url: &str) -> Arc<Http> {
+    let domain = reqwest::Url::parse(url).ok().and_then(|u| u.host_str().map(|h| h.to_string())).unwrap_or_else(|| "default".to_string());
+
+    let mut clients = CLIENTS.lock().unwrap();
+    clients.entry(domain).or_insert_with(Http::new_arc).clone()
+}
+
+pub async fn get(url: &str, headers: Option<HashMap<String, String>>) -> Result<Response, reqwest::Error> {
+    get_client(url).get(url, headers).await
+}
+
+pub async fn post<T: Serialize>(url: &str, headers: Option<HashMap<String, String>>, body: Option<T>) -> Result<Response, reqwest::Error> {
+    get_client(url).post(url, headers, body).await
+}
+
+pub async fn put<T: Serialize>(url: &str, headers: Option<HashMap<String, String>>, body: Option<T>) -> Result<Response, reqwest::Error> {
+    get_client(url).put(url, headers, body).await
+}
+
+pub async fn patch<T: Serialize>(url: &str, headers: Option<HashMap<String, String>>, body: Option<T>) -> Result<Response, reqwest::Error> {
+    get_client(url).patch(url, headers, body).await
+}
+
+pub async fn delete(url: &str, headers: Option<HashMap<String, String>>) -> Result<Response, reqwest::Error> {
+    get_client(url).delete(url, headers).await
 }
