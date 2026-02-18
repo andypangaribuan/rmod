@@ -8,6 +8,10 @@
  * All Rights Reserved.
  */
 
+#[cfg(test)]
+#[path = "test/support.rs"]
+mod tests;
+
 pub use chrono;
 use std::collections::HashSet;
 
