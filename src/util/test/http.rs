@@ -94,3 +94,18 @@ async fn test_http_smart_functions() {
     let res_post = http::post(url_post, None, Some(body)).await.unwrap();
     assert!(res_post.status().is_success());
 }
+
+#[tokio::test]
+async fn test_http_custom_timeout() {
+    use crate::util::http;
+    use std::time::Duration;
+
+    let url = "https://httpbin.org/get";
+    // Register a client for this domain with a very short timeout
+    http::client(url, Duration::from_millis(1));
+
+    // This should now fail with a timeout error
+    let res = http::get(url, None).await;
+    assert!(res.is_err());
+    assert!(res.unwrap_err().is_timeout());
+}

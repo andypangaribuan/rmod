@@ -27,14 +27,21 @@ struct Http {
 
 impl Http {
     fn new() -> Self {
-        let client =
-            Client::builder().timeout(Duration::from_secs(30)).connect_timeout(Duration::from_secs(10)).build().unwrap_or_default();
+        Self::new_with_timeout(Duration::from_secs(30))
+    }
+
+    fn new_with_timeout(timeout: Duration) -> Self {
+        let client = Client::builder().timeout(timeout).connect_timeout(Duration::from_secs(10)).build().unwrap_or_default();
 
         Self { client }
     }
 
     fn new_arc() -> Arc<Self> {
         Arc::new(Self::new())
+    }
+
+    fn new_arc_with_timeout(timeout: Duration) -> Arc<Self> {
+        Arc::new(Self::new_with_timeout(timeout))
     }
 
     async fn get(&self, url: &str, headers: Option<HashMap<String, String>>) -> Result<Response, reqwest::Error> {
@@ -107,11 +114,21 @@ impl Default for Http {
     }
 }
 
+fn get_domain(url: &str) -> String {
+    reqwest::Url::parse(url).ok().and_then(|u| u.host_str().map(|h| h.to_string())).unwrap_or_else(|| "default".to_string())
+}
+
 fn get_client(url: &str) -> Arc<Http> {
-    let domain = reqwest::Url::parse(url).ok().and_then(|u| u.host_str().map(|h| h.to_string())).unwrap_or_else(|| "default".to_string());
+    let domain = get_domain(url);
 
     let mut clients = CLIENTS.lock().unwrap();
     clients.entry(domain).or_insert_with(Http::new_arc).clone()
+}
+
+pub fn client(url: &str, timeout: Duration) {
+    let domain = get_domain(url);
+    let mut clients = CLIENTS.lock().unwrap();
+    clients.insert(domain, Http::new_arc_with_timeout(timeout));
 }
 
 pub async fn get(url: &str, headers: Option<HashMap<String, String>>) -> Result<Response, reqwest::Error> {
