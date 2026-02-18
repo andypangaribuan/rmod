@@ -100,3 +100,18 @@ fn test_to_str() {
     assert_eq!(v3.to_str(0), "3");
     assert_eq!(v3.to_str(2), "3.00");
 }
+
+#[test]
+fn test_trim() {
+    let v1 = fct!(3.3);
+    assert_eq!(v1.trim(0), fct!(3));
+    assert_eq!(v1.trim(1), fct!(3.3));
+    assert_eq!(v1.trim(3), fct!(3.3));
+
+    let v2 = fct!(3.0037);
+    assert_eq!(v2.trim(0), fct!(3));
+    assert_eq!(v2.trim(1), fct!(3));
+    assert_eq!(v2.trim(1), fct!(3.0));
+    assert_eq!(v2.trim(3), fct!(3.003));
+    assert_eq!(v2.trim(4), fct!(3.0037));
+}

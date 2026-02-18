@@ -32,6 +32,10 @@ impl FCT {
         Self(val)
     }
 
+    pub fn trim(&self, precision: u32) -> Self {
+        if self.0.scale() > precision { Self(self.0.round_dp_with_strategy(precision, RoundingStrategy::ToZero)) } else { *self }
+    }
+
     pub fn to_str(&self, precision: usize) -> String {
         if precision == 0 {
             self.0.normalize().to_string()
