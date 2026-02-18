@@ -65,3 +65,29 @@ async fn test_http_parallel_requests() {
         assert!(response.status().is_success(), "Failed for URL: {}", url);
     }
 }
+
+#[tokio::test]
+async fn test_http_future_burst() {
+    use crate::util::future_burst;
+
+    let http_arc = Http::new_arc();
+    let urls = vec!["https://httpbin.org/get", "https://httpbin.org/ip", "https://httpbin.org/user-agent", "https://httpbin.org/headers"];
+
+    let results = future_burst(urls, 2, move |idx, url| {
+        let http = http_arc.clone();
+        async move {
+            println!("idx: {}, calling: {}", idx, url);
+            let res = http.get(url, None).await;
+            println!("idx: {}, done   : {}", idx, url);
+            res
+        }
+    })
+    .await;
+
+    assert_eq!(results.len(), 4);
+
+    for (idx, res) in results {
+        let response = res.expect("Request failed");
+        assert!(response.status().is_success(), "Failed at index: {}", idx);
+    }
+}
