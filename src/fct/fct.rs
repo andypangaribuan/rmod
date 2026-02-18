@@ -8,6 +8,10 @@
  * All Rights Reserved.
  */
 
+#[cfg(test)]
+#[path = "test/fct.rs"]
+mod tests;
+
 #[macro_export]
 macro_rules! fct {
     ($($t:tt)*) => {
