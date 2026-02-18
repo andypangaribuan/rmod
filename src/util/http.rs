@@ -8,6 +8,10 @@
  * All Rights Reserved.
  */
 
+#[cfg(test)]
+#[path = "test/http.rs"]
+mod tests;
+
 use once_cell::sync::Lazy;
 use reqwest::{Client, Method, Response, header::HeaderMap};
 use serde::Serialize;
@@ -16,10 +20,6 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 static CLIENTS: Lazy<Mutex<HashMap<String, Arc<Http>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
-
-#[cfg(test)]
-#[path = "test/http.rs"]
-mod tests;
 
 struct Http {
     client: Client,
