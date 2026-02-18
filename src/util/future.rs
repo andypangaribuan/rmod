@@ -8,12 +8,12 @@
  * All Rights Reserved.
  */
 
-use std::future::Future;
-use tokio::task::JoinSet;
-
 #[cfg(test)]
 #[path = "test/future.rs"]
 mod tests;
+
+use std::future::Future;
+use tokio::task::JoinSet;
 
 pub struct FuturePool<K, V> {
     join_set: JoinSet<(K, V)>,
