@@ -62,9 +62,7 @@ async fn test_future_pool_incremental() {
 #[tokio::test]
 async fn test_future_pool_with_result() {
     let mut pool = FuturePool::new();
-
     pool.add("success", async { Ok::<i32, &str>(10) });
-
     pool.add("fail", async { Err::<i32, &str>("error message") });
 
     let results = pool.join_all().await;
@@ -88,13 +86,10 @@ async fn test_future_pool_mixed_types() {
     }
 
     let mut pool = FuturePool::new();
-
     pool.add("task_int", async { Mixed::ValInt(42) });
-
     pool.add("task_str", async { Mixed::ValStr("hello") });
 
     let results = pool.join_all().await;
-
     for (key, res) in results {
         match key {
             "task_int" => assert_eq!(res, Mixed::ValInt(42)),
@@ -136,6 +131,41 @@ async fn test_future_pool_with_struct() {
                 assert_eq!(res, Err(MyError { code: 404, message: "Not Found".into() }));
             }
             _ => panic!("unexpected key"),
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_future_pool_pass_values() {
+    let mut pool = FuturePool::new();
+
+    let input_value = "input data".to_string();
+    let multiplier = 2;
+
+    pool.add("task_1", async move { format!("{}-{}", input_value, multiplier) });
+
+    let results = pool.join_all().await;
+    assert_eq!(results[0].1, "input data-2");
+}
+
+#[tokio::test]
+async fn test_future_pool_vector_loop() {
+    let mut pool = FuturePool::new();
+    let fruits = vec!["apple", "banana", "orange"];
+
+    for (idx, fruit) in fruits.into_iter().enumerate() {
+        pool.add(idx, async move { format!("{}-{}", idx, fruit) });
+    }
+
+    let results = pool.join_all().await;
+    assert_eq!(results.len(), 3);
+
+    for (idx, res) in results {
+        match idx {
+            0 => assert_eq!(res, "0-apple"),
+            1 => assert_eq!(res, "1-banana"),
+            2 => assert_eq!(res, "2-orange"),
+            _ => panic!("unexpected index"),
         }
     }
 }
