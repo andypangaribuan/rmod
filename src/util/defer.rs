@@ -8,6 +8,10 @@
  * All Rights Reserved.
  */
 
+#[cfg(test)]
+#[path = "test/defer.rs"]
+mod tests;
+
 pub struct Defer<F: FnOnce()> {
     f: Option<F>,
 }
