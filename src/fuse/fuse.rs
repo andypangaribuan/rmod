@@ -146,10 +146,7 @@ impl Fuse {
 
             let precondition = Arc::new(precondition.clone());
 
-            let limit = std::env::var("RMOD_MAX_BODY_SIZE")
-                .ok()
-                .and_then(|s| s.parse::<usize>().ok())
-                .unwrap_or(100 * 1024 * 1024);
+            let limit = std::env::var("RMOD_MAX_BODY_SIZE").ok().and_then(|s| s.parse::<usize>().ok()).unwrap_or(100 * 1024 * 1024);
 
             let handler_fn = move |req: Request<Body>| async move {
                 let (parts, body) = req.into_parts();

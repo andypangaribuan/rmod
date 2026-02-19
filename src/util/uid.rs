@@ -113,9 +113,7 @@ fn decode_timestamp_base62(code: &str) -> Option<DateTime<Utc>> {
     let month = m + 1;
     let day = d + 1;
 
-    Utc.with_ymd_and_hms(year, month, day, hour, minute, second)
-        .single()
-        .and_then(|dt| dt.with_nanosecond(micro * 1000))
+    Utc.with_ymd_and_hms(year, month, day, hour, minute, second).single().and_then(|dt| dt.with_nanosecond(micro * 1000))
 }
 
 fn get_random(length: usize, value: &str) -> String {
