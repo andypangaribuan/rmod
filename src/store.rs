@@ -11,8 +11,4 @@
 #[path = "store/store.rs"]
 mod _store;
 
-// // #[path = "store/ice.rs"]
-// // mod _ice;
-
-// // pub use _ice::*;
 pub use _store::*;
