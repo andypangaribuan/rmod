@@ -35,7 +35,7 @@ pub fn decode_uid62(uid: &str) -> Option<(DateTime<Utc>, String)> {
     let time_part = &uid[..10];
     let rand_part = &uid[10..];
 
-    let time_id = decode_timestamp_base62(time_part);
+    let time_id = decode_timestamp_base62(time_part)?;
     Some((time_id, rand_part.to_string()))
 }
 
@@ -87,7 +87,7 @@ fn decode_from_base62(s: &str) -> u64 {
     n
 }
 
-fn decode_timestamp_base62(code: &str) -> DateTime<Utc> {
+fn decode_timestamp_base62(code: &str) -> Option<DateTime<Utc>> {
     let mut n = decode_from_base62(code);
 
     let micro = (n % 1_000_000) as u32;
@@ -113,7 +113,9 @@ fn decode_timestamp_base62(code: &str) -> DateTime<Utc> {
     let month = m + 1;
     let day = d + 1;
 
-    Utc.with_ymd_and_hms(year, month, day, hour, minute, second).unwrap().with_nanosecond(micro * 1000).unwrap()
+    Utc.with_ymd_and_hms(year, month, day, hour, minute, second)
+        .single()
+        .and_then(|dt| dt.with_nanosecond(micro * 1000))
 }
 
 fn get_random(length: usize, value: &str) -> String {

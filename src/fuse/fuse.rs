@@ -146,9 +146,14 @@ impl Fuse {
 
             let precondition = Arc::new(precondition.clone());
 
+            let limit = std::env::var("RMOD_MAX_BODY_SIZE")
+                .ok()
+                .and_then(|s| s.parse::<usize>().ok())
+                .unwrap_or(100 * 1024 * 1024);
+
             let handler_fn = move |req: Request<Body>| async move {
                 let (parts, body) = req.into_parts();
-                let bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap_or_default().to_vec();
+                let bytes = axum::body::to_bytes(body, limit).await.unwrap_or_default().to_vec();
 
                 let mut ctx = FuseRContext::new(Request::from_parts(parts, Body::from(bytes.clone())));
                 ctx.body = Some(bytes);

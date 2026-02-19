@@ -46,8 +46,8 @@ fn _encrypt(data: &[u8], key_bytes: &[u8], iv_bytes: &[u8]) -> Result<String, St
         return Err(format!("invalid key length: expected {} bytes, got {}", KEY_LEN, key_bytes.len()));
     }
 
-    if iv_bytes.len() != IV_LEN && iv_bytes.len() != 16 {
-        return Err(format!("invalid iv length: expected {} or 16 bytes, got {}", IV_LEN, iv_bytes.len()));
+    if iv_bytes.len() != IV_LEN {
+        return Err(format!("invalid iv length: expected {} bytes, got {}", IV_LEN, iv_bytes.len()));
     }
 
     let cipher = Aes256Gcm::new_from_slice(key_bytes).map_err(|e| format!("cipher initialization failed: {:?}", e))?;
@@ -79,6 +79,10 @@ fn _decrypt(encoded_data: &str, key_bytes: &[u8], iv_bytes: &[u8]) -> Result<Vec
 
     if key_bytes.len() != KEY_LEN {
         return Err(format!("invalid key length: expected {} bytes, got {}", KEY_LEN, key_bytes.len()));
+    }
+
+    if iv_bytes.len() != IV_LEN {
+        return Err(format!("invalid iv length: expected {} bytes, got {}", IV_LEN, iv_bytes.len()));
     }
 
     let cipher = Aes256Gcm::new_from_slice(key_bytes).map_err(|e| format!("cipher initialization failed: {:?}", e))?;

@@ -78,3 +78,17 @@ fn test_argon2id_with_salt() {
     assert!(argon2id_match(password, &hash).unwrap());
     assert!(hash.contains("$argon2id$v=19$m=30720,t=6,p=3$"));
 }
+
+#[test]
+fn test_encrypt_iv_length() {
+    let key = "12345678901234567890123456789012";
+    let iv_12 = "123456789012";
+    let iv_16 = "1234567890123456";
+
+    let res_12 = encrypt_raw(b"test", key, iv_12);
+    assert!(res_12.is_ok());
+
+    // This is expected to fail or panic
+    let res_16 = encrypt_raw(b"test", key, iv_16);
+    assert!(res_16.is_err());
+}

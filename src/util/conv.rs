@@ -21,27 +21,25 @@ pub fn time_parse(dt: DateTime<Utc>, format: &str) -> String {
 }
 
 pub fn to_duration(duration: &str) -> Duration {
-    let mut val = duration.to_string();
-    let mut unit = "s";
-
-    if val.ends_with("ms") {
-        unit = "ms";
-        val = val[..val.len() - 2].to_string();
-    } else if val.ends_with('s') {
-        unit = "s";
-        val = val[..val.len() - 1].to_string();
-    } else if val.ends_with('m') {
-        unit = "m";
-        val = val[..val.len() - 1].to_string();
-    } else if val.ends_with('h') {
-        unit = "h";
-        val = val[..val.len() - 1].to_string();
-    } else if val.ends_with('d') {
-        unit = "d";
-        val = val[..val.len() - 1].to_string();
+    if duration.is_empty() {
+        return Duration::from_secs(0);
     }
 
-    let val = val.parse::<u64>().unwrap_or(0);
+    let (val_str, unit) = if let Some(stripped) = duration.strip_suffix("ms") {
+        (stripped, "ms")
+    } else if let Some(stripped) = duration.strip_suffix('s') {
+        (stripped, "s")
+    } else if let Some(stripped) = duration.strip_suffix('m') {
+        (stripped, "m")
+    } else if let Some(stripped) = duration.strip_suffix('h') {
+        (stripped, "h")
+    } else if let Some(stripped) = duration.strip_suffix('d') {
+        (stripped, "d")
+    } else {
+        (duration, "s")
+    };
+
+    let val = val_str.parse::<u64>().unwrap_or(0);
 
     match unit {
         "ms" => Duration::from_millis(val),
