@@ -73,22 +73,22 @@ fn get_pools(key: &str) -> &'static DbPools {
     store.map.get(key).copied().unwrap_or_else(|| panic!("DB Pool with key '{}' not initialized", key))
 }
 
-pub fn db_exists(key: &str) -> bool {
+pub fn is_db_exists(key: &str) -> bool {
     let store = get_db_store().lock().unwrap();
     store.map.contains_key(key)
 }
 
-pub fn db_updated_at(key: &str) -> i64 {
+pub fn set_db_updated_at(key: &str) -> i64 {
     let store = get_db_store().lock().unwrap();
     *store.updated_at.get(key).unwrap_or(&0)
 }
 
-pub fn db_state(key: &str) -> String {
+pub fn set_db_state(key: &str) -> String {
     let store = get_db_store().lock().unwrap();
     store.state.get(key).unwrap_or(&"".to_string()).clone()
 }
 
-pub fn db_conn_str(key: &str) -> String {
+pub fn set_db_conn_str(key: &str) -> String {
     let store = get_db_store().lock().unwrap();
     store.conn_str.get(key).unwrap_or(&"".to_string()).clone()
 }
