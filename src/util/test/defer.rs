@@ -8,8 +8,8 @@
  * All Rights Reserved.
  */
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 
 #[test]
 fn test_defer_macro() {
@@ -31,7 +31,7 @@ fn test_defer_macro() {
 
 #[test]
 fn test_multiple_defers() {
-    let order = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let order = Arc::new(Mutex::new(Vec::new()));
 
     {
         let order_clone1 = order.clone();
