@@ -8,10 +8,5 @@
  * All Rights Reserved.
  */
 
-// use sqlx::{Pool, Postgres};
-// use std::collections::HashMap;
-// use std::sync::atomic::{AtomicBool, Ordering};
-// use std::sync::{Mutex, OnceLock};
-
 mod db_store;
 pub use db_store::*;
