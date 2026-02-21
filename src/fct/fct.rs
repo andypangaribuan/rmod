@@ -174,3 +174,67 @@ impl_op_float!(Sub, sub, f32, from_f32, f64, from_f64);
 impl_op_float!(Mul, mul, f32, from_f32, f64, from_f64);
 impl_op_float!(Div, div, f32, from_f32, f64, from_f64);
 impl_op_float!(Rem, rem, f32, from_f32, f64, from_f64);
+
+macro_rules! impl_cmp_primitive {
+    ($($t:ty),*) => {
+        $(
+            impl std::cmp::PartialEq<$t> for FCT {
+                fn eq(&self, other: &$t) -> bool {
+                    self.0 == Decimal::from(*other)
+                }
+            }
+
+            impl std::cmp::PartialEq<FCT> for $t {
+                fn eq(&self, other: &FCT) -> bool {
+                    Decimal::from(*self) == other.0
+                }
+            }
+
+            impl std::cmp::PartialOrd<$t> for FCT {
+                fn partial_cmp(&self, other: &$t) -> Option<std::cmp::Ordering> {
+                    self.0.partial_cmp(&Decimal::from(*other))
+                }
+            }
+
+            impl std::cmp::PartialOrd<FCT> for $t {
+                fn partial_cmp(&self, other: &FCT) -> Option<std::cmp::Ordering> {
+                    Decimal::from(*self).partial_cmp(&other.0)
+                }
+            }
+        )*
+    };
+}
+
+impl_cmp_primitive!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+
+macro_rules! impl_cmp_float {
+    ($($t:ty, $from:ident),*) => {
+        $(
+            impl std::cmp::PartialEq<$t> for FCT {
+                fn eq(&self, other: &$t) -> bool {
+                    self.0 == Decimal::$from(*other).unwrap_or_default()
+                }
+            }
+
+            impl std::cmp::PartialEq<FCT> for $t {
+                fn eq(&self, other: &FCT) -> bool {
+                    Decimal::$from(*self).unwrap_or_default() == other.0
+                }
+            }
+
+            impl std::cmp::PartialOrd<$t> for FCT {
+                fn partial_cmp(&self, other: &$t) -> Option<std::cmp::Ordering> {
+                    self.0.partial_cmp(&Decimal::$from(*other).unwrap_or_default())
+                }
+            }
+
+            impl std::cmp::PartialOrd<FCT> for $t {
+                fn partial_cmp(&self, other: &FCT) -> Option<std::cmp::Ordering> {
+                    Decimal::$from(*self).unwrap_or_default().partial_cmp(&other.0)
+                }
+            }
+        )*
+    };
+}
+
+impl_cmp_float!(f32, from_f32, f64, from_f64);
