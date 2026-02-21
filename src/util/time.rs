@@ -8,11 +8,16 @@
  * All Rights Reserved.
  */
 
+pub use chrono::{DateTime, Utc};
 pub use tokio::time::Duration;
 
 #[cfg(test)]
 #[path = "test/time.rs"]
 mod tests;
+
+pub fn now() -> DateTime<Utc> {
+    Utc::now()
+}
 
 pub trait ToDuration {
     fn to_duration(&self) -> Duration;

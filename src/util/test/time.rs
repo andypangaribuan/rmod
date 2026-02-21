@@ -10,6 +10,13 @@
 
 use super::*;
 
+#[test]
+fn test_now() {
+    let t1 = Utc::now();
+    let t2 = now();
+    assert!(t2 >= t1);
+}
+
 #[tokio::test]
 async fn test_sleep() {
     let start = std::time::Instant::now();
