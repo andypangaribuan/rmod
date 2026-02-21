@@ -71,3 +71,27 @@ fn test_env_int_panic() {
     }
     let _: i32 = int("INVALID_INT");
 }
+
+#[test]
+fn test_env_fct() {
+    unsafe {
+        env::set_var("APP_PRICE", "123.45");
+    }
+    let price = fct("APP_PRICE");
+    assert_eq!(*price, Decimal::from_str("123.45").unwrap());
+}
+
+#[test]
+fn test_env_fct_default() {
+    unsafe {
+        env::remove_var("DEFAULT_PRICE");
+        env::set_var("INVALID_PRICE", "not-a-decimal");
+    }
+    let default_val = FCT(Decimal::new(10, 1)); // 1.0
+
+    let price1 = fct_or("DEFAULT_PRICE", default_val);
+    let price2 = fct_or("INVALID_PRICE", default_val);
+
+    assert_eq!(price1, default_val);
+    assert_eq!(price2, default_val);
+}

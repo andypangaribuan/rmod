@@ -16,6 +16,10 @@ use std::env;
 use std::fmt::Display;
 use std::str::FromStr;
 
+use rust_decimal::Decimal;
+
+use crate::fct::FCT;
+
 /// Gets an environment variable as a String.
 /// Panics with a clear message if not set.
 pub fn string(name: &str) -> String {
@@ -78,4 +82,19 @@ where
     <T as FromStr>::Err: Display,
 {
     env::var(name).ok().and_then(|v| v.parse::<T>().ok())
+}
+
+/// Gets an environment variable as FCT.
+/// Panics if not set or if parsing fails.
+pub fn fct(name: &str) -> FCT {
+    let val = string(name);
+    FCT(Decimal::from_str(&val).unwrap_or_else(|e| panic!("failed to parse {} as fct, value: {}, error: {}", name, val, e)))
+}
+
+/// Gets an environment variable as FCT, or returns a default value if not set or parsing fails.
+pub fn fct_or(name: &str, default: FCT) -> FCT {
+    match env::var(name) {
+        Ok(v) => FCT(Decimal::from_str(&v).unwrap_or(*default)),
+        Err(_) => default,
+    }
 }
