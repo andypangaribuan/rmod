@@ -11,7 +11,7 @@
 pub use tokio::time::Duration;
 
 #[cfg(test)]
-#[path = "test.rs"]
+#[path = "test/time.rs"]
 mod tests;
 
 pub async fn sleep(duration: Duration) {
