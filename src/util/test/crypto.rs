@@ -59,6 +59,23 @@ fn test_raw_it_works() {
 }
 
 #[test]
+fn test_encrypt_bytes_it_works() {
+    let key = b"this-is-a-32-byte-secret-key-123";
+    let iv = b"12-byte-iv--";
+    let data = b"hello world";
+
+    let encrypted = encrypt_bytes(data, key, iv).unwrap();
+    let decrypted = decrypt_bytes(&encrypted, key, iv).unwrap();
+
+    let decrypted_str = String::from_utf8(decrypted).expect("Invalid UTF-8 sequence");
+
+    println!("encrypted: {}", encrypted);
+    println!("decrypted: {}", decrypted_str);
+
+    assert_eq!(data, decrypted_str.as_bytes());
+}
+
+#[test]
 fn test_argon2id() {
     let password = "strong-password";
     let hash = argon2id_hash(password, None).unwrap();

@@ -11,10 +11,10 @@
 use sqlx::{Pool, Postgres};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Mutex, OnceLock};
+use std::sync::{OnceLock, RwLock};
 
 static DB_WITH_DELETED_AT: AtomicBool = AtomicBool::new(false);
-static DB_STORE: OnceLock<Mutex<DbContainer>> = OnceLock::new();
+static DB_STORE: OnceLock<RwLock<DbContainer>> = OnceLock::new();
 
 struct DbPools {
     write: Pool<Postgres>,
@@ -37,9 +37,9 @@ pub(crate) fn get_db_with_deleted_at() -> bool {
     DB_WITH_DELETED_AT.load(Ordering::Relaxed)
 }
 
-fn get_db_store() -> &'static Mutex<DbContainer> {
+fn get_db_store() -> &'static RwLock<DbContainer> {
     DB_STORE.get_or_init(|| {
-        Mutex::new(DbContainer {
+        RwLock::new(DbContainer {
             keys: Vec::new(),
             map: HashMap::new(),
             updated_at: HashMap::new(),
@@ -60,7 +60,7 @@ pub(crate) fn set_db(
 ) {
     let pools = Box::leak(Box::new(DbPools { write: write_pool, read: read_pool }));
 
-    let mut store = get_db_store().lock().unwrap();
+    let mut store = get_db_store().write().unwrap();
     store.keys.push(key.to_string());
     store.map.insert(key.to_string(), pools);
     store.updated_at.insert(key.to_string(), updated_at);
@@ -69,39 +69,39 @@ pub(crate) fn set_db(
 }
 
 fn get_pools(key: &str) -> &'static DbPools {
-    let store = get_db_store().lock().unwrap();
+    let store = get_db_store().read().unwrap();
     store.map.get(key).copied().unwrap_or_else(|| panic!("DB Pool with key '{}' not initialized", key))
 }
 
 pub fn is_db_exists(key: &str) -> bool {
-    let store = get_db_store().lock().unwrap();
+    let store = get_db_store().read().unwrap();
     store.map.contains_key(key)
 }
 
 pub fn set_db_updated_at(key: &str) -> i64 {
-    let store = get_db_store().lock().unwrap();
+    let store = get_db_store().read().unwrap();
     *store.updated_at.get(key).unwrap_or(&0)
 }
 
 pub fn set_db_state(key: &str) -> String {
-    let store = get_db_store().lock().unwrap();
+    let store = get_db_store().read().unwrap();
     store.state.get(key).unwrap_or(&"".to_string()).clone()
 }
 
 pub fn set_db_conn_str(key: &str) -> String {
-    let store = get_db_store().lock().unwrap();
+    let store = get_db_store().read().unwrap();
     store.conn_str.get(key).unwrap_or(&"".to_string()).clone()
 }
 
 pub fn update_db_payload(key: &str, updated_at: i64, state: &str, conn_str: &str) {
-    let mut store = get_db_store().lock().unwrap();
+    let mut store = get_db_store().write().unwrap();
     store.updated_at.insert(key.to_string(), updated_at);
     store.state.insert(key.to_string(), state.to_string());
     store.conn_str.insert(key.to_string(), conn_str.to_string());
 }
 
 fn get_first_pools() -> &'static DbPools {
-    let store = get_db_store().lock().unwrap();
+    let store = get_db_store().read().unwrap();
     let key = store.keys.first().expect("No DB Pools initialized");
     store.map.get(key).copied().unwrap()
 }

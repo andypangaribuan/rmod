@@ -31,17 +31,20 @@ const IV_LEN: usize = 12; // GCM standard nonce size
 pub fn encrypt(data: &[u8], key_b64: &str, iv_b64: &str) -> Result<String, String> {
     let key_bytes = STANDARD.decode(key_b64).map_err(|e| format!("invalid key base64: {}", e))?;
     let iv_bytes = STANDARD.decode(iv_b64).map_err(|e| format!("invalid iv base64: {}", e))?;
-    _encrypt(data, &key_bytes, &iv_bytes)
+    encrypt_bytes(data, &key_bytes, &iv_bytes)
 }
 
 /// Encrypts data using AES-256-GCM.
 /// Key and IV (nonce) are expected to be raw strings.
 /// Output is a base64 encoded string containing [ciphertext | tag].
 pub fn encrypt_raw(data: &[u8], key: &str, iv: &str) -> Result<String, String> {
-    _encrypt(data, key.as_bytes(), iv.as_bytes())
+    encrypt_bytes(data, key.as_bytes(), iv.as_bytes())
 }
 
-fn _encrypt(data: &[u8], key_bytes: &[u8], iv_bytes: &[u8]) -> Result<String, String> {
+/// Encrypts data using AES-256-GCM.
+/// Key and IV (nonce) are expected to be raw bytes.
+/// Output is a base64 encoded string containing [ciphertext | tag].
+pub fn encrypt_bytes(data: &[u8], key_bytes: &[u8], iv_bytes: &[u8]) -> Result<String, String> {
     if key_bytes.len() != KEY_LEN {
         return Err(format!("invalid key length: expected {} bytes, got {}", KEY_LEN, key_bytes.len()));
     }
@@ -64,17 +67,20 @@ fn _encrypt(data: &[u8], key_bytes: &[u8], iv_bytes: &[u8]) -> Result<String, St
 pub fn decrypt(encoded_data: &str, key_b64: &str, iv_b64: &str) -> Result<Vec<u8>, String> {
     let key_bytes = STANDARD.decode(key_b64).map_err(|e| format!("invalid key base64: {}", e))?;
     let iv_bytes = STANDARD.decode(iv_b64).map_err(|e| format!("invalid iv base64: {}", e))?;
-    _decrypt(encoded_data, &key_bytes, &iv_bytes)
+    decrypt_bytes(encoded_data, &key_bytes, &iv_bytes)
 }
 
 /// Decrypts data using AES-256-GCM.
 /// Key and IV (nonce) are expected to be raw strings.
 /// Input is a base64 encoded string containing [ciphertext | tag].
 pub fn decrypt_raw(encoded_data: &str, key: &str, iv: &str) -> Result<Vec<u8>, String> {
-    _decrypt(encoded_data, key.as_bytes(), iv.as_bytes())
+    decrypt_bytes(encoded_data, key.as_bytes(), iv.as_bytes())
 }
 
-fn _decrypt(encoded_data: &str, key_bytes: &[u8], iv_bytes: &[u8]) -> Result<Vec<u8>, String> {
+/// Decrypts data using AES-256-GCM.
+/// Key and IV (nonce) are expected to be raw bytes.
+/// Input is a base64 encoded string containing [ciphertext | tag].
+pub fn decrypt_bytes(encoded_data: &str, key_bytes: &[u8], iv_bytes: &[u8]) -> Result<Vec<u8>, String> {
     let encrypted_data = STANDARD.decode(encoded_data).map_err(|e| format!("invalid data base64: {}", e))?;
 
     if key_bytes.len() != KEY_LEN {
