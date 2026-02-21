@@ -11,3 +11,4 @@ datelike
 timelike
 timenow
 arcx
+vmove

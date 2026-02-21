@@ -72,6 +72,88 @@ async fn test_arcx_with_future_pool() {
 }
 
 #[tokio::test]
+async fn test_arcx_with_future_pool_set_get() {
+    let a = ArcX::new(0);
+    let mut pool = crate::util::FuturePool::new();
+
+    for i in 0..10 {
+        let b = a.clone();
+        pool.add(i, async move {
+            b.set(i);
+            b.get()
+        });
+    }
+
+    let results = pool.join_all().await;
+    assert_eq!(results.len(), 10);
+    // Each task successfully called set and get.
+    // The shared value will be some integer from 0-9.
+    let final_val = a.get();
+    assert!((0..10).contains(&final_val));
+}
+
+#[tokio::test]
+async fn test_arcx_with_macro_async() {
+    use crate::arcx_async;
+    let a = ArcX::new(0);
+    let mut pool = crate::util::FuturePool::new();
+
+    for i in 0..10 {
+        pool.add(
+            i,
+            arcx_async!(a, {
+                let val = a.get();
+                a.set(val + 1);
+            }),
+        );
+    }
+
+    pool.join_all().await;
+    assert!(a.get() > 0);
+}
+
+#[tokio::test]
+async fn test_arcx_with_vmove() {
+    use crate::vmove;
+    let a = ArcX::new(0);
+    let mut pool = crate::util::FuturePool::new();
+
+    for i in 0..10 {
+        pool.add(
+            i,
+            vmove!(a, {
+                a.set(a.get() + 1);
+            }),
+        );
+    }
+
+    pool.join_all().await;
+    assert!(a.get() > 0);
+}
+
+#[tokio::test]
+async fn test_arcx_with_vmove_multiple() {
+    use crate::vmove;
+    let a = ArcX::new(0);
+    let b = ArcX::new(0);
+    let mut pool = crate::util::FuturePool::new();
+
+    for i in 0..10 {
+        pool.add(
+            i,
+            vmove!(a, b, {
+                a.set(a.get() + 1);
+                b.set(b.get() + 1);
+            }),
+        );
+    }
+
+    pool.join_all().await;
+    assert!(a.get() > 0);
+    assert!(b.get() > 0);
+}
+
+#[tokio::test]
 async fn test_arcx_with_future_burst() {
     let a = ArcX::new(0);
     let data = vec![1; 10]; // 10 items
