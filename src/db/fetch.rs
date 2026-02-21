@@ -18,7 +18,8 @@ pub async fn fetch<T>(sql: &str, args: PgArgs) -> Result<Option<T>, sqlx::Error>
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
 {
-    sqlx::query_as_with(sql, args.inner).fetch_optional(store::db_read()).await
+    let pool = if args.is_force_rw() { store::db() } else { store::db_read() };
+    sqlx::query_as_with(sql, args.inner).fetch_optional(pool).await
 }
 
 /// Executes a query using the first initialized database pool and returns all rows.
@@ -26,7 +27,8 @@ pub async fn fetch_all<T>(sql: &str, args: PgArgs) -> Result<Vec<T>, sqlx::Error
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
 {
-    sqlx::query_as_with(sql, args.inner).fetch_all(store::db_read()).await
+    let pool = if args.is_force_rw() { store::db() } else { store::db_read() };
+    sqlx::query_as_with(sql, args.inner).fetch_all(pool).await
 }
 
 /// Executes a query and returns an optional row.
@@ -34,7 +36,8 @@ pub async fn fetch_on<T>(key: &str, sql: &str, args: PgArgs) -> Result<Option<T>
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
 {
-    sqlx::query_as_with(sql, args.inner).fetch_optional(store::db_read_on(key)).await
+    let pool = if args.is_force_rw() { store::db_on(key) } else { store::db_read_on(key) };
+    sqlx::query_as_with(sql, args.inner).fetch_optional(pool).await
 }
 
 /// Executes a query and returns all rows.
@@ -42,7 +45,8 @@ pub async fn fetch_all_on<T>(key: &str, sql: &str, args: PgArgs) -> Result<Vec<T
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
 {
-    sqlx::query_as_with(sql, args.inner).fetch_all(store::db_read_on(key)).await
+    let pool = if args.is_force_rw() { store::db_on(key) } else { store::db_read_on(key) };
+    sqlx::query_as_with(sql, args.inner).fetch_all(pool).await
 }
 
 /// Executes a query using the first initialized database pool that does not return rows (e.g., INSERT, UPDATE, DELETE).

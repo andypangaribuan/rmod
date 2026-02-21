@@ -8,10 +8,15 @@
  * All Rights Reserved.
  */
 
+#[cfg(test)]
+#[path = "test/args.rs"]
+mod tests;
+
 use sqlx::postgres::PgArguments;
 
 pub struct Opt {
     pub end_query: Option<String>,
+    pub force_rw: Option<bool>,
 }
 
 pub struct PgArgs {
@@ -28,6 +33,10 @@ impl Default for PgArgs {
 impl PgArgs {
     pub fn new() -> Self {
         Self { inner: PgArguments::default(), opt: None }
+    }
+
+    pub(crate) fn is_force_rw(&self) -> bool {
+        self.opt.as_ref().and_then(|o| o.force_rw).unwrap_or(false)
     }
 }
 
@@ -52,7 +61,11 @@ impl PgArg for Opt {
 }
 
 pub fn args_opt(end_query: &str) -> Opt {
-    Opt { end_query: Some(end_query.to_string()) }
+    Opt { end_query: Some(end_query.to_string()), force_rw: None }
+}
+
+pub fn args_opt_rw(end_query: &str) -> Opt {
+    Opt { end_query: Some(end_query.to_string()), force_rw: Some(true) }
 }
 
 #[macro_export]
