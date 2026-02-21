@@ -8,13 +8,7 @@
  * All Rights Reserved.
  */
 
-pub mod config;
-pub mod fuse;
-pub mod store;
-pub mod util;
-pub use fuse::fuse_handler;
-pub mod db;
-pub mod fct;
-pub mod types;
-pub use fct::FCT;
-pub use types::ArcX;
+#[path = "type/arcx.rs"]
+mod _arcx;
+
+pub use _arcx::*;
