@@ -31,6 +31,32 @@ impl<T> Default for Opt<T> {
     }
 }
 
+impl<T> Opt<T> {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_end_query(mut self, query: &str) -> Self {
+        self.end_query = Some(query.to_string());
+        self
+    }
+
+    pub fn with_force_rw(mut self) -> Self {
+        self.force_rw = Some(true);
+        self
+    }
+
+    pub fn with_validate(mut self, f: impl Fn(&Option<T>) -> bool + Send + Sync + 'static) -> Self {
+        self.validate = Some(Box::new(f));
+        self
+    }
+
+    pub fn with_validate_all(mut self, f: impl Fn(&Vec<T>) -> bool + Send + Sync + 'static) -> Self {
+        self.validate_all = Some(Box::new(f));
+        self
+    }
+}
+
 pub struct PgArgs<T = ()> {
     pub(crate) collectors: Vec<PgArgCollector>,
     pub(crate) opt: Option<Opt<T>>,
@@ -75,11 +101,6 @@ where
         }));
     }
 }
-
-// I need to be careful with Clone on T. Actually, the Encode types usually implement Clone or are small.
-// But some might not. Let's assume they are Cloneable for now or use a wrapper if needed.
-// Wait, sqlx::Encode doesn't imply Clone. But primitive types do.
-// Let's refine the trait impl to handle Clone.
 
 impl<T> PgArg<T> for Opt<T> {
     fn add_to(self, args: &mut PgArgs<T>) {
