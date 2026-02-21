@@ -21,23 +21,6 @@ macro_rules! arcx {
     };
 }
 
-#[macro_export]
-macro_rules! vmove {
-    ($($v:ident),+ , $blk:block) => {
-        {
-            $(let $v = $v.clone();)+
-            async move $blk
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! arcx_async {
-    ($($v:ident),+, $blk:block) => {
-        $crate::vmove!($($v),+, $blk)
-    };
-}
-
 pub struct ArcX<T> {
     inner: Arc<Mutex<T>>,
 }

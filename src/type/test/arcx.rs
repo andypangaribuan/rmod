@@ -93,26 +93,6 @@ async fn test_arcx_with_future_pool_set_get() {
 }
 
 #[tokio::test]
-async fn test_arcx_with_macro_async() {
-    use crate::arcx_async;
-    let a = ArcX::new(0);
-    let mut pool = crate::util::FuturePool::new();
-
-    for i in 0..10 {
-        pool.add(
-            i,
-            arcx_async!(a, {
-                let val = a.get();
-                a.set(val + 1);
-            }),
-        );
-    }
-
-    pool.join_all().await;
-    assert!(a.get() > 0);
-}
-
-#[tokio::test]
 async fn test_arcx_with_vmove() {
     use crate::vmove;
     let a = ArcX::new(0);
