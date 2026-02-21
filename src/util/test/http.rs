@@ -21,7 +21,7 @@ async fn test_http_get() {
     let mut headers = HashMap::new();
     headers.insert("X-Test-Header".to_string(), "test-value".to_string());
 
-    let res = http::get(url, Some(headers)).await.unwrap();
+    let res = http::get(url, Some(headers), None).await.unwrap();
     assert!(res.status().is_success());
 
     let body: serde_json::Value = res.json().await.unwrap();
@@ -37,7 +37,7 @@ async fn test_http_post() {
         "role": "Developer"
     });
 
-    let res = http::post(url, None, Some(body)).await.unwrap();
+    let res = http::post(url, None, None, Some(body)).await.unwrap();
     assert!(res.status().is_success());
 
     let res_body: serde_json::Value = res.json().await.unwrap();
@@ -50,7 +50,7 @@ async fn test_http_parallel_requests() {
     let urls = vec!["https://httpbin.org/get", "https://httpbin.org/ip", "https://httpbin.org/user-agent"];
 
     for url in urls {
-        pool.add(url, async move { http::get(url, None).await });
+        pool.add(url, async move { http::get(url, None, None).await });
     }
 
     let results = pool.join_all().await;
@@ -68,7 +68,7 @@ async fn test_http_future_burst() {
 
     let results = future_burst(urls, 2, |idx, url| async move {
         println!("idx: {}, calling: {}", idx, url);
-        let res = http::get(url, None).await;
+        let res = http::get(url, None, None).await;
         println!("idx: {}, done   : {}", idx, url);
         res
     })
@@ -85,12 +85,12 @@ async fn test_http_future_burst() {
 #[tokio::test]
 async fn test_http_smart_functions() {
     let url = "https://httpbin.org/get";
-    let res = http::get(url, None).await.unwrap();
+    let res = http::get(url, None, None).await.unwrap();
     assert!(res.status().is_success());
 
     let url_post = "https://httpbin.org/post";
     let body = serde_json::json!({ "smart": true });
-    let res_post = http::post(url_post, None, Some(body)).await.unwrap();
+    let res_post = http::post(url_post, None, None, Some(body)).await.unwrap();
     assert!(res_post.status().is_success());
 }
 
@@ -101,7 +101,7 @@ async fn test_http_custom_timeout() {
     http::client(url, Duration::from_millis(1));
 
     // This should now fail with a timeout error
-    let res = http::get(url, None).await;
+    let res = http::get(url, None, None).await;
     assert!(res.is_err());
     assert!(res.unwrap_err().is_timeout());
 }

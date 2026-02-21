@@ -44,39 +44,52 @@ impl Http {
         Arc::new(Self::new_with_timeout(timeout))
     }
 
-    async fn get(&self, url: &str, headers: Option<HashMap<String, String>>) -> Result<Response, reqwest::Error> {
-        self.request(Method::GET, url, headers, None::<()>).await
+    async fn get(
+        &self,
+        url: &str,
+        headers: Option<HashMap<String, String>>,
+        query: Option<HashMap<String, String>>,
+    ) -> Result<Response, reqwest::Error> {
+        self.request(Method::GET, url, headers, query, None::<()>).await
     }
 
     async fn post<T: Serialize>(
         &self,
         url: &str,
         headers: Option<HashMap<String, String>>,
+        query: Option<HashMap<String, String>>,
         body: Option<T>,
     ) -> Result<Response, reqwest::Error> {
-        self.request(Method::POST, url, headers, body).await
+        self.request(Method::POST, url, headers, query, body).await
     }
 
     async fn put<T: Serialize>(
         &self,
         url: &str,
         headers: Option<HashMap<String, String>>,
+        query: Option<HashMap<String, String>>,
         body: Option<T>,
     ) -> Result<Response, reqwest::Error> {
-        self.request(Method::PUT, url, headers, body).await
+        self.request(Method::PUT, url, headers, query, body).await
     }
 
     async fn patch<T: Serialize>(
         &self,
         url: &str,
         headers: Option<HashMap<String, String>>,
+        query: Option<HashMap<String, String>>,
         body: Option<T>,
     ) -> Result<Response, reqwest::Error> {
-        self.request(Method::PATCH, url, headers, body).await
+        self.request(Method::PATCH, url, headers, query, body).await
     }
 
-    async fn delete(&self, url: &str, headers: Option<HashMap<String, String>>) -> Result<Response, reqwest::Error> {
-        self.request(Method::DELETE, url, headers, None::<()>).await
+    async fn delete(
+        &self,
+        url: &str,
+        headers: Option<HashMap<String, String>>,
+        query: Option<HashMap<String, String>>,
+    ) -> Result<Response, reqwest::Error> {
+        self.request(Method::DELETE, url, headers, query, None::<()>).await
     }
 
     async fn request<T: Serialize>(
@@ -84,9 +97,15 @@ impl Http {
         method: Method,
         url: &str,
         headers: Option<HashMap<String, String>>,
+        query: Option<HashMap<String, String>>,
         body: Option<T>,
     ) -> Result<Response, reqwest::Error> {
-        let mut rb = self.client.request(method, url);
+        let mut rb = if let (Some(q), Ok(mut u)) = (query, reqwest::Url::parse(url)) {
+            u.query_pairs_mut().extend_pairs(q.iter());
+            self.client.request(method, u)
+        } else {
+            self.client.request(method, url)
+        };
 
         if let Some(h) = headers {
             let mut head_map = HeaderMap::new();
@@ -131,22 +150,45 @@ pub fn client(url: &str, timeout: Duration) {
     clients.insert(domain, Http::new_arc_with_timeout(timeout));
 }
 
-pub async fn get(url: &str, headers: Option<HashMap<String, String>>) -> Result<Response, reqwest::Error> {
-    get_client(url).get(url, headers).await
+pub async fn get(
+    url: &str,
+    headers: Option<HashMap<String, String>>,
+    query: Option<HashMap<String, String>>,
+) -> Result<Response, reqwest::Error> {
+    get_client(url).get(url, headers, query).await
 }
 
-pub async fn post<T: Serialize>(url: &str, headers: Option<HashMap<String, String>>, body: Option<T>) -> Result<Response, reqwest::Error> {
-    get_client(url).post(url, headers, body).await
+pub async fn post<T: Serialize>(
+    url: &str,
+    headers: Option<HashMap<String, String>>,
+    query: Option<HashMap<String, String>>,
+    body: Option<T>,
+) -> Result<Response, reqwest::Error> {
+    get_client(url).post(url, headers, query, body).await
 }
 
-pub async fn put<T: Serialize>(url: &str, headers: Option<HashMap<String, String>>, body: Option<T>) -> Result<Response, reqwest::Error> {
-    get_client(url).put(url, headers, body).await
+pub async fn put<T: Serialize>(
+    url: &str,
+    headers: Option<HashMap<String, String>>,
+    query: Option<HashMap<String, String>>,
+    body: Option<T>,
+) -> Result<Response, reqwest::Error> {
+    get_client(url).put(url, headers, query, body).await
 }
 
-pub async fn patch<T: Serialize>(url: &str, headers: Option<HashMap<String, String>>, body: Option<T>) -> Result<Response, reqwest::Error> {
-    get_client(url).patch(url, headers, body).await
+pub async fn patch<T: Serialize>(
+    url: &str,
+    headers: Option<HashMap<String, String>>,
+    query: Option<HashMap<String, String>>,
+    body: Option<T>,
+) -> Result<Response, reqwest::Error> {
+    get_client(url).patch(url, headers, query, body).await
 }
 
-pub async fn delete(url: &str, headers: Option<HashMap<String, String>>) -> Result<Response, reqwest::Error> {
-    get_client(url).delete(url, headers).await
+pub async fn delete(
+    url: &str,
+    headers: Option<HashMap<String, String>>,
+    query: Option<HashMap<String, String>>,
+) -> Result<Response, reqwest::Error> {
+    get_client(url).delete(url, headers, query).await
 }
