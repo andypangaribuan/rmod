@@ -19,6 +19,14 @@ async fn test_sleep() {
     assert!(elapsed >= duration);
 }
 
+#[tokio::test]
+async fn test_sleep_str() {
+    let start = std::time::Instant::now();
+    sleep("100ms").await;
+    let elapsed = start.elapsed();
+    assert!(elapsed >= Duration::from_millis(100));
+}
+
 #[test]
 fn test_to_duration() {
     assert_eq!(to_duration("10s"), Duration::from_secs(10));

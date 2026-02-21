@@ -14,8 +14,30 @@ pub use tokio::time::Duration;
 #[path = "test/time.rs"]
 mod tests;
 
-pub async fn sleep(duration: Duration) {
-    tokio::time::sleep(duration).await;
+pub trait ToDuration {
+    fn to_duration(&self) -> Duration;
+}
+
+impl ToDuration for Duration {
+    fn to_duration(&self) -> Duration {
+        *self
+    }
+}
+
+impl ToDuration for &str {
+    fn to_duration(&self) -> Duration {
+        to_duration(self)
+    }
+}
+
+impl ToDuration for String {
+    fn to_duration(&self) -> Duration {
+        to_duration(self)
+    }
+}
+
+pub async fn sleep<T: ToDuration>(duration: T) {
+    tokio::time::sleep(duration.to_duration()).await;
 }
 
 pub fn to_duration(duration: &str) -> Duration {
