@@ -20,6 +20,7 @@ pub mod http;
 pub mod job;
 pub mod jwt;
 pub mod support;
+pub mod time;
 
 #[path = "util/uid.rs"]
 mod _uid;
