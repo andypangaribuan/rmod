@@ -29,25 +29,25 @@ where
 
     /// Fetches an optional row using the first initialized database pool.
     pub async fn fetch(&self, where_clause: &str, args: PgArgs) -> Result<Option<T>, sqlx::Error> {
-        let sql = build_select_sql(self.table_name, where_clause);
+        let sql = build_select_sql(self.table_name, where_clause, args.opt.as_ref());
         crate::db::fetch::<T>(&sql, args).await
     }
 
     /// Fetches all rows using the first initialized database pool.
     pub async fn fetch_all(&self, where_clause: &str, args: PgArgs) -> Result<Vec<T>, sqlx::Error> {
-        let sql = build_select_sql(self.table_name, where_clause);
+        let sql = build_select_sql(self.table_name, where_clause, args.opt.as_ref());
         crate::db::fetch_all::<T>(&sql, args).await
     }
 
     /// Fetches an optional row from a specific database.
     pub async fn fetch_on(&self, key: &str, where_clause: &str, args: PgArgs) -> Result<Option<T>, sqlx::Error> {
-        let sql = build_select_sql(self.table_name, where_clause);
+        let sql = build_select_sql(self.table_name, where_clause, args.opt.as_ref());
         crate::db::fetch_on::<T>(key, &sql, args).await
     }
 
     /// Fetches all rows from a specific database.
     pub async fn fetch_all_on(&self, key: &str, where_clause: &str, args: PgArgs) -> Result<Vec<T>, sqlx::Error> {
-        let sql = build_select_sql(self.table_name, where_clause);
+        let sql = build_select_sql(self.table_name, where_clause, args.opt.as_ref());
         crate::db::fetch_all_on::<T>(key, &sql, args).await
     }
 
