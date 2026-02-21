@@ -127,3 +127,11 @@ pub(crate) fn db_read_on(key: &str) -> &'static Pool<Postgres> {
     let pools = get_pools(key);
     pools.read.as_ref().unwrap_or(&pools.write)
 }
+
+pub(crate) fn db_is_read_real() -> bool {
+    get_first_pools().read.is_some()
+}
+
+pub(crate) fn db_is_read_real_on(key: &str) -> bool {
+    get_pools(key).read.is_some()
+}

@@ -8,7 +8,7 @@
  * All Rights Reserved.
  */
 
-pub(crate) fn build_select_sql(table_name: &str, where_clause: &str, opt: Option<&crate::db::Opt>) -> String {
+pub(crate) fn build_select_sql<T>(table_name: &str, where_clause: &str, opt: Option<&crate::db::Opt<T>>) -> String {
     let with_deleted_at = crate::store::get_db_with_deleted_at();
     let mut sql = if where_clause.trim().is_empty() {
         if with_deleted_at {

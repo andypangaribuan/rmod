@@ -14,49 +14,97 @@ use super::PgArgs;
 pub use sqlx::FromRow;
 
 /// Executes a query using the first initialized database pool and returns an optional row.
-pub async fn fetch<T>(sql: &str, args: PgArgs) -> Result<Option<T>, sqlx::Error>
+pub async fn fetch<T>(sql: &str, args: PgArgs<T>) -> Result<Option<T>, sqlx::Error>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    let pool = if args.is_force_rw() { store::db() } else { store::db_read() };
-    sqlx::query_as_with(sql, args.inner).fetch_optional(pool).await
+    let force_rw = args.is_force_rw();
+    let use_read = !force_rw && store::db_is_read_real();
+    let pool = if use_read { store::db_read() } else { store::db() };
+
+    let mut res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(pool).await?;
+
+    if use_read
+        && let Some(validate) = args.opt.as_ref().and_then(|o| o.validate.as_ref())
+        && !validate(&res)
+    {
+        res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(store::db()).await?;
+    }
+
+    Ok(res)
 }
 
 /// Executes a query using the first initialized database pool and returns all rows.
-pub async fn fetch_all<T>(sql: &str, args: PgArgs) -> Result<Vec<T>, sqlx::Error>
+pub async fn fetch_all<T>(sql: &str, args: PgArgs<T>) -> Result<Vec<T>, sqlx::Error>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    let pool = if args.is_force_rw() { store::db() } else { store::db_read() };
-    sqlx::query_as_with(sql, args.inner).fetch_all(pool).await
+    let force_rw = args.is_force_rw();
+    let use_read = !force_rw && store::db_is_read_real();
+    let pool = if use_read { store::db_read() } else { store::db() };
+
+    let mut res = sqlx::query_as_with(sql, args.build_inner()).fetch_all(pool).await?;
+
+    if use_read
+        && let Some(validate_all) = args.opt.as_ref().and_then(|o| o.validate_all.as_ref())
+        && !validate_all(&res)
+    {
+        res = sqlx::query_as_with(sql, args.build_inner()).fetch_all(store::db()).await?;
+    }
+
+    Ok(res)
 }
 
 /// Executes a query and returns an optional row.
-pub async fn fetch_on<T>(key: &str, sql: &str, args: PgArgs) -> Result<Option<T>, sqlx::Error>
+pub async fn fetch_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<Option<T>, sqlx::Error>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    let pool = if args.is_force_rw() { store::db_on(key) } else { store::db_read_on(key) };
-    sqlx::query_as_with(sql, args.inner).fetch_optional(pool).await
+    let force_rw = args.is_force_rw();
+    let use_read = !force_rw && store::db_is_read_real_on(key);
+    let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
+
+    let mut res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(pool).await?;
+
+    if use_read
+        && let Some(validate) = args.opt.as_ref().and_then(|o| o.validate.as_ref())
+        && !validate(&res)
+    {
+        res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(store::db_on(key)).await?;
+    }
+
+    Ok(res)
 }
 
 /// Executes a query and returns all rows.
-pub async fn fetch_all_on<T>(key: &str, sql: &str, args: PgArgs) -> Result<Vec<T>, sqlx::Error>
+pub async fn fetch_all_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<Vec<T>, sqlx::Error>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    let pool = if args.is_force_rw() { store::db_on(key) } else { store::db_read_on(key) };
-    sqlx::query_as_with(sql, args.inner).fetch_all(pool).await
+    let force_rw = args.is_force_rw();
+    let use_read = !force_rw && store::db_is_read_real_on(key);
+    let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
+
+    let mut res = sqlx::query_as_with(sql, args.build_inner()).fetch_all(pool).await?;
+
+    if use_read
+        && let Some(validate_all) = args.opt.as_ref().and_then(|o| o.validate_all.as_ref())
+        && !validate_all(&res)
+    {
+        res = sqlx::query_as_with(sql, args.build_inner()).fetch_all(store::db_on(key)).await?;
+    }
+
+    Ok(res)
 }
 
 /// Executes a query using the first initialized database pool that does not return rows (e.g., INSERT, UPDATE, DELETE).
-pub async fn execute(sql: &str, args: PgArgs) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
-    sqlx::query_with(sql, args.inner).execute(store::db()).await
+pub async fn execute<T>(sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    sqlx::query_with(sql, args.build_inner()).execute(store::db()).await
 }
 
 /// Executes a query that does not return rows (e.g., INSERT, UPDATE, DELETE).
-pub async fn execute_on(key: &str, sql: &str, args: PgArgs) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
-    sqlx::query_with(sql, args.inner).execute(store::db_on(key)).await
+pub async fn execute_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    sqlx::query_with(sql, args.build_inner()).execute(store::db_on(key)).await
 }
 
 // Executes a query and returns a single row.

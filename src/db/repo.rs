@@ -21,55 +21,55 @@ pub struct Repo<T> {
 
 impl<T> Repo<T>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
     pub const fn new(table_name: &'static str, columns: &'static str) -> Self {
         Self { table_name, columns, _phantom: PhantomData }
     }
 
     /// Fetches an optional row using the first initialized database pool.
-    pub async fn fetch(&self, where_clause: &str, args: PgArgs) -> Result<Option<T>, sqlx::Error> {
+    pub async fn fetch(&self, where_clause: &str, args: PgArgs<T>) -> Result<Option<T>, sqlx::Error> {
         let sql = build_select_sql(self.table_name, where_clause, args.opt.as_ref());
         crate::db::fetch::<T>(&sql, args).await
     }
 
     /// Fetches all rows using the first initialized database pool.
-    pub async fn fetch_all(&self, where_clause: &str, args: PgArgs) -> Result<Vec<T>, sqlx::Error> {
+    pub async fn fetch_all(&self, where_clause: &str, args: PgArgs<T>) -> Result<Vec<T>, sqlx::Error> {
         let sql = build_select_sql(self.table_name, where_clause, args.opt.as_ref());
         crate::db::fetch_all::<T>(&sql, args).await
     }
 
     /// Fetches an optional row from a specific database.
-    pub async fn fetch_on(&self, key: &str, where_clause: &str, args: PgArgs) -> Result<Option<T>, sqlx::Error> {
+    pub async fn fetch_on(&self, key: &str, where_clause: &str, args: PgArgs<T>) -> Result<Option<T>, sqlx::Error> {
         let sql = build_select_sql(self.table_name, where_clause, args.opt.as_ref());
         crate::db::fetch_on::<T>(key, &sql, args).await
     }
 
     /// Fetches all rows from a specific database.
-    pub async fn fetch_all_on(&self, key: &str, where_clause: &str, args: PgArgs) -> Result<Vec<T>, sqlx::Error> {
+    pub async fn fetch_all_on(&self, key: &str, where_clause: &str, args: PgArgs<T>) -> Result<Vec<T>, sqlx::Error> {
         let sql = build_select_sql(self.table_name, where_clause, args.opt.as_ref());
         crate::db::fetch_all_on::<T>(key, &sql, args).await
     }
 
     /// Executes a query using the first initialized database pool (e.g., INSERT, UPDATE, DELETE).
-    pub async fn execute(&self, sql: &str, args: PgArgs) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    pub async fn execute(&self, sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
         crate::db::execute(sql, args).await
     }
 
     /// Executes a query on a specific database.
-    pub async fn execute_on(&self, key: &str, sql: &str, args: PgArgs) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    pub async fn execute_on(&self, key: &str, sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
         crate::db::execute_on(key, sql, args).await
     }
 
     /// Automatically generates and executes an INSERT statement for this table.
-    pub async fn insert(&self, args: PgArgs) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    pub async fn insert(&self, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
         let count = self.columns.split(',').count();
         let placeholders = (1..=count).map(|i| format!("${}", i)).collect::<Vec<_>>().join(", ");
         let sql = format!("INSERT INTO {} ({}) VALUES ({})", self.table_name, self.columns, placeholders);
         crate::db::execute(&sql, args).await
     }
 
-    pub async fn insert_on(&self, key: &str, args: PgArgs) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    pub async fn insert_on(&self, key: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
         let count = self.columns.split(',').count();
         let placeholders = (1..=count).map(|i| format!("${}", i)).collect::<Vec<_>>().join(", ");
         let sql = format!("INSERT INTO {} ({}) VALUES ({})", self.table_name, self.columns, placeholders);
