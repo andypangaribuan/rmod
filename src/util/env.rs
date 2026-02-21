@@ -42,31 +42,33 @@ pub fn string_opt(name: &str) -> Option<String> {
     env::var(name).ok()
 }
 
-pub trait Integer: FromStr
+pub trait EnvParsable: FromStr
 where
     <Self as FromStr>::Err: Display,
 {
 }
-impl Integer for i16 {}
-impl Integer for i32 {}
-impl Integer for u16 {}
-impl Integer for u32 {}
+impl EnvParsable for i16 {}
+impl EnvParsable for i32 {}
+impl EnvParsable for u16 {}
+impl EnvParsable for u32 {}
+impl EnvParsable for String {}
+impl EnvParsable for FCT {}
 
-/// Gets an environment variable as a generic type T (only u16 or u32).
+/// Gets an environment variable as a generic type T.
 /// Panics if not set or if parsing fails.
 pub fn int<T>(name: &str) -> T
 where
-    T: Integer,
+    T: EnvParsable,
     <T as FromStr>::Err: Display,
 {
     let val = string(name);
-    val.parse::<T>().unwrap_or_else(|e| panic!("failed to parse {} as integer, value: {}, error: {}", name, val, e))
+    val.parse::<T>().unwrap_or_else(|e| panic!("failed to parse {} as requested type, value: {}, error: {}", name, val, e))
 }
 
-/// Gets an environment variable as a generic type T (only u16 or u32), or returns a default value if not set or parsing fails.
+/// Gets an environment variable as a generic type T, or returns a default value if not set or parsing fails.
 pub fn int_or<T>(name: &str, default: T) -> T
 where
-    T: Integer,
+    T: EnvParsable,
     <T as FromStr>::Err: Display,
 {
     match env::var(name) {
@@ -78,7 +80,7 @@ where
 /// Gets an environment variable as a generic type T, or returns None if not set or parsing fails.
 pub fn int_opt<T>(name: &str) -> Option<T>
 where
-    T: Integer,
+    T: EnvParsable,
     <T as FromStr>::Err: Display,
 {
     env::var(name).ok().and_then(|v| v.parse::<T>().ok())
@@ -97,4 +99,24 @@ pub fn fct_or(name: &str, default: FCT) -> FCT {
         Ok(v) => FCT(Decimal::from_str(&v).unwrap_or(*default)),
         Err(_) => default,
     }
+}
+
+/// Gets an environment variable as a Vec<T>, splitting by the given separator.
+/// Panics if not set or if parsing any part fails.
+pub fn ls<T>(name: &str, sep: &str) -> Vec<T>
+where
+    T: EnvParsable,
+    <T as FromStr>::Err: Display,
+{
+    let val = string(name);
+
+    if val.is_empty() {
+        return vec![];
+    }
+
+    val.split(sep)
+        .map(|s| {
+            s.parse::<T>().unwrap_or_else(|e| panic!("failed to parse part of {} as requested type, value: {}, error: {}", name, s, e))
+        })
+        .collect()
 }

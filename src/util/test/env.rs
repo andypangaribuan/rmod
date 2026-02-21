@@ -64,7 +64,7 @@ fn test_env_int_default() {
 }
 
 #[test]
-#[should_panic(expected = "failed to parse INVALID_INT as integer")]
+#[should_panic(expected = "failed to parse INVALID_INT as requested type")]
 fn test_env_int_panic() {
     unsafe {
         env::set_var("INVALID_INT", "not-a-number");
@@ -94,4 +94,34 @@ fn test_env_fct_default() {
 
     assert_eq!(price1, default_val);
     assert_eq!(price2, default_val);
+}
+
+#[test]
+fn test_env_ls_string() {
+    unsafe {
+        env::set_var("APP_MODULES", "auth,user,order");
+    }
+    let modules: Vec<String> = ls("APP_MODULES", ",");
+    assert_eq!(modules, vec!["auth".to_string(), "user".to_string(), "order".to_string()]);
+}
+
+#[test]
+fn test_env_ls_u16() {
+    unsafe {
+        env::set_var("APP_PORTS", "8080, 8081, 8082");
+    }
+    let ports: Vec<u16> = ls("APP_PORTS", ", ");
+    assert_eq!(ports, vec![8080, 8081, 8082]);
+}
+
+#[test]
+fn test_env_ls_fct() {
+    unsafe {
+        env::set_var("APP_PRICES", "10.0|20.5|30.9");
+    }
+    let prices: Vec<FCT> = ls("APP_PRICES", "|");
+    assert_eq!(prices.len(), 3);
+    assert_eq!(*prices[0], Decimal::from_str("10.0").unwrap());
+    assert_eq!(*prices[1], Decimal::from_str("20.5").unwrap());
+    assert_eq!(*prices[2], Decimal::from_str("30.9").unwrap());
 }

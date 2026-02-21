@@ -58,6 +58,15 @@ impl From<FCT> for Decimal {
     }
 }
 
+impl std::str::FromStr for FCT {
+    type Err = rust_decimal::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let d = Decimal::from_str(s)?;
+        Ok(FCT(d))
+    }
+}
+
 impl std::ops::Deref for FCT {
     type Target = Decimal;
 
