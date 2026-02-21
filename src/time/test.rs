@@ -8,12 +8,13 @@
  * All Rights Reserved.
  */
 
-pub mod config;
-pub mod fuse;
-pub mod store;
-pub mod util;
-pub use fuse::fuse_handler;
-pub mod db;
-pub mod fct;
-pub mod time;
-pub use fct::FCT;
+use super::*;
+
+#[tokio::test]
+async fn test_sleep() {
+    let start = std::time::Instant::now();
+    let duration = Duration::from_millis(100);
+    sleep(duration).await;
+    let elapsed = start.elapsed();
+    assert!(elapsed >= duration);
+}

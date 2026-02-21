@@ -8,12 +8,7 @@
  * All Rights Reserved.
  */
 
-pub mod config;
-pub mod fuse;
-pub mod store;
-pub mod util;
-pub use fuse::fuse_handler;
-pub mod db;
-pub mod fct;
-pub mod time;
-pub use fct::FCT;
+#[path = "time/time.rs"]
+mod _time;
+
+pub use _time::*;

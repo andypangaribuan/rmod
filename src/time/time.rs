@@ -8,12 +8,12 @@
  * All Rights Reserved.
  */
 
-pub mod config;
-pub mod fuse;
-pub mod store;
-pub mod util;
-pub use fuse::fuse_handler;
-pub mod db;
-pub mod fct;
-pub mod time;
-pub use fct::FCT;
+pub use tokio::time::Duration;
+
+#[cfg(test)]
+#[path = "test.rs"]
+mod tests;
+
+pub async fn sleep(duration: Duration) {
+    tokio::time::sleep(duration).await;
+}
