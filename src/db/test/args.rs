@@ -15,7 +15,7 @@ fn test_db_args_with_opt() {
     let opt = args_opt::<()>("ORDER BY id");
     let args = args!("val1", opt);
     assert!(args.opt.is_some());
-    assert_eq!(args.opt.as_ref().unwrap().end_query, Some("ORDER BY id".to_string()));
+    assert_eq!(args.opt.as_ref().unwrap().tail_query, Some("ORDER BY id".to_string()));
     assert!(!args.is_force_rw());
 }
 
@@ -24,14 +24,14 @@ fn test_db_args_with_opt_rw() {
     let opt = args_opt_rw::<()>("ORDER BY id");
     let args = args!("val1", opt);
     assert!(args.is_force_rw());
-    assert_eq!(args.opt.as_ref().unwrap().end_query, Some("ORDER BY id".to_string()));
+    assert_eq!(args.opt.as_ref().unwrap().tail_query, Some("ORDER BY id".to_string()));
 }
 
 #[test]
 fn test_opt_builder() {
-    let opt = Opt::<i32>::new().with_end_query("LIMIT 10").with_force_rw().with_validate(|res| res.is_some());
+    let opt = Opt::<i32>::new().with_tail_query("LIMIT 10").with_force_rw().with_validate(|res| res.is_some());
 
-    assert_eq!(opt.end_query, Some("LIMIT 10".to_string()));
+    assert_eq!(opt.tail_query, Some("LIMIT 10".to_string()));
     assert_eq!(opt.force_rw, Some(true));
     assert!(opt.validate.is_some());
 

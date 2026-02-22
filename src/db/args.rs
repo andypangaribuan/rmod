@@ -19,7 +19,7 @@ pub type OptValidator<T> = Box<dyn Fn(&Option<T>) -> bool + Send + Sync>;
 pub type OptValidatorAll<T> = Box<dyn Fn(&Vec<T>) -> bool + Send + Sync>;
 
 pub struct Opt<T = ()> {
-    pub end_query: Option<String>,
+    pub tail_query: Option<String>,
     pub force_rw: Option<bool>,
     pub validate: Option<OptValidator<T>>,
     pub validate_all: Option<OptValidatorAll<T>>,
@@ -27,7 +27,7 @@ pub struct Opt<T = ()> {
 
 impl<T> Default for Opt<T> {
     fn default() -> Self {
-        Self { end_query: None, force_rw: None, validate: None, validate_all: None }
+        Self { tail_query: None, force_rw: None, validate: None, validate_all: None }
     }
 }
 
@@ -36,8 +36,8 @@ impl<T> Opt<T> {
         Self::default()
     }
 
-    pub fn with_end_query(mut self, query: &str) -> Self {
-        self.end_query = Some(query.to_string());
+    pub fn with_tail_query(mut self, query: &str) -> Self {
+        self.tail_query = Some(query.to_string());
         self
     }
 
@@ -108,12 +108,12 @@ impl<T> PgArg<T> for Opt<T> {
     }
 }
 
-pub fn args_opt<T>(end_query: &str) -> Opt<T> {
-    Opt { end_query: Some(end_query.to_string()), force_rw: None, validate: None, validate_all: None }
+pub fn args_opt<T>(tail_query: &str) -> Opt<T> {
+    Opt { tail_query: Some(tail_query.to_string()), force_rw: None, validate: None, validate_all: None }
 }
 
-pub fn args_opt_rw<T>(end_query: &str) -> Opt<T> {
-    Opt { end_query: Some(end_query.to_string()), force_rw: Some(true), validate: None, validate_all: None }
+pub fn args_opt_rw<T>(tail_query: &str) -> Opt<T> {
+    Opt { tail_query: Some(tail_query.to_string()), force_rw: Some(true), validate: None, validate_all: None }
 }
 
 #[macro_export]

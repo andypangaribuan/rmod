@@ -22,9 +22,9 @@ pub(crate) fn build_select_sql<T>(table_name: &str, where_clause: &str, opt: Opt
         format!("SELECT * FROM {} WHERE {}", table_name, where_clause)
     };
 
-    if let Some(end_query) = opt.and_then(|o| o.end_query.as_ref()) {
+    if let Some(tail_query) = opt.and_then(|o| o.tail_query.as_ref()) {
         sql.push(' ');
-        sql.push_str(end_query);
+        sql.push_str(tail_query);
     }
 
     sql
