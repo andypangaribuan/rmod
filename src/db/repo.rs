@@ -63,16 +63,18 @@ where
 
     /// Automatically generates and executes an INSERT statement for this table.
     pub async fn insert(&self, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+        let table_name = args.opt.as_ref().and_then(|o| o.table_name.as_ref()).map(|s| s.as_str()).unwrap_or(self.table_name);
         let count = self.columns.split(',').count();
         let placeholders = (1..=count).map(|i| format!("${}", i)).collect::<Vec<_>>().join(", ");
-        let sql = format!("INSERT INTO {} ({}) VALUES ({})", self.table_name, self.columns, placeholders);
+        let sql = format!("INSERT INTO {} ({}) VALUES ({})", table_name, self.columns, placeholders);
         crate::db::execute(&sql, args).await
     }
 
     pub async fn insert_on(&self, key: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+        let table_name = args.opt.as_ref().and_then(|o| o.table_name.as_ref()).map(|s| s.as_str()).unwrap_or(self.table_name);
         let count = self.columns.split(',').count();
         let placeholders = (1..=count).map(|i| format!("${}", i)).collect::<Vec<_>>().join(", ");
-        let sql = format!("INSERT INTO {} ({}) VALUES ({})", self.table_name, self.columns, placeholders);
+        let sql = format!("INSERT INTO {} ({}) VALUES ({})", table_name, self.columns, placeholders);
         crate::db::execute_on(key, &sql, args).await
     }
 }
