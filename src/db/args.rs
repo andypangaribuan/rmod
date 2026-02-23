@@ -53,7 +53,7 @@ impl<T> Opt<T> {
         self
     }
 
-    pub fn with_with_deleted_at(mut self, val: bool) -> Self {
+    pub fn with_deleted_at(mut self, val: bool) -> Self {
         self.with_deleted_at = Some(val);
         self
     }
