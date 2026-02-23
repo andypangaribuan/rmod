@@ -8,7 +8,7 @@
  * All Rights Reserved.
  */
 
-use crate::db::{FromRow, PgArgs};
+use crate::db::{FromRow, PgArgs, Tx};
 use std::marker::PhantomData;
 
 use super::build_select_sql;
@@ -76,5 +76,27 @@ where
         let placeholders = (1..=count).map(|i| format!("${}", i)).collect::<Vec<_>>().join(", ");
         let sql = format!("INSERT INTO {} ({}) VALUES ({})", table_name, self.columns, placeholders);
         crate::db::execute_on(key, &sql, args).await
+    }
+
+    pub async fn tx_fetch(&self, tx: &Tx, where_clause: &str, args: PgArgs<T>) -> Result<Option<T>, sqlx::Error> {
+        let sql = build_select_sql(self.table_name, where_clause, args.opt.as_ref());
+        crate::db::tx_fetch::<T>(tx, &sql, args).await
+    }
+
+    pub async fn tx_fetch_all(&self, tx: &Tx, where_clause: &str, args: PgArgs<T>) -> Result<Vec<T>, sqlx::Error> {
+        let sql = build_select_sql(self.table_name, where_clause, args.opt.as_ref());
+        crate::db::tx_fetch_all::<T>(tx, &sql, args).await
+    }
+
+    pub async fn tx_execute(&self, tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+        crate::db::tx_execute(tx, sql, args).await
+    }
+
+    pub async fn tx_insert(&self, tx: &Tx, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+        let table_name = args.opt.as_ref().and_then(|o| o.table_name.as_ref()).map(|s| s.as_str()).unwrap_or(self.table_name);
+        let count = self.columns.split(',').count();
+        let placeholders = (1..=count).map(|i| format!("${}", i)).collect::<Vec<_>>().join(", ");
+        let sql = format!("INSERT INTO {} ({}) VALUES ({})", table_name, self.columns, placeholders);
+        crate::db::tx_execute(tx, &sql, args).await
     }
 }

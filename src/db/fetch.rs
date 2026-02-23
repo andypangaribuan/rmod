@@ -10,7 +10,7 @@
 
 use crate::store;
 
-use super::PgArgs;
+use super::{PgArgs, Tx};
 pub use sqlx::FromRow;
 
 /// Executes a query using the first initialized database pool and returns an optional row.
@@ -105,6 +105,30 @@ pub async fn execute<T>(sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::Pg
 /// Executes a query that does not return rows (e.g., INSERT, UPDATE, DELETE).
 pub async fn execute_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
     sqlx::query_with(sql, args.build_inner()).execute(store::db_on(key)).await
+}
+
+pub async fn tx_fetch<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<Option<T>, sqlx::Error>
+where
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+{
+    let mut lock = tx.inner.lock().await;
+    let inner_tx = lock.as_mut().expect("Transaction already committed or rolled back");
+    sqlx::query_as_with(sql, args.build_inner()).fetch_optional(&mut **inner_tx).await
+}
+
+pub async fn tx_fetch_all<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<Vec<T>, sqlx::Error>
+where
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+{
+    let mut lock = tx.inner.lock().await;
+    let inner_tx = lock.as_mut().expect("Transaction already committed or rolled back");
+    sqlx::query_as_with(sql, args.build_inner()).fetch_all(&mut **inner_tx).await
+}
+
+pub async fn tx_execute<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    let mut lock = tx.inner.lock().await;
+    let inner_tx = lock.as_mut().expect("Transaction already committed or rolled back");
+    sqlx::query_with(sql, args.build_inner()).execute(&mut **inner_tx).await
 }
 
 // Executes a query and returns a single row.
