@@ -45,6 +45,14 @@ pub fn encrypt_raw(data: &[u8], key: &str, iv: &str) -> Result<String, String> {
 /// Key and IV (nonce) are expected to be raw bytes.
 /// Output is a base64 encoded string containing [ciphertext | tag].
 pub fn encrypt_bytes(data: &[u8], key_bytes: &[u8], iv_bytes: &[u8]) -> Result<String, String> {
+    let ciphertext = encrypt_as_bytes(data, key_bytes, iv_bytes)?;
+    Ok(STANDARD.encode(ciphertext))
+}
+
+/// Encrypts data using AES-256-GCM.
+/// Key and IV (nonce) are expected to be raw bytes.
+/// Output is a raw vector of bytes containing [ciphertext | tag].
+pub fn encrypt_as_bytes(data: &[u8], key_bytes: &[u8], iv_bytes: &[u8]) -> Result<Vec<u8>, String> {
     if key_bytes.len() != KEY_LEN {
         return Err(format!("invalid key length: expected {} bytes, got {}", KEY_LEN, key_bytes.len()));
     }
@@ -58,7 +66,7 @@ pub fn encrypt_bytes(data: &[u8], key_bytes: &[u8], iv_bytes: &[u8]) -> Result<S
 
     let ciphertext = cipher.encrypt(nonce, Payload { msg: data, aad: &[] }).map_err(|e| format!("encryption failed: {:?}", e))?;
 
-    Ok(STANDARD.encode(ciphertext))
+    Ok(ciphertext)
 }
 
 /// Decrypts data using AES-256-GCM.
@@ -82,7 +90,13 @@ pub fn decrypt_raw(encoded_data: &str, key: &str, iv: &str) -> Result<Vec<u8>, S
 /// Input is a base64 encoded string containing [ciphertext | tag].
 pub fn decrypt_bytes(encoded_data: &str, key_bytes: &[u8], iv_bytes: &[u8]) -> Result<Vec<u8>, String> {
     let encrypted_data = STANDARD.decode(encoded_data).map_err(|e| format!("invalid data base64: {}", e))?;
+    decrypt_from_bytes(&encrypted_data, key_bytes, iv_bytes)
+}
 
+/// Decrypts data using AES-256-GCM.
+/// Key and IV (nonce) are expected to be raw bytes.
+/// Input is a raw slice of bytes containing [ciphertext | tag].
+pub fn decrypt_from_bytes(encrypted_data: &[u8], key_bytes: &[u8], iv_bytes: &[u8]) -> Result<Vec<u8>, String> {
     if key_bytes.len() != KEY_LEN {
         return Err(format!("invalid key length: expected {} bytes, got {}", KEY_LEN, key_bytes.len()));
     }
@@ -95,7 +109,7 @@ pub fn decrypt_bytes(encoded_data: &str, key_bytes: &[u8], iv_bytes: &[u8]) -> R
     let nonce = Nonce::from_slice(iv_bytes);
 
     let decrypted_data =
-        cipher.decrypt(nonce, Payload { msg: &encrypted_data, aad: &[] }).map_err(|e| format!("decryption failed: {:?}", e))?;
+        cipher.decrypt(nonce, Payload { msg: encrypted_data, aad: &[] }).map_err(|e| format!("decryption failed: {:?}", e))?;
 
     Ok(decrypted_data)
 }
