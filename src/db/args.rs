@@ -96,6 +96,24 @@ impl<T> PgArgs<T> {
     pub(crate) fn is_force_rw(&self) -> bool {
         self.opt.as_ref().and_then(|o| o.force_rw).unwrap_or(false)
     }
+
+    pub fn take_opt(&mut self) -> Option<Opt<T>> {
+        self.opt.take()
+    }
+
+    pub fn set_opt(&mut self, opt: Option<Opt<T>>) {
+        self.opt = opt;
+    }
+
+    pub fn push(&mut self, mut other: PgArgs<T>) {
+        if !other.collectors.is_empty() {
+            self.collectors.append(&mut other.collectors);
+        }
+
+        if let Some(opt) = other.take_opt() {
+            self.set_opt(Some(opt));
+        }
+    }
 }
 
 pub trait PgArg<T> {
