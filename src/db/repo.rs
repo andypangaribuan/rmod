@@ -39,6 +39,12 @@ where
         crate::db::fetch_all::<T>(&sql, args).await
     }
 
+    /// Fetches exactly one row using the first initialized database pool.
+    pub async fn query(&self, where_clause: &str, args: PgArgs<T>) -> Result<T, sqlx::Error> {
+        let sql = build_select_sql(self.table_name, where_clause, args.opt.as_ref());
+        crate::db::query::<T>(&sql, args).await
+    }
+
     /// Fetches an optional row from a specific database.
     pub async fn fetch_on(&self, key: &str, where_clause: &str, args: PgArgs<T>) -> Result<Option<T>, sqlx::Error> {
         let sql = build_select_sql(self.table_name, where_clause, args.opt.as_ref());
@@ -49,6 +55,12 @@ where
     pub async fn fetch_all_on(&self, key: &str, where_clause: &str, args: PgArgs<T>) -> Result<Vec<T>, sqlx::Error> {
         let sql = build_select_sql(self.table_name, where_clause, args.opt.as_ref());
         crate::db::fetch_all_on::<T>(key, &sql, args).await
+    }
+
+    /// Fetches exactly one row from a specific database.
+    pub async fn query_on(&self, key: &str, where_clause: &str, args: PgArgs<T>) -> Result<T, sqlx::Error> {
+        let sql = build_select_sql(self.table_name, where_clause, args.opt.as_ref());
+        crate::db::query_on::<T>(key, &sql, args).await
     }
 
     /// Executes a query using the first initialized database pool (e.g., INSERT, UPDATE, DELETE).
@@ -86,6 +98,11 @@ where
     pub async fn tx_fetch_all(&self, tx: &Tx, where_clause: &str, args: PgArgs<T>) -> Result<Vec<T>, sqlx::Error> {
         let sql = build_select_sql(self.table_name, where_clause, args.opt.as_ref());
         crate::db::tx_fetch_all::<T>(tx, &sql, args).await
+    }
+
+    pub async fn tx_query(&self, tx: &Tx, where_clause: &str, args: PgArgs<T>) -> Result<T, sqlx::Error> {
+        let sql = build_select_sql(self.table_name, where_clause, args.opt.as_ref());
+        crate::db::tx_query::<T>(tx, &sql, args).await
     }
 
     pub async fn tx_execute(&self, tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {

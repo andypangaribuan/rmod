@@ -105,8 +105,9 @@ impl<T> PgArgs<T> {
         self.opt = opt;
     }
 
-    pub fn push<V: PgArg<T>>(&mut self, arg: V) {
-        arg.add_to(self);
+    pub fn push<V: PgArg<T>>(mut self, arg: V) -> Self {
+        arg.add_to(&mut self);
+        self
     }
 }
 

@@ -34,6 +34,27 @@ where
     Ok(res)
 }
 
+/// Executes a query using the first initialized database pool and returns exactly one row.
+pub async fn query<T>(sql: &str, args: PgArgs<T>) -> Result<T, sqlx::Error>
+where
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+{
+    let force_rw = args.is_force_rw();
+    let use_read = !force_rw && store::db_is_read_real();
+    let pool = if use_read { store::db_read() } else { store::db() };
+
+    let mut res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(pool).await?;
+
+    if use_read
+        && let Some(validate) = args.opt.as_ref().and_then(|o| o.validate.as_ref())
+        && !validate(&res)
+    {
+        res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(store::db()).await?;
+    }
+
+    res.ok_or(sqlx::Error::RowNotFound)
+}
+
 /// Executes a query using the first initialized database pool and returns all rows.
 pub async fn fetch_all<T>(sql: &str, args: PgArgs<T>) -> Result<Vec<T>, sqlx::Error>
 where
@@ -74,6 +95,27 @@ where
     }
 
     Ok(res)
+}
+
+/// Executes a query on a specific database and returns exactly one row.
+pub async fn query_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<T, sqlx::Error>
+where
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+{
+    let force_rw = args.is_force_rw();
+    let use_read = !force_rw && store::db_is_read_real_on(key);
+    let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
+
+    let mut res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(pool).await?;
+
+    if use_read
+        && let Some(validate) = args.opt.as_ref().and_then(|o| o.validate.as_ref())
+        && !validate(&res)
+    {
+        res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(store::db_on(key)).await?;
+    }
+
+    res.ok_or(sqlx::Error::RowNotFound)
 }
 
 /// Executes a query and returns all rows.
@@ -129,6 +171,15 @@ pub async fn tx_execute<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<sqlx::
     let mut lock = tx.inner.lock().await;
     let inner_tx = lock.as_mut().expect("Transaction already committed or rolled back");
     sqlx::query_with(sql, args.build_inner()).execute(&mut **inner_tx).await
+}
+
+pub async fn tx_query<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<T, sqlx::Error>
+where
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+{
+    let mut lock = tx.inner.lock().await;
+    let inner_tx = lock.as_mut().expect("Transaction already committed or rolled back");
+    sqlx::query_as_with(sql, args.build_inner()).fetch_one(&mut **inner_tx).await
 }
 
 // Executes a query and returns a single row.
