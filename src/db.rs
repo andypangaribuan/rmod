@@ -10,6 +10,8 @@
 
 #[path = "db/args.rs"]
 mod _args;
+#[path = "db/exec.rs"]
+mod _exec;
 #[path = "db/fetch.rs"]
 mod _fetch;
 #[path = "db/function.rs"]
@@ -20,6 +22,7 @@ mod _repo;
 mod _tx;
 
 pub use _args::*;
+pub use _exec::*;
 pub use _fetch::*;
 pub(crate) use _function::*;
 pub use _repo::*;

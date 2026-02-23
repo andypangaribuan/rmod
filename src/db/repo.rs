@@ -73,6 +73,22 @@ where
         crate::db::execute_on(key, sql, args).await
     }
 
+    /// Executes an UPDATE query using the first initialized database pool.
+    pub async fn update(&self, set: &str, condition: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+        crate::db::update(self.table_name, set, condition, args).await
+    }
+
+    /// Executes an UPDATE query on a specific database.
+    pub async fn update_on(
+        &self,
+        key: &str,
+        set: &str,
+        condition: &str,
+        args: PgArgs<T>,
+    ) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+        crate::db::update_on(key, self.table_name, set, condition, args).await
+    }
+
     /// Automatically generates and executes an INSERT statement for this table.
     pub async fn insert(&self, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
         let table_name = args.opt.as_ref().and_then(|o| o.table_name.as_ref()).map(|s| s.as_str()).unwrap_or(self.table_name);
@@ -115,5 +131,15 @@ where
         let placeholders = (1..=count).map(|i| format!("${}", i)).collect::<Vec<_>>().join(", ");
         let sql = format!("INSERT INTO {} ({}) VALUES ({})", table_name, self.columns, placeholders);
         crate::db::tx_execute(tx, &sql, args).await
+    }
+
+    pub async fn tx_update(
+        &self,
+        tx: &Tx,
+        set: &str,
+        condition: &str,
+        args: PgArgs<T>,
+    ) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+        crate::db::tx_update(tx, self.table_name, set, condition, args).await
     }
 }
