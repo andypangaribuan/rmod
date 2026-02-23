@@ -105,14 +105,8 @@ impl<T> PgArgs<T> {
         self.opt = opt;
     }
 
-    pub fn push(&mut self, mut other: PgArgs<T>) {
-        if !other.collectors.is_empty() {
-            self.collectors.append(&mut other.collectors);
-        }
-
-        if let Some(opt) = other.take_opt() {
-            self.set_opt(Some(opt));
-        }
+    pub fn push<V: PgArg<T>>(&mut self, arg: V) {
+        arg.add_to(self);
     }
 }
 
@@ -135,6 +129,18 @@ where
 impl<T> PgArg<T> for Opt<T> {
     fn add_to(self, args: &mut PgArgs<T>) {
         args.opt = Some(self);
+    }
+}
+
+impl<T> PgArg<T> for PgArgs<T> {
+    fn add_to(mut self, args: &mut PgArgs<T>) {
+        if !self.collectors.is_empty() {
+            args.collectors.append(&mut self.collectors);
+        }
+
+        if let Some(opt) = self.take_opt() {
+            args.set_opt(Some(opt));
+        }
     }
 }
 
