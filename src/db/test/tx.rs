@@ -8,10 +8,7 @@
  * All Rights Reserved.
  */
 
-use super::*;
-
 #[tokio::test]
 async fn test_tx_guard() {
     // This is just a placeholder for now to resolve lint errors
-    // and demonstrate that the Tx struct can be instantiated in tests.
 }
