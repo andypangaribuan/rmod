@@ -22,13 +22,14 @@ pub struct Opt<T = ()> {
     pub table_name: Option<String>,
     pub tail_query: Option<String>,
     pub force_rw: Option<bool>,
+    pub with_deleted_at: Option<bool>,
     pub validate: Option<OptValidator<T>>,
     pub validate_all: Option<OptValidatorAll<T>>,
 }
 
 impl<T> Default for Opt<T> {
     fn default() -> Self {
-        Self { table_name: None, tail_query: None, force_rw: None, validate: None, validate_all: None }
+        Self { table_name: None, tail_query: None, force_rw: None, with_deleted_at: None, validate: None, validate_all: None }
     }
 }
 
@@ -49,6 +50,11 @@ impl<T> Opt<T> {
 
     pub fn with_force_rw(mut self) -> Self {
         self.force_rw = Some(true);
+        self
+    }
+
+    pub fn with_with_deleted_at(mut self, val: bool) -> Self {
+        self.with_deleted_at = Some(val);
         self
     }
 
@@ -115,11 +121,25 @@ impl<T> PgArg<T> for Opt<T> {
 }
 
 pub fn args_opt<T>(tail_query: &str) -> Opt<T> {
-    Opt { table_name: None, tail_query: Some(tail_query.to_string()), force_rw: None, validate: None, validate_all: None }
+    Opt {
+        table_name: None,
+        tail_query: Some(tail_query.to_string()),
+        force_rw: None,
+        with_deleted_at: None,
+        validate: None,
+        validate_all: None,
+    }
 }
 
 pub fn args_opt_rw<T>(tail_query: &str) -> Opt<T> {
-    Opt { table_name: None, tail_query: Some(tail_query.to_string()), force_rw: Some(true), validate: None, validate_all: None }
+    Opt {
+        table_name: None,
+        tail_query: Some(tail_query.to_string()),
+        force_rw: Some(true),
+        with_deleted_at: None,
+        validate: None,
+        validate_all: None,
+    }
 }
 
 #[macro_export]
