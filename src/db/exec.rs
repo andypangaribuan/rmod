@@ -11,22 +11,6 @@
 use super::{PgArgs, Tx};
 use crate::store;
 
-/// Executes a query using the first initialized database pool that does not return rows (e.g., INSERT, UPDATE, DELETE).
-pub async fn execute<T>(sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
-    sqlx::query_with(sql, args.build_inner()).execute(store::db()).await
-}
-
-/// Executes a query that does not return rows (e.g., INSERT, UPDATE, DELETE).
-pub async fn execute_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
-    sqlx::query_with(sql, args.build_inner()).execute(store::db_on(key)).await
-}
-
-pub async fn tx_execute<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
-    let mut lock = tx.inner.lock().await;
-    let inner_tx = lock.as_mut().expect("Transaction already committed or rolled back");
-    sqlx::query_with(sql, args.build_inner()).execute(&mut **inner_tx).await
-}
-
 /// Executes an UPDATE query using the first initialized database pool.
 pub async fn update<T>(table: &str, set: &str, condition: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
     let table = args.opt.as_ref().and_then(|o| o.table_name.as_ref()).map(|s| s.as_str()).unwrap_or(table);
@@ -99,4 +83,20 @@ pub async fn tx_update<T>(
     let mut lock = tx.inner.lock().await;
     let inner_tx = lock.as_mut().expect("Transaction already committed or rolled back");
     sqlx::query_with(&sql, args.build_inner()).execute(&mut **inner_tx).await
+}
+
+/// Executes a query using the first initialized database pool that does not return rows (e.g., INSERT, UPDATE, DELETE).
+pub async fn execute<T>(sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    sqlx::query_with(sql, args.build_inner()).execute(store::db()).await
+}
+
+/// Executes a query that does not return rows (e.g., INSERT, UPDATE, DELETE).
+pub async fn execute_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    sqlx::query_with(sql, args.build_inner()).execute(store::db_on(key)).await
+}
+
+pub async fn tx_execute<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    let mut lock = tx.inner.lock().await;
+    let inner_tx = lock.as_mut().expect("Transaction already committed or rolled back");
+    sqlx::query_with(sql, args.build_inner()).execute(&mut **inner_tx).await
 }
