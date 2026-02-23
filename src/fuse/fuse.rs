@@ -98,7 +98,7 @@ pub struct FuseRContext {
     pub res_source: FuseResSource,
 
     response: Option<Response>,
-    pub body: Option<Vec<u8>>,
+    pub body: Option<axum::body::Bytes>,
 }
 
 impl Default for Fuse {
@@ -150,7 +150,7 @@ impl Fuse {
 
             let handler_fn = move |req: Request<Body>| async move {
                 let (parts, body) = req.into_parts();
-                let bytes = axum::body::to_bytes(body, limit).await.unwrap_or_default().to_vec();
+                let bytes = axum::body::to_bytes(body, limit).await.unwrap_or_default();
 
                 let mut ctx = FuseRContext::new(Request::from_parts(parts, Body::from(bytes.clone())));
                 ctx.body = Some(bytes);
