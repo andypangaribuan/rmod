@@ -12,7 +12,7 @@ use super::*;
 
 #[test]
 fn test_db_args_with_opt() {
-    let opt = args_opt::<()>("ORDER BY id");
+    let opt = args_opt::<()>().tail_query("ORDER BY id");
     let args = args!("val1", opt);
     assert!(args.opt.is_some());
     assert_eq!(args.opt.as_ref().unwrap().tail_query, Some("ORDER BY id".to_string()));
@@ -21,7 +21,7 @@ fn test_db_args_with_opt() {
 
 #[test]
 fn test_db_args_with_opt_rw() {
-    let opt = args_opt_rw::<()>("ORDER BY id");
+    let opt = args_opt::<()>().tail_query("ORDER BY id").force_rw();
     let args = args!("val1", opt);
     assert!(args.is_force_rw());
     assert_eq!(args.opt.as_ref().unwrap().tail_query, Some("ORDER BY id".to_string()));
@@ -29,12 +29,7 @@ fn test_db_args_with_opt_rw() {
 
 #[test]
 fn test_opt_builder() {
-    let opt = Opt::<i32>::new()
-        .with_table_name("users")
-        .with_with_deleted_at(false)
-        .with_tail_query("LIMIT 10")
-        .with_force_rw()
-        .with_validate(|res| res.is_some());
+    let opt = Opt::<i32>::new().table_name("users").with_deleted_at(false).tail_query("LIMIT 10").force_rw().validate(|res| res.is_some());
 
     assert_eq!(opt.table_name, Some("users".to_string()));
     assert_eq!(opt.with_deleted_at, Some(false));
@@ -49,7 +44,7 @@ fn test_opt_builder() {
 
 #[test]
 fn test_opt_validate_all() {
-    let opt = Opt::<i32>::new().with_validate_all(|res| !res.is_empty());
+    let opt = Opt::<i32>::new().validate_all(|res| !res.is_empty());
 
     assert!(opt.validate_all.is_some());
     let validator = opt.validate_all.as_ref().unwrap();

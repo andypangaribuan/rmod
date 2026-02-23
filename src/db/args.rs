@@ -19,12 +19,12 @@ pub type OptValidator<T> = Box<dyn Fn(&Option<T>) -> bool + Send + Sync>;
 pub type OptValidatorAll<T> = Box<dyn Fn(&Vec<T>) -> bool + Send + Sync>;
 
 pub struct Opt<T = ()> {
-    pub table_name: Option<String>,
-    pub tail_query: Option<String>,
-    pub force_rw: Option<bool>,
-    pub with_deleted_at: Option<bool>,
-    pub validate: Option<OptValidator<T>>,
-    pub validate_all: Option<OptValidatorAll<T>>,
+    pub(crate) table_name: Option<String>,
+    pub(crate) tail_query: Option<String>,
+    pub(crate) force_rw: Option<bool>,
+    pub(crate) with_deleted_at: Option<bool>,
+    pub(crate) validate: Option<OptValidator<T>>,
+    pub(crate) validate_all: Option<OptValidatorAll<T>>,
 }
 
 impl<T> Default for Opt<T> {
@@ -38,17 +38,17 @@ impl<T> Opt<T> {
         Self::default()
     }
 
-    pub fn with_table_name(mut self, table_name: &str) -> Self {
+    pub fn table_name(mut self, table_name: &str) -> Self {
         self.table_name = Some(table_name.to_string());
         self
     }
 
-    pub fn with_tail_query(mut self, query: &str) -> Self {
+    pub fn tail_query(mut self, query: &str) -> Self {
         self.tail_query = Some(query.to_string());
         self
     }
 
-    pub fn with_force_rw(mut self) -> Self {
+    pub fn force_rw(mut self) -> Self {
         self.force_rw = Some(true);
         self
     }
@@ -58,12 +58,12 @@ impl<T> Opt<T> {
         self
     }
 
-    pub fn with_validate(mut self, f: impl Fn(&Option<T>) -> bool + Send + Sync + 'static) -> Self {
+    pub fn validate(mut self, f: impl Fn(&Option<T>) -> bool + Send + Sync + 'static) -> Self {
         self.validate = Some(Box::new(f));
         self
     }
 
-    pub fn with_validate_all(mut self, f: impl Fn(&Vec<T>) -> bool + Send + Sync + 'static) -> Self {
+    pub fn validate_all(mut self, f: impl Fn(&Vec<T>) -> bool + Send + Sync + 'static) -> Self {
         self.validate_all = Some(Box::new(f));
         self
     }
@@ -120,26 +120,8 @@ impl<T> PgArg<T> for Opt<T> {
     }
 }
 
-pub fn args_opt<T>(tail_query: &str) -> Opt<T> {
-    Opt {
-        table_name: None,
-        tail_query: Some(tail_query.to_string()),
-        force_rw: None,
-        with_deleted_at: None,
-        validate: None,
-        validate_all: None,
-    }
-}
-
-pub fn args_opt_rw<T>(tail_query: &str) -> Opt<T> {
-    Opt {
-        table_name: None,
-        tail_query: Some(tail_query.to_string()),
-        force_rw: Some(true),
-        with_deleted_at: None,
-        validate: None,
-        validate_all: None,
-    }
+pub fn args_opt<T>() -> Opt<T> {
+    Opt { table_name: None, tail_query: None, force_rw: None, with_deleted_at: None, validate: None, validate_all: None }
 }
 
 #[macro_export]
