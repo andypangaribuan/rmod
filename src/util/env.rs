@@ -53,6 +53,7 @@ impl EnvParsable for u16 {}
 impl EnvParsable for u32 {}
 impl EnvParsable for String {}
 impl EnvParsable for FCT {}
+impl EnvParsable for bool {}
 
 /// Gets an environment variable as a generic type T.
 /// Panics if not set or if parsing fails.
@@ -119,4 +120,24 @@ where
             s.parse::<T>().unwrap_or_else(|e| panic!("failed to parse part of {} as requested type, value: {}, error: {}", name, s, e))
         })
         .collect()
+}
+
+/// Gets an environment variable as a bool.
+/// Panics if not set or if parsing fails.
+pub fn bool(name: &str) -> bool {
+    let val = string(name);
+    val.parse::<bool>().unwrap_or_else(|e| panic!("failed to parse {} as bool, value: {}, error: {}", name, val, e))
+}
+
+/// Gets an environment variable as a bool, or returns a default value if not set or parsing fails.
+pub fn bool_or(name: &str, default: bool) -> bool {
+    match env::var(name) {
+        Ok(v) => v.parse::<bool>().unwrap_or(default),
+        Err(_) => default,
+    }
+}
+
+/// Gets an environment variable as an Option<bool>.
+pub fn bool_opt(name: &str) -> Option<bool> {
+    env::var(name).ok().and_then(|v| v.parse::<bool>().ok())
 }

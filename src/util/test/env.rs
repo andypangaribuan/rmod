@@ -125,3 +125,37 @@ fn test_env_ls_fct() {
     assert_eq!(*prices[1], Decimal::from_str("20.5").unwrap());
     assert_eq!(*prices[2], Decimal::from_str("30.9").unwrap());
 }
+
+#[test]
+fn test_env_bool() {
+    unsafe {
+        env::set_var("DEBUG_MODE", "true");
+        env::set_var("FEATURE_ENABLED", "false");
+    }
+    assert!(bool("DEBUG_MODE"));
+    assert!(!bool("FEATURE_ENABLED"));
+    assert_eq!(bool_opt("DEBUG_MODE"), Some(true));
+    assert_eq!(bool_opt("FEATURE_ENABLED"), Some(false));
+    assert_eq!(bool_opt("NON_EXISTENT"), None);
+}
+
+#[test]
+fn test_env_bool_default() {
+    unsafe {
+        env::remove_var("MISSING_BOOL");
+        env::set_var("INVALID_BOOL", "not-a-bool");
+    }
+    assert!(bool_or("MISSING_BOOL", true));
+    assert!(!bool_or("MISSING_BOOL", false));
+    assert!(bool_or("INVALID_BOOL", true));
+    assert!(!bool_or("INVALID_BOOL", false));
+}
+
+#[test]
+fn test_env_ls_bool() {
+    unsafe {
+        env::set_var("BOOL_LIST", "true,false,true");
+    }
+    let list: Vec<bool> = ls("BOOL_LIST", ",");
+    assert_eq!(list, vec![true, false, true]);
+}
