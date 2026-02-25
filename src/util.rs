@@ -17,7 +17,6 @@ pub mod future;
 pub mod future_macro;
 pub use future::FuturePool;
 pub use future::future_burst;
-pub mod http;
 pub mod job;
 pub mod jwt;
 pub mod lifecycle;

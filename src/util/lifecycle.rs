@@ -65,7 +65,7 @@ pub fn start() {
         };
 
         tokio::time::sleep(wait).await;
-        println!("Graceful shutdown timeout reached, forcing exit.");
+        println!("graceful shutdown timeout reached, forcing exit");
         std::process::exit(0);
     });
 }

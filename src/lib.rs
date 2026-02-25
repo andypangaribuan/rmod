@@ -10,6 +10,7 @@
 
 pub mod config;
 pub mod fuse;
+pub mod http;
 pub mod store;
 pub mod util;
 pub use fuse::fuse_handler;

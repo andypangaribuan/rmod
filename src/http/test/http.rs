@@ -8,9 +8,9 @@
  * All Rights Reserved.
  */
 
+use crate::http;
 use crate::util::FuturePool;
 use crate::util::future_burst;
-use crate::util::http;
 use std::collections::HashMap;
 use std::time::Duration;
 
