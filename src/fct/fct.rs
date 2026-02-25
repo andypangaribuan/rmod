@@ -12,16 +12,16 @@
 #[path = "test/fct.rs"]
 mod tests;
 
+use rust_decimal::prelude::FromPrimitive;
+use rust_decimal::{Decimal, RoundingStrategy};
+use serde::{Deserialize, Serialize};
+
 #[macro_export]
 macro_rules! fct {
     ($($t:tt)*) => {
         $crate::fct::FCT(rust_decimal_macros::dec!($($t)*))
     };
 }
-
-use rust_decimal::prelude::FromPrimitive;
-use rust_decimal::{Decimal, RoundingStrategy};
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(transparent)]

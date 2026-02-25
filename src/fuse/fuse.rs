@@ -17,11 +17,9 @@ use axum::{
     routing::{MethodFilter, Router, on},
 };
 pub use futures_util::future::BoxFuture;
-
 use std::any::Any;
 use std::backtrace::Backtrace;
 use std::collections::HashMap;
-
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex, OnceLock};
 
