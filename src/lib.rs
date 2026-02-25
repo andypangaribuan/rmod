@@ -15,6 +15,7 @@ pub mod http;
 pub mod job;
 pub mod store;
 pub mod time;
+pub mod uid;
 pub mod util;
 pub use fuse::fuse_handler;
 pub mod db;
