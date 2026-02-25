@@ -8,17 +8,17 @@
  * All Rights Reserved.
  */
 
-#[path = "db/args.rs"]
+#[path = "args.rs"]
 mod _args;
-#[path = "db/exec.rs"]
+#[path = "exec.rs"]
 mod _exec;
-#[path = "db/fetch.rs"]
+#[path = "fetch.rs"]
 mod _fetch;
-#[path = "db/function.rs"]
+#[path = "function.rs"]
 mod _function;
-#[path = "db/repo.rs"]
+#[path = "repo.rs"]
 mod _repo;
-#[path = "db/tx.rs"]
+#[path = "tx.rs"]
 mod _tx;
 
 pub use _args::*;
