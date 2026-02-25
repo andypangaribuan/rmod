@@ -58,30 +58,37 @@ pub fn start() {
             _ = sig_term.recv() => {},
         };
 
-        // Notify all subscribers (like Fuse server and background jobs)
+        let start_time = tokio::time::Instant::now();
+
+        // 1. Notify all subscribers (Axum, Jobs, etc.)
         let _ = SHUTDOWN_TX.send(());
 
+        let wait_duration = {
+            let guard = SHUTDOWN_DURATION.lock().unwrap();
+            guard.unwrap_or(Duration::from_secs(10))
+        };
+
+        // 2. Run the "before shutdown" callbacks
         let cbs = {
             let mut guard = CALLBACKS.lock().unwrap();
             std::mem::take(&mut *guard)
         };
 
-        let mut handles = Vec::with_capacity(cbs.len());
-        for cb in cbs {
-            handles.push(tokio::spawn(cb()));
+        if !cbs.is_empty() {
+            let mut handles = Vec::with_capacity(cbs.len());
+            for cb in cbs {
+                handles.push(tokio::spawn(cb()));
+            }
+
+            // Wait for all registered callbacks to finish
+            let _ = futures_util::future::join_all(handles).await;
         }
 
-        let wait = {
-            let guard = SHUTDOWN_DURATION.lock().unwrap();
-            guard.unwrap_or(Duration::from_secs(10))
-        };
-
-        if !handles.is_empty() && tokio::time::timeout(wait, futures_util::future::join_all(handles)).await.is_err() {
-            println!("graceful shutdown timeout reached, forcing exit");
+        // 3. Calculate remaining time to wait from SHUTDOWN_DURATION
+        let elapsed = start_time.elapsed();
+        if elapsed < wait_duration {
+            tokio::time::sleep(wait_duration - elapsed).await;
         }
-
-        // Give a tiny grace period for the main thread and other tasks to realize we are shutting down
-        tokio::time::sleep(Duration::from_millis(100)).await;
 
         std::process::exit(0);
     });
