@@ -30,8 +30,7 @@ pub use types::ArcX;
 // Proxy re-exports for common dependencies
 pub use ::serde;
 pub use ::serde::{Deserialize, Serialize, de, ser};
-pub use ::serde_json;
-pub use ::serde_json::*;
+pub use ::serde_json as json;
 pub use chrono;
 pub use chrono::{DateTime, Datelike, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Timelike, Utc};
 pub use rust_decimal;
