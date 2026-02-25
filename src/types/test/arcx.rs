@@ -9,7 +9,7 @@
  */
 
 use super::*;
-use crate::arcx;
+use crate::{arcx, vmove};
 
 #[test]
 fn test_arcx_new_get() {
@@ -94,7 +94,6 @@ async fn test_arcx_with_future_pool_set_get() {
 
 #[tokio::test]
 async fn test_arcx_with_vmove() {
-    use crate::vmove;
     let a = ArcX::new(0);
     let mut pool = crate::future::FuturePool::new();
 

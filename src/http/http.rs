@@ -8,14 +8,13 @@
  * All Rights Reserved.
  */
 
+pub use axum::http::StatusCode;
 use once_cell::sync::Lazy;
 use reqwest::{Client, Method, Response, header::HeaderMap};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-
-pub use axum::http::StatusCode;
 
 static CLIENTS: Lazy<Mutex<HashMap<String, Arc<Http>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
