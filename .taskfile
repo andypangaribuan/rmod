@@ -65,6 +65,9 @@ function rewrite-author {
       commit.author_name = b"Andy Pangaribuan"
       commit.author_email = b"iam.pangaribuan@gmail.com"
   '
+
+  git push --force --all
+  git push --force --tags
 }
 
 
