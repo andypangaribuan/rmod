@@ -76,10 +76,8 @@ pub fn start() {
             guard.unwrap_or(Duration::from_secs(10))
         };
 
-        if !handles.is_empty() {
-            if tokio::time::timeout(wait, futures_util::future::join_all(handles)).await.is_err() {
-                println!("graceful shutdown timeout reached, forcing exit");
-            }
+        if !handles.is_empty() && tokio::time::timeout(wait, futures_util::future::join_all(handles)).await.is_err() {
+            println!("graceful shutdown timeout reached, forcing exit");
         }
 
         // Give a tiny grace period for the main thread and other tasks to realize we are shutting down
