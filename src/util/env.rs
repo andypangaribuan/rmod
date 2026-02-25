@@ -12,13 +12,11 @@
 #[path = "test/env.rs"]
 mod tests;
 
+use crate::fct::FCT;
+use rust_decimal::Decimal;
 use std::env;
 use std::fmt::Display;
 use std::str::FromStr;
-
-use rust_decimal::Decimal;
-
-use crate::fct::FCT;
 
 /// Gets an environment variable as a String.
 /// Panics with a clear message if not set.
