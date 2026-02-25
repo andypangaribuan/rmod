@@ -192,7 +192,7 @@ pub async fn delete(
 }
 
 #[cfg(test)]
-pub fn clear_cache() {
+pub(crate) fn clear_cache() {
     let mut clients = CLIENTS.lock().unwrap();
     clients.clear();
 }
