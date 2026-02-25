@@ -27,6 +27,12 @@ pub use sqlx;
 pub use sqlx::{decode, postgres};
 pub use types::ArcX;
 
+// Proxy re-exports for common dependencies
+pub use rust_decimal;
+pub use rust_decimal::*;
+pub use rust_decimal_macros;
+pub use rust_decimal_macros::dec;
+
 // Re-exports for sqlx macros when using rmod as a sqlx proxy
 pub use sqlx::{ColumnIndex, Decode, Encode, Error, FromRow, Row, Type};
 pub type Result<T, E = sqlx::Error> = std::result::Result<T, E>;
