@@ -8,7 +8,6 @@
  * All Rights Reserved.
  */
 
-#[path = "config/config.rs"]
+#[path = "config.rs"]
 mod _config;
-
 pub use _config::*;

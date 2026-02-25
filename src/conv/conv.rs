@@ -8,10 +8,9 @@
  * All Rights Reserved.
  */
 
-#[cfg(test)]
-#[path = "test/conv.rs"]
-mod tests;
+use chrono::{DateTime, Utc};
 
-#[path = "conv.rs"]
-mod _conv;
-pub use _conv::*;
+/// Formats a DateTime<Utc> into a string with the given format.
+pub fn time_parse(dt: DateTime<Utc>, format: &str) -> String {
+    dt.format(format).to_string()
+}
