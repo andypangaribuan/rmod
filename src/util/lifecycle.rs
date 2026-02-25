@@ -8,12 +8,15 @@
  * All Rights Reserved.
  */
 
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 use tokio::signal::unix::{SignalKind, signal};
 use tokio::sync::broadcast;
 
-type ShutdownCallback = Box<dyn FnOnce() + Send + 'static>;
+pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+type ShutdownCallback = Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static>;
 
 static SHUTDOWN_DURATION: LazyLock<Mutex<Option<Duration>>> = LazyLock::new(|| Mutex::new(None));
 static CALLBACKS: LazyLock<Mutex<Vec<ShutdownCallback>>> = LazyLock::new(|| Mutex::new(Vec::new()));
@@ -24,13 +27,14 @@ pub fn subscribe() -> broadcast::Receiver<()> {
     SHUTDOWN_TX.subscribe()
 }
 
-pub fn before_graceful_shutdown<F>(callbacks: Vec<F>)
+pub fn before_graceful_shutdown<F, Fut>(callbacks: Vec<F>)
 where
-    F: FnOnce() + Send + 'static,
+    F: FnOnce() -> Fut + Send + 'static,
+    Fut: Future<Output = ()> + Send + 'static,
 {
     let mut guard = CALLBACKS.lock().unwrap();
     for cb in callbacks {
-        guard.push(Box::new(cb));
+        guard.push(Box::new(move || Box::pin(cb()) as BoxFuture<'static, ()>));
     }
 }
 
@@ -64,9 +68,7 @@ pub fn start() {
 
         let mut handles = Vec::with_capacity(cbs.len());
         for cb in cbs {
-            handles.push(tokio::task::spawn_blocking(move || {
-                cb();
-            }));
+            handles.push(tokio::spawn(cb()));
         }
 
         let wait = {
@@ -74,8 +76,10 @@ pub fn start() {
             guard.unwrap_or(Duration::from_secs(10))
         };
 
-        if tokio::time::timeout(wait, futures_util::future::join_all(handles)).await.is_err() {
-            println!("graceful shutdown timeout reached, forcing exit");
+        if !handles.is_empty() {
+            if tokio::time::timeout(wait, futures_util::future::join_all(handles)).await.is_err() {
+                println!("graceful shutdown timeout reached, forcing exit");
+            }
         }
 
         // Give a tiny grace period for the main thread and other tasks to realize we are shutting down
