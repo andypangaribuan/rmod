@@ -17,6 +17,7 @@ use sqlx::postgres::PgArguments;
 pub type PgArgCollector = Box<dyn Fn(&mut PgArguments) + Send + Sync>;
 pub type OptValidator<T> = Box<dyn Fn(&Option<T>) -> bool + Send + Sync>;
 pub type OptValidatorAll<T> = Box<dyn Fn(&Vec<T>) -> bool + Send + Sync>;
+pub type OptValidatorCount = Box<dyn Fn(i64) -> bool + Send + Sync>;
 
 pub struct Opt<T = ()> {
     pub(crate) table_name: Option<String>,
@@ -25,11 +26,20 @@ pub struct Opt<T = ()> {
     pub(crate) with_deleted_at: Option<bool>,
     pub(crate) validate: Option<OptValidator<T>>,
     pub(crate) validate_all: Option<OptValidatorAll<T>>,
+    pub(crate) validate_count: Option<OptValidatorCount>,
 }
 
 impl<T> Default for Opt<T> {
     fn default() -> Self {
-        Self { table_name: None, tail_query: None, force_rw: None, with_deleted_at: None, validate: None, validate_all: None }
+        Self {
+            table_name: None,
+            tail_query: None,
+            force_rw: None,
+            with_deleted_at: None,
+            validate: None,
+            validate_all: None,
+            validate_count: None,
+        }
     }
 }
 
@@ -65,6 +75,11 @@ impl<T> Opt<T> {
 
     pub fn validate_all(mut self, f: impl Fn(&Vec<T>) -> bool + Send + Sync + 'static) -> Self {
         self.validate_all = Some(Box::new(f));
+        self
+    }
+
+    pub fn validate_count(mut self, f: impl Fn(i64) -> bool + Send + Sync + 'static) -> Self {
+        self.validate_count = Some(Box::new(f));
         self
     }
 }
@@ -146,7 +161,15 @@ impl<T> PgArg<T> for PgArgs<T> {
 }
 
 pub fn args_opt<T>() -> Opt<T> {
-    Opt { table_name: None, tail_query: None, force_rw: None, with_deleted_at: None, validate: None, validate_all: None }
+    Opt {
+        table_name: None,
+        tail_query: None,
+        force_rw: None,
+        with_deleted_at: None,
+        validate: None,
+        validate_all: None,
+        validate_count: None,
+    }
 }
 
 #[macro_export]

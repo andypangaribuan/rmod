@@ -166,23 +166,37 @@ where
     sqlx::query_as_with(sql, args.build_inner()).fetch_all(&mut **inner_tx).await
 }
 
-/// Executes a count query using the first initialized database pool and returns the count (i64).
 pub async fn count<T>(sql: &str, args: PgArgs<T>) -> Result<i64, sqlx::Error> {
     let force_rw = args.is_force_rw();
     let use_read = !force_rw && store::db_is_read_real();
     let pool = if use_read { store::db_read() } else { store::db() };
 
-    let res: i64 = sqlx::query_scalar_with(sql, args.build_inner()).fetch_one(pool).await?;
+    let mut res: i64 = sqlx::query_scalar_with(sql, args.build_inner()).fetch_one(pool).await?;
+
+    if use_read
+        && let Some(validate) = args.opt.as_ref().and_then(|o| o.validate_count.as_ref())
+        && !validate(res)
+    {
+        res = sqlx::query_scalar_with(sql, args.build_inner()).fetch_one(store::db()).await?;
+    }
+
     Ok(res)
 }
 
-/// Executes a count query on a specific database and returns the count (i64).
 pub async fn count_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<i64, sqlx::Error> {
     let force_rw = args.is_force_rw();
     let use_read = !force_rw && store::db_is_read_real_on(key);
     let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
 
-    let res: i64 = sqlx::query_scalar_with(sql, args.build_inner()).fetch_one(pool).await?;
+    let mut res: i64 = sqlx::query_scalar_with(sql, args.build_inner()).fetch_one(pool).await?;
+
+    if use_read
+        && let Some(validate) = args.opt.as_ref().and_then(|o| o.validate_count.as_ref())
+        && !validate(res)
+    {
+        res = sqlx::query_scalar_with(sql, args.build_inner()).fetch_one(store::db_on(key)).await?;
+    }
+
     Ok(res)
 }
 
