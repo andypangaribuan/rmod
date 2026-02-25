@@ -12,12 +12,11 @@
 #[path = "test/tx.rs"]
 mod tests;
 
+use crate::store;
 use sqlx::{Postgres, Transaction};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::Mutex;
-
-use crate::store;
 
 pub struct Tx {
     pub(crate) inner: Arc<Mutex<Option<Transaction<'static, Postgres>>>>,

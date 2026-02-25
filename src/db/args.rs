@@ -12,6 +12,7 @@
 #[path = "test/args.rs"]
 mod tests;
 
+use sqlx::Arguments;
 use sqlx::postgres::PgArguments;
 
 pub type PgArgCollector = Box<dyn Fn(&mut PgArguments) + Send + Sync>;
@@ -136,7 +137,6 @@ where
 {
     fn add_to(self, args: &mut PgArgs<T>) {
         args.collectors.push(Box::new(move |inner| {
-            use sqlx::Arguments;
             let _ = inner.add(self.clone());
         }));
     }

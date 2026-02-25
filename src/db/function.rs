@@ -8,6 +8,8 @@
  * All Rights Reserved.
  */
 
+use std::fmt::Write;
+
 pub(crate) fn build_select_sql<T>(table_name: &str, where_clause: &str, opt: Option<&crate::db::Opt<T>>) -> String {
     let table_name = opt.and_then(|o| o.table_name.as_ref()).map(|s| s.as_str()).unwrap_or(table_name);
     let with_deleted_at = opt.and_then(|o| o.with_deleted_at).unwrap_or_else(crate::store::get_db_with_deleted_at);
@@ -73,7 +75,7 @@ pub(crate) fn build_insert_sql<T>(table_name: &str, columns: &str, opt: Option<&
         if i > 1 {
             placeholders.push_str(", ");
         }
-        use std::fmt::Write;
+
         write!(placeholders, "${}", i).unwrap();
     }
     format!("INSERT INTO {} ({}) VALUES ({})", table_name, columns, placeholders)
