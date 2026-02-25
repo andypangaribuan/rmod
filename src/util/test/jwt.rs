@@ -41,3 +41,17 @@ fn test_jwt_invalid_secret() {
     assert!(result.is_err());
     assert_eq!(result.err().unwrap(), "invalid signature");
 }
+
+#[test]
+fn test_jwt_expired() {
+    let sub = "1234567890".to_string();
+    let iss = "rmod".to_string();
+    let exp_delta = TimeDelta::seconds(-10); // 10 seconds ago
+    let secret = "secret";
+
+    let token = encode(sub, iss, secret, exp_delta);
+    let result = decode(&token, secret);
+
+    assert!(result.is_err());
+    assert_eq!(result.err().unwrap(), "token expired");
+}

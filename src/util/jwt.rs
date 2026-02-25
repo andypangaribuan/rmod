@@ -76,6 +76,10 @@ pub fn decode(token: &str, secret: &str) -> Result<Claims, String> {
     let payload_bytes = URL_SAFE_NO_PAD.decode(parts[1]).map_err(|e| format!("invalid payload encoding: {}", e))?;
     let payload: Claims = serde_json::from_slice(&payload_bytes).map_err(|e| format!("failed to parse payload: {}", e))?;
 
+    if payload.exp < Utc::now().timestamp() as u32 {
+        return Err("token expired".to_string());
+    }
+
     Ok(payload)
 }
 
