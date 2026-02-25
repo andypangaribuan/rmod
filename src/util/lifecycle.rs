@@ -13,12 +13,12 @@ use std::sync::Mutex;
 use std::time::Duration;
 use tokio::signal::unix::{SignalKind, signal};
 
-// Global state to store configuration and callbacks
+type ShutdownCallback = Box<dyn FnOnce() + Send + 'static>;
+
 static SHUTDOWN_DURATION: Lazy<Mutex<Option<Duration>>> = Lazy::new(|| Mutex::new(None));
-static CALLBACKS: Lazy<Mutex<Vec<Box<dyn FnOnce() + Send + 'static>>>> = Lazy::new(|| Mutex::new(Vec::new()));
+static CALLBACKS: Lazy<Mutex<Vec<ShutdownCallback>>> = Lazy::new(|| Mutex::new(Vec::new()));
 static STARTED: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 
-/// Register callbacks to run when a signal is received.
 pub fn before_graceful_shutdown<F>(callbacks: Vec<F>)
 where
     F: FnOnce() + Send + 'static,
@@ -29,13 +29,11 @@ where
     }
 }
 
-/// Set the wait duration before the process is forced to exit.
 pub fn graceful_shutdown(wait_duration: Option<Duration>) {
     let mut guard = SHUTDOWN_DURATION.lock().unwrap();
     *guard = wait_duration;
 }
 
-/// Start the background listener for SIGINT and SIGTERM.
 pub fn start() {
     let mut started = STARTED.lock().unwrap();
     if *started {
@@ -45,12 +43,12 @@ pub fn start() {
     tokio::spawn(async move {
         let mut sig_int = signal(SignalKind::interrupt()).expect("failed to install SIGINT handler");
         let mut sig_term = signal(SignalKind::terminate()).expect("failed to install SIGTERM handler");
-        // Wait for any shutdown signal
+
         tokio::select! {
             _ = sig_int.recv() => {},
             _ = sig_term.recv() => {},
         };
-        // 1. Run all registered callbacks in parallel
+
         let cbs = {
             let mut guard = CALLBACKS.lock().unwrap();
             std::mem::take(&mut *guard)
@@ -60,7 +58,7 @@ pub fn start() {
                 cb();
             });
         }
-        // 2. Wait for the specified duration (default 10s)
+
         let wait = {
             let guard = SHUTDOWN_DURATION.lock().unwrap();
             guard.unwrap_or(Duration::from_secs(10))
