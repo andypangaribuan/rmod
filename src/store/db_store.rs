@@ -80,17 +80,17 @@ pub fn is_db_exists(key: &str) -> bool {
     store.map.contains_key(key)
 }
 
-pub fn set_db_updated_at(key: &str) -> i64 {
+pub fn get_db_updated_at(key: &str) -> i64 {
     let store = get_db_store().read().unwrap();
     *store.updated_at.get(key).unwrap_or(&0)
 }
 
-pub fn set_db_state(key: &str) -> String {
+pub fn get_db_state(key: &str) -> String {
     let store = get_db_store().read().unwrap();
     store.state.get(key).unwrap_or(&"".to_string()).clone()
 }
 
-pub fn set_db_conn_str(key: &str) -> String {
+pub fn get_db_conn_str(key: &str) -> String {
     let store = get_db_store().read().unwrap();
     store.conn_str.get(key).unwrap_or(&"".to_string()).clone()
 }
