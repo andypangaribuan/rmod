@@ -435,7 +435,6 @@ impl FuseRContext {
 
     #[inline(never)]
     pub fn ok<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) -> FuseResult {
-        self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
         Ok((status, Arc::new(body)))
     }
 
@@ -447,7 +446,6 @@ impl FuseRContext {
 
     #[inline(never)]
     pub fn ok_val<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) -> (StatusCode, Arc<dyn Any + Send + Sync>) {
-        self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
         (status, Arc::new(body))
     }
 
