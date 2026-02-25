@@ -9,14 +9,40 @@
  */
 
 pub use axum::http::StatusCode;
-use once_cell::sync::Lazy;
 use reqwest::{Client, Method, Response, header::HeaderMap};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-static CLIENTS: Lazy<Mutex<HashMap<String, Arc<Http>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+#[cfg(not(test))]
+use std::sync::LazyLock;
+
+#[cfg(not(test))]
+static CLIENTS: LazyLock<Mutex<HashMap<String, Arc<Http>>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+
+#[cfg(test)]
+thread_local! {
+    static CLIENTS: Mutex<HashMap<String, Arc<Http>>> = Mutex::new(HashMap::new());
+}
+
+fn get_clients_lock<F, R>(f: F) -> R
+where
+    F: FnOnce(&mut HashMap<String, Arc<Http>>) -> R,
+{
+    #[cfg(not(test))]
+    {
+        let mut guard = CLIENTS.lock().unwrap();
+        f(&mut guard)
+    }
+    #[cfg(test)]
+    {
+        CLIENTS.with(|c| {
+            let mut guard = c.lock().unwrap();
+            f(&mut guard)
+        })
+    }
+}
 
 struct Http {
     client: Client,
@@ -136,15 +162,14 @@ fn get_domain(url: &str) -> String {
 
 fn get_client(url: &str) -> Arc<Http> {
     let domain = get_domain(url);
-
-    let mut clients = CLIENTS.lock().unwrap();
-    clients.entry(domain).or_insert_with(Http::new_arc).clone()
+    get_clients_lock(|clients| clients.entry(domain).or_insert_with(Http::new_arc).clone())
 }
 
 pub fn client(url: &str, timeout: Duration) {
     let domain = get_domain(url);
-    let mut clients = CLIENTS.lock().unwrap();
-    clients.insert(domain, Http::new_arc_with_timeout(timeout));
+    get_clients_lock(|clients| {
+        clients.insert(domain, Http::new_arc_with_timeout(timeout));
+    });
 }
 
 pub async fn get(

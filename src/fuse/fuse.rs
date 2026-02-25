@@ -214,7 +214,7 @@ impl FuseRContext {
                     self.res_status = Some(status);
                     self.res_body = Some(body.clone());
                     if self.res_backtrace.is_none() {
-                        self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+                        self.res_backtrace = Some(Arc::new(Backtrace::capture()));
                     }
                     self.res_source = FuseResSource { name: "precondition", handler_index: i, endpoint_key };
                 }
@@ -241,7 +241,7 @@ impl FuseRContext {
                         self.res_status = Some(status);
                         self.res_body = Some(body.clone());
                         if self.res_backtrace.is_none() {
-                            self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+                            self.res_backtrace = Some(Arc::new(Backtrace::capture()));
                         }
                         self.res_source = FuseResSource { name: "handler", handler_index: i, endpoint_key };
 
@@ -261,7 +261,7 @@ impl FuseRContext {
                 self.res_status = Some(status);
                 self.res_body = Some(body.clone());
                 if self.res_backtrace.is_none() {
-                    self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+                    self.res_backtrace = Some(Arc::new(Backtrace::capture()));
                 }
                 self.res_source = FuseResSource { name: "defer", handler_index: 0, endpoint_key };
             }
@@ -433,25 +433,25 @@ impl FuseRContext {
 
     #[inline(never)]
     pub fn ok<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) -> FuseResult {
-        self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+        self.res_backtrace = Some(Arc::new(Backtrace::capture()));
         Ok((status, Arc::new(body)))
     }
 
     #[inline(never)]
     pub fn err<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) -> FuseResult {
-        self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+        self.res_backtrace = Some(Arc::new(Backtrace::capture()));
         Err((status, Arc::new(body)))
     }
 
     #[inline(never)]
     pub fn ok_val<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) -> (StatusCode, Arc<dyn Any + Send + Sync>) {
-        self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+        self.res_backtrace = Some(Arc::new(Backtrace::capture()));
         (status, Arc::new(body))
     }
 
     #[inline(never)]
     pub fn err_val<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) -> (StatusCode, Arc<dyn Any + Send + Sync>) {
-        self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+        self.res_backtrace = Some(Arc::new(Backtrace::capture()));
         (status, Arc::new(body))
     }
 }
