@@ -46,25 +46,28 @@ pub fn encode(sub: String, iss: String, secret: &str, exp_delta: TimeDelta) -> S
     let payload_json = serde_json::to_string(&claims).unwrap();
     let encoded_payload = URL_SAFE_NO_PAD.encode(payload_json.as_bytes());
 
-    let data = format!("{}.{}", encoded_header, encoded_payload);
-
     let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC can take key of any size");
-    mac.update(data.as_bytes());
+    mac.update(encoded_header.as_bytes());
+    mac.update(b".");
+    mac.update(encoded_payload.as_bytes());
     let result = mac.finalize();
     let signature = URL_SAFE_NO_PAD.encode(result.into_bytes());
 
-    format!("{}.{}", data, signature)
+    format!("{}.{}.{}", encoded_header, encoded_payload, signature)
 }
 
 pub fn decode(token: &str, secret: &str) -> Result<Claims, String> {
-    let parts: Vec<&str> = token.split('.').collect();
-    if parts.len() != 3 {
+    let mut parts = token.split('.');
+    let _header = parts.next().ok_or("invalid token format")?;
+    let payload_part = parts.next().ok_or("invalid token format")?;
+    let signature_part = parts.next().ok_or("invalid token format")?;
+    if parts.next().is_some() {
         return Err("invalid token format".to_string());
     }
 
     let last_dot = token.rfind('.').ok_or("invalid token format".to_string())?;
     let data = &token[..last_dot];
-    let signature = URL_SAFE_NO_PAD.decode(parts[2]).map_err(|e| format!("invalid signature encoding: {}", e))?;
+    let signature = URL_SAFE_NO_PAD.decode(signature_part).map_err(|e| format!("invalid signature encoding: {}", e))?;
 
     let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC can take key of any size");
     mac.update(data.as_bytes());
@@ -73,7 +76,7 @@ pub fn decode(token: &str, secret: &str) -> Result<Claims, String> {
         return Err("invalid signature".to_string());
     }
 
-    let payload_bytes = URL_SAFE_NO_PAD.decode(parts[1]).map_err(|e| format!("invalid payload encoding: {}", e))?;
+    let payload_bytes = URL_SAFE_NO_PAD.decode(payload_part).map_err(|e| format!("invalid payload encoding: {}", e))?;
     let payload: Claims = serde_json::from_slice(&payload_bytes).map_err(|e| format!("failed to parse payload: {}", e))?;
 
     if payload.exp < Utc::now().timestamp() as u32 {
@@ -84,12 +87,15 @@ pub fn decode(token: &str, secret: &str) -> Result<Claims, String> {
 }
 
 pub fn unsafe_decode(token: &str) -> Option<Claims> {
-    let parts: Vec<&str> = token.split('.').collect();
-    if parts.len() != 3 {
+    let mut parts = token.split('.');
+    let _header = parts.next()?;
+    let payload_part = parts.next()?;
+    let _signature = parts.next()?;
+    if parts.next().is_some() {
         return None;
     }
 
-    let payload_bytes = URL_SAFE_NO_PAD.decode(parts[1]).ok()?;
+    let payload_bytes = URL_SAFE_NO_PAD.decode(payload_part).ok()?;
     let payload: Claims = serde_json::from_slice(&payload_bytes).ok()?;
 
     Some(payload)

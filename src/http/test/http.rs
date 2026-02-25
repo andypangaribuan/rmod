@@ -12,10 +12,18 @@ use crate::future::FuturePool;
 use crate::future::future_burst;
 use crate::http;
 use std::collections::HashMap;
+use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
+
+// Global mutex to serialize tests that modify or rely on the global HTTP client cache.
+// This prevents flaky tests caused by parallel execution sharing clients bound to different runtimes.
+static TEST_MUTEX: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
 #[tokio::test]
 async fn test_http_get() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+    http::clear_cache();
+
     let url = "https://httpbin.org/get";
 
     let mut headers = HashMap::new();
@@ -30,6 +38,9 @@ async fn test_http_get() {
 
 #[tokio::test]
 async fn test_http_post() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+    http::clear_cache();
+
     let url = "https://httpbin.org/post";
 
     let body = serde_json::json!({
@@ -46,6 +57,9 @@ async fn test_http_post() {
 
 #[tokio::test]
 async fn test_http_parallel_requests() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+    http::clear_cache();
+
     let mut pool = FuturePool::new();
     let urls = vec!["https://httpbin.org/get", "https://httpbin.org/ip", "https://httpbin.org/user-agent"];
 
@@ -64,6 +78,9 @@ async fn test_http_parallel_requests() {
 
 #[tokio::test]
 async fn test_http_future_burst() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+    http::clear_cache();
+
     let urls = vec!["https://httpbin.org/get", "https://httpbin.org/ip", "https://httpbin.org/user-agent", "https://httpbin.org/headers"];
 
     let results = future_burst(urls, 2, |idx, url| async move {
@@ -84,6 +101,9 @@ async fn test_http_future_burst() {
 
 #[tokio::test]
 async fn test_http_smart_functions() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+    http::clear_cache();
+
     let url = "https://httpbin.org/get";
     let res = http::get(url, None, None).await.unwrap();
     assert!(res.status().is_success());
@@ -96,6 +116,9 @@ async fn test_http_smart_functions() {
 
 #[tokio::test]
 async fn test_http_custom_timeout() {
+    let _guard = TEST_MUTEX.lock().unwrap();
+    http::clear_cache();
+
     let url = "https://timeout.httpbin.org/get";
     // Register a client for this domain with a very short timeout
     http::client(url, Duration::from_millis(1));

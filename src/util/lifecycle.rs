@@ -8,16 +8,15 @@
  * All Rights Reserved.
  */
 
-use once_cell::sync::Lazy;
-use std::sync::Mutex;
+use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 use tokio::signal::unix::{SignalKind, signal};
 
 type ShutdownCallback = Box<dyn FnOnce() + Send + 'static>;
 
-static SHUTDOWN_DURATION: Lazy<Mutex<Option<Duration>>> = Lazy::new(|| Mutex::new(None));
-static CALLBACKS: Lazy<Mutex<Vec<ShutdownCallback>>> = Lazy::new(|| Mutex::new(Vec::new()));
-static STARTED: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
+static SHUTDOWN_DURATION: LazyLock<Mutex<Option<Duration>>> = LazyLock::new(|| Mutex::new(None));
+static CALLBACKS: LazyLock<Mutex<Vec<ShutdownCallback>>> = LazyLock::new(|| Mutex::new(Vec::new()));
+static STARTED: LazyLock<Mutex<bool>> = LazyLock::new(|| Mutex::new(false));
 
 pub fn before_graceful_shutdown<F>(callbacks: Vec<F>)
 where
@@ -56,7 +55,7 @@ pub fn start() {
 
         let mut handles = Vec::with_capacity(cbs.len());
         for cb in cbs {
-            handles.push(tokio::spawn(async move {
+            handles.push(tokio::task::spawn_blocking(move || {
                 cb();
             }));
         }

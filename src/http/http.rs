@@ -9,14 +9,15 @@
  */
 
 pub use axum::http::StatusCode;
-use once_cell::sync::Lazy;
 use reqwest::{Client, Method, Response, header::HeaderMap};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-static CLIENTS: Lazy<Mutex<HashMap<String, Arc<Http>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+use std::sync::LazyLock;
+
+static CLIENTS: LazyLock<Mutex<HashMap<String, Arc<Http>>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
 struct Http {
     client: Client,
@@ -188,4 +189,10 @@ pub async fn delete(
     query: Option<HashMap<String, String>>,
 ) -> Result<Response, reqwest::Error> {
     get_client(url).delete(url, headers, query).await
+}
+
+#[cfg(test)]
+pub fn clear_cache() {
+    let mut clients = CLIENTS.lock().unwrap();
+    clients.clear();
 }
