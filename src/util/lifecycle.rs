@@ -28,7 +28,6 @@ pub fn subscribe() -> broadcast::Receiver<()> {
     SHUTDOWN_TX.subscribe()
 }
 
-/// Wait for the lifecycle shutdown process to complete.
 pub async fn wait() {
     let mut rx = WAIT_TX.subscribe();
     let _ = rx.recv().await;
@@ -66,8 +65,6 @@ pub fn start() {
         };
 
         let start_time = tokio::time::Instant::now();
-
-        // 1. Notify all subscribers (Axum, Jobs, etc.)
         let _ = SHUTDOWN_TX.send(());
 
         let wait_duration = {
@@ -75,8 +72,6 @@ pub fn start() {
             (*guard).unwrap_or(Duration::from_secs(10))
         };
 
-        // 2. Run the "before shutdown" callbacks FIRST.
-        // We wait as long as they take to finish.
         let cbs = {
             let mut guard = CALLBACKS.lock().unwrap();
             std::mem::take(&mut *guard)
@@ -87,23 +82,18 @@ pub fn start() {
             for cb in cbs {
                 handles.push(tokio::spawn(cb()));
             }
-            // Wait for all registered callbacks to finish completely
+
             let _ = futures_util::future::join_all(handles).await;
         }
 
-        // 3. After callbacks are done, calculate if we still need to wait to reach SHUTDOWN_DURATION.
         let elapsed = start_time.elapsed();
         if elapsed < wait_duration {
             let remaining = wait_duration - elapsed;
             tokio::time::sleep(remaining).await;
         }
 
-        // 4. Notify that the lifecycle task is done
         let _ = WAIT_TX.send(());
-
-        // Give a tiny moment for main thread to exit naturally
         tokio::time::sleep(Duration::from_millis(50)).await;
-
         std::process::exit(0);
     });
 }
