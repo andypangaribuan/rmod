@@ -20,6 +20,7 @@ pub use future::future_burst;
 pub mod http;
 pub mod job;
 pub mod jwt;
+pub mod lifecycle;
 pub mod support;
 pub mod time;
 
