@@ -170,7 +170,14 @@ impl Fuse {
         if let Some(f) = on_start {
             f();
         }
-        axum::serve(listener, self.router.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
+
+        let mut shutdown_rx = crate::util::lifecycle::subscribe();
+        axum::serve(listener, self.router.into_make_service_with_connect_info::<SocketAddr>())
+            .with_graceful_shutdown(async move {
+                let _ = shutdown_rx.recv().await;
+            })
+            .await
+            .unwrap();
     }
 }
 

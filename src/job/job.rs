@@ -38,13 +38,19 @@ pub fn start() {
 
     for job in jobs {
         tokio::spawn(async move {
+            let mut shutdown_rx = crate::util::lifecycle::subscribe();
+
             if job.zero_start {
                 let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
                 let now_ns = now.as_nanos();
                 let minute_ns = 60_000_000_000u128;
                 let next_ns = ((now_ns / minute_ns) + 1) * minute_ns;
                 let delay_ns = (next_ns - now_ns) as u64;
-                tokio::time::sleep(Duration::from_nanos(delay_ns)).await;
+
+                tokio::select! {
+                    _ = shutdown_rx.recv() => return,
+                    _ = tokio::time::sleep(Duration::from_nanos(delay_ns)) => {}
+                }
             }
 
             if job.is_every {
@@ -52,13 +58,21 @@ pub fn start() {
                 interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
                 loop {
-                    interval.tick().await;
-                    (job.handler)().await;
+                    tokio::select! {
+                        _ = shutdown_rx.recv() => break,
+                        _ = interval.tick() => {
+                            (job.handler)().await;
+                        }
+                    }
                 }
             } else {
                 loop {
                     (job.handler)().await;
-                    tokio::time::sleep(job.duration).await;
+
+                    tokio::select! {
+                        _ = shutdown_rx.recv() => break,
+                        _ = tokio::time::sleep(job.duration) => {}
+                    }
                 }
             }
         });

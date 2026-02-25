@@ -11,12 +11,18 @@
 use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 use tokio::signal::unix::{SignalKind, signal};
+use tokio::sync::broadcast;
 
 type ShutdownCallback = Box<dyn FnOnce() + Send + 'static>;
 
 static SHUTDOWN_DURATION: LazyLock<Mutex<Option<Duration>>> = LazyLock::new(|| Mutex::new(None));
 static CALLBACKS: LazyLock<Mutex<Vec<ShutdownCallback>>> = LazyLock::new(|| Mutex::new(Vec::new()));
 static STARTED: LazyLock<Mutex<bool>> = LazyLock::new(|| Mutex::new(false));
+static SHUTDOWN_TX: LazyLock<broadcast::Sender<()>> = LazyLock::new(|| broadcast::channel(1).0);
+
+pub fn subscribe() -> broadcast::Receiver<()> {
+    SHUTDOWN_TX.subscribe()
+}
 
 pub fn before_graceful_shutdown<F>(callbacks: Vec<F>)
 where
@@ -48,6 +54,9 @@ pub fn start() {
             _ = sig_term.recv() => {},
         };
 
+        // Notify all subscribers (like Fuse server and background jobs)
+        let _ = SHUTDOWN_TX.send(());
+
         let cbs = {
             let mut guard = CALLBACKS.lock().unwrap();
             std::mem::take(&mut *guard)
@@ -68,6 +77,9 @@ pub fn start() {
         if tokio::time::timeout(wait, futures_util::future::join_all(handles)).await.is_err() {
             println!("graceful shutdown timeout reached, forcing exit");
         }
+
+        // Give a tiny grace period for the main thread and other tasks to realize we are shutting down
+        tokio::time::sleep(Duration::from_millis(100)).await;
 
         std::process::exit(0);
     });
