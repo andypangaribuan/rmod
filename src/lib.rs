@@ -28,6 +28,8 @@ pub use sqlx::{decode, postgres};
 pub use types::ArcX;
 
 // Proxy re-exports for common dependencies
+pub use chrono;
+pub use chrono::{DateTime, Datelike, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Timelike, Utc};
 pub use rust_decimal;
 pub use rust_decimal::*;
 pub use rust_decimal_macros;

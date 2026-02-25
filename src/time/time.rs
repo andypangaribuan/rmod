@@ -8,7 +8,8 @@
  * All Rights Reserved.
  */
 
-pub use chrono::{DateTime, Utc};
+pub use chrono::Duration as ChronoDuration;
+pub use chrono::{self, DateTime, Datelike, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Timelike, Utc};
 pub use tokio::time::Duration;
 
 pub fn now() -> DateTime<Utc> {
