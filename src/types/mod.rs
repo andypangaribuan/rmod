@@ -15,3 +15,4 @@ mod tests;
 #[path = "arcx.rs"]
 mod _arcx;
 pub use _arcx::*;
+pub use sqlx::types::*;

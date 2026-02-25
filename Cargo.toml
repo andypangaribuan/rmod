@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 chrono = "0.4.43"
-sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "macros", "rust_decimal"] }
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "macros", "rust_decimal", "chrono"] }
 tokio = { version = "1.49.0", features = ["full"] }
 once_cell = "1.21.3"
 axum = "0.8.8"

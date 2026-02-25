@@ -23,4 +23,10 @@ pub mod db;
 pub mod fct;
 pub mod types;
 pub use fct::FCT;
+pub use sqlx;
+pub use sqlx::{decode, postgres};
 pub use types::ArcX;
+
+// Re-exports for sqlx macros when using rmod as a sqlx proxy
+pub use sqlx::{ColumnIndex, Decode, Encode, Error, FromRow, Row, Type};
+pub type Result<T, E = sqlx::Error> = std::result::Result<T, E>;
