@@ -8,7 +8,7 @@
  * All Rights Reserved.
  */
 
-use crate::util::FuturePool;
+use crate::future::FuturePool;
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -172,7 +172,7 @@ async fn test_future_pool_vector_loop() {
 
 #[tokio::test]
 async fn test_future_burst() {
-    use crate::util::future_burst;
+    use crate::future::future_burst;
 
     let data = vec!["a", "b", "c", "d", "e"];
     let max_parallel = 2;

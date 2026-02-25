@@ -12,6 +12,8 @@
 #[path = "test/future.rs"]
 mod tests;
 
+pub mod future_macro;
+
 use std::future::Future;
 use tokio::task::JoinSet;
 

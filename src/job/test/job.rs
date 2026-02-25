@@ -8,7 +8,7 @@
  * All Rights Reserved.
  */
 
-use crate::util::job;
+use crate::job;
 use futures_util::future::BoxFuture;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;

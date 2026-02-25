@@ -57,7 +57,7 @@ fn test_arcx_macro() {
 #[tokio::test]
 async fn test_arcx_with_future_pool() {
     let a = ArcX::new(0);
-    let mut pool = crate::util::FuturePool::new();
+    let mut pool = crate::future::FuturePool::new();
 
     for i in 0..10 {
         let b = a.clone();
@@ -74,7 +74,7 @@ async fn test_arcx_with_future_pool() {
 #[tokio::test]
 async fn test_arcx_with_future_pool_set_get() {
     let a = ArcX::new(0);
-    let mut pool = crate::util::FuturePool::new();
+    let mut pool = crate::future::FuturePool::new();
 
     for i in 0..10 {
         let b = a.clone();
@@ -96,7 +96,7 @@ async fn test_arcx_with_future_pool_set_get() {
 async fn test_arcx_with_vmove() {
     use crate::vmove;
     let a = ArcX::new(0);
-    let mut pool = crate::util::FuturePool::new();
+    let mut pool = crate::future::FuturePool::new();
 
     for i in 0..10 {
         pool.add(
@@ -116,7 +116,7 @@ async fn test_arcx_with_vmove_multiple() {
     use crate::vmove;
     let a = ArcX::new(0);
     let b = ArcX::new(0);
-    let mut pool = crate::util::FuturePool::new();
+    let mut pool = crate::future::FuturePool::new();
 
     for i in 0..10 {
         pool.add(
@@ -139,7 +139,7 @@ async fn test_arcx_with_future_burst() {
     let data = vec![1; 10]; // 10 items
 
     let a_clone = a.clone();
-    crate::util::future_burst(data, 2, move |_, _| {
+    crate::future::future_burst(data, 2, move |_, _| {
         let b = a_clone.clone();
         async move {
             let mut lock = b.lock();
