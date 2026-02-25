@@ -10,10 +10,6 @@
 
 use std::sync::{Arc, Mutex};
 
-#[cfg(test)]
-#[path = "test/arcx.rs"]
-mod tests;
-
 #[macro_export]
 macro_rules! arcx {
     ($val:expr) => {

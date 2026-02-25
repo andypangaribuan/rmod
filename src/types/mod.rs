@@ -8,7 +8,10 @@
  * All Rights Reserved.
  */
 
-#[path = "type/arcx.rs"]
-mod _arcx;
+#[cfg(test)]
+#[path = "test/arcx.rs"]
+mod tests;
 
+#[path = "arcx.rs"]
+mod _arcx;
 pub use _arcx::*;
