@@ -9,6 +9,7 @@
  */
 
 pub mod config;
+pub mod conv;
 pub mod fuse;
 pub mod future;
 pub mod http;

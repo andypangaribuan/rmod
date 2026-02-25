@@ -8,7 +8,6 @@
  * All Rights Reserved.
  */
 
-pub mod conv;
 pub mod crypto;
 pub mod defer;
 pub use defer::Defer;
