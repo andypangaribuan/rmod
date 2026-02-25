@@ -112,7 +112,6 @@ async fn test_arcx_with_vmove() {
 
 #[tokio::test]
 async fn test_arcx_with_vmove_multiple() {
-    use crate::vmove;
     let a = ArcX::new(0);
     let b = ArcX::new(0);
     let mut pool = crate::future::FuturePool::new();
