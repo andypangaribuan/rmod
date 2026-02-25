@@ -181,25 +181,3 @@ where
         crate::db::tx_count::<T>(tx, &sql, args).await
     }
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_insert_sql_generation() {
-        let table_name = "users";
-        let columns = "id, name, email";
-
-        let count = columns.split(',').count();
-        let mut placeholders = String::with_capacity(count * 4);
-        for i in 1..=count {
-            if i > 1 {
-                placeholders.push_str(", ");
-            }
-            use std::fmt::Write;
-            let _ = write!(placeholders, "${}", i);
-        }
-        let sql = format!("INSERT INTO {} ({}) VALUES ({})", table_name, columns, placeholders);
-
-        assert_eq!(sql, "INSERT INTO users (id, name, email) VALUES ($1, $2, $3)");
-    }
-}
