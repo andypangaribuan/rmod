@@ -46,6 +46,28 @@ function shell {
 }
 
 
+#: space
+
+
+
+#: show contributor who make commits
+function contributor {
+  git log --pretty=format:"%an <%ae>" | sort | uniq
+}
+
+
+#: rewrite author
+function rewrite-author {
+  # brew install git-filter-repo
+  git filter-repo --commit-callback '
+  if (b"google-labs-jules" in commit.author_name or
+      b"google-labs-jules" in commit.author_email):
+      commit.author_name = b"Andy Pangaribuan"
+      commit.author_email = b"iam.pangaribuan@gmail.com"
+  '
+}
+
+
 
 #: space
 [ -z "$TASKFILE_EXECUTOR" ] && sq taskfile --execute "$@"
