@@ -16,7 +16,6 @@ pub mod env;
 pub mod jwt;
 pub mod lifecycle;
 pub mod support;
-pub mod time;
 
 #[path = "util/uid.rs"]
 mod _uid;

@@ -32,7 +32,7 @@ fn get_jobs() -> &'static Mutex<Vec<Job>> {
 
 pub fn add(duration: &str, handler: fn() -> BoxFuture<'static, ()>, is_every: bool, zero_start: bool) {
     let mut jobs = get_jobs().lock().unwrap();
-    let duration = crate::util::time::to_duration(duration);
+    let duration = crate::time::to_duration(duration);
     jobs.push(Job { duration, handler, is_every, zero_start });
 }
 
