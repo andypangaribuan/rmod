@@ -9,6 +9,7 @@
  */
 
 use super::*;
+use chrono::{Datelike, TimeZone, Timelike, Utc};
 
 #[test]
 fn test_timestamp_base62() {

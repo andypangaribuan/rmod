@@ -44,7 +44,7 @@ fn encode_to_base62(mut n: u64, length: usize) -> String {
     String::from_utf8(out).unwrap_or_default()
 }
 
-fn encode_timestamp_base62(t: DateTime<Utc>) -> String {
+pub(crate) fn encode_timestamp_base62(t: DateTime<Utc>) -> String {
     let year = t.year();
     let month = t.month();
     let day = t.day();
@@ -83,7 +83,7 @@ fn decode_from_base62(s: &str) -> u64 {
     n
 }
 
-fn decode_timestamp_base62(code: &str) -> Option<DateTime<Utc>> {
+pub(crate) fn decode_timestamp_base62(code: &str) -> Option<DateTime<Utc>> {
     let mut n = decode_from_base62(code);
 
     let micro = (n % 1_000_000) as u32;

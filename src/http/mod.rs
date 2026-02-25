@@ -13,5 +13,5 @@
 mod tests;
 
 #[path = "http.rs"]
-pub mod _http;
+mod _http;
 pub use _http::*;

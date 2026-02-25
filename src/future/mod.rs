@@ -15,5 +15,5 @@ mod tests;
 pub mod future_macro;
 
 #[path = "future.rs"]
-pub mod _future;
+mod _future;
 pub use _future::*;

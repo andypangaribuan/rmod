@@ -13,5 +13,5 @@
 mod tests;
 
 #[path = "uid.rs"]
-pub mod _uid;
+mod _uid;
 pub use _uid::*;
