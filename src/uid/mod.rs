@@ -11,3 +11,7 @@
 #[cfg(test)]
 #[path = "test/uid.rs"]
 mod tests;
+
+#[path = "uid.rs"]
+pub mod _uid;
+pub use _uid::*;
