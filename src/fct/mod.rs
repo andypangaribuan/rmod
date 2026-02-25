@@ -8,7 +8,6 @@
  * All Rights Reserved.
  */
 
-#[path = "store/store.rs"]
-mod _store;
-
-pub use _store::*;
+#[path = "fct.rs"]
+mod _fct;
+pub use _fct::*;

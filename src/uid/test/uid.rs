@@ -29,20 +29,20 @@ fn test_timestamp_base62() {
 
 #[test]
 fn test_uid() {
-    println!("uid: {}", uid());
+    println!("uid: {}", new());
 
     let a = 0.1;
     let b = 0.2;
     let result = a + b;
     println!("a + b: {}", result);
 
-    let uid0 = uid_n(0);
+    let uid0 = new_n(0);
     assert_eq!(uid0.len(), 10); // 10 (timestamp) + 0 random
 
-    let uid3 = uid_n(3);
+    let uid3 = new_n(3);
     assert_eq!(uid3.len(), 13); // 10 (timestamp) + 3 random
 
-    let uid = uid();
+    let uid = new();
     assert_eq!(uid.len(), 20); // 10 (timestamp) + 10 (random)
 }
 
@@ -61,13 +61,13 @@ fn test_decode_uid62() {
     let rand_part = "abc1234567";
     let uid_str = format!("{}{}", encoded_time, rand_part);
 
-    let (decoded_time, decoded_rand) = decode_uid62(&uid_str).unwrap();
+    let (decoded_time, decoded_rand) = decode(&uid_str).unwrap();
 
     assert_eq!(now, decoded_time);
     assert_eq!(rand_part, decoded_rand);
 
     // Test invalid
-    assert!(decode_uid62("short").is_none());
+    assert!(decode("short").is_none());
 }
 
 #[test]
@@ -112,7 +112,7 @@ fn test_decode_invalid_date() {
 
     let junk = "zzzzzzzzzz"; // Max value
     // This will likely decode to a huge year, which might be out of range for chrono or valid.
-    let res = decode_uid62(&(junk.to_string() + "1234567890"));
+    let res = decode(&(junk.to_string() + "1234567890"));
     // We just want to ensure it doesn't panic.
     assert!(res.is_none() || res.is_some());
 }

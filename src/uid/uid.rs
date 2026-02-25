@@ -14,16 +14,16 @@ use rand::RngExt;
 const BASE62_ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const BASE62: u64 = 62;
 
-pub fn uid() -> String {
-    uid_n(10)
+pub fn new() -> String {
+    new_n(10)
 }
 
-pub fn uid_n(len: usize) -> String {
+pub fn new_n(len: usize) -> String {
     let rand_id = get_random(len, std::str::from_utf8(BASE62_ALPHABET).unwrap());
     encode_timestamp_base62(Utc::now()) + &rand_id
 }
 
-pub fn decode_uid62(uid: &str) -> Option<(DateTime<Utc>, String)> {
+pub fn decode(uid: &str) -> Option<(DateTime<Utc>, String)> {
     if uid.len() < 10 {
         return None;
     }
