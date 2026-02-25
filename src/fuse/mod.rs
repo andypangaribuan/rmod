@@ -8,7 +8,6 @@
  * All Rights Reserved.
  */
 
-#[path = "fuse/fuse.rs"]
+#[path = "fuse.rs"]
 pub mod _fuse;
-
 pub use _fuse::*;
