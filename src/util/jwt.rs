@@ -17,8 +17,10 @@ use chrono::{TimeDelta, Utc};
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
+use std::sync::OnceLock;
 
 type HmacSha256 = Hmac<Sha256>;
+static ENCODED_HEADER: OnceLock<String> = OnceLock::new();
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -35,11 +37,13 @@ pub fn encode(sub: String, iss: String, secret: &str, exp_delta: TimeDelta) -> S
 
     let claims = Claims { sub, iss, iat, exp };
 
-    let header = serde_json::json!({"alg": "HS256", "typ": "JWT"});
-    let header_json = serde_json::to_string(&header).unwrap();
-    let payload_json = serde_json::to_string(&claims).unwrap();
+    let encoded_header = ENCODED_HEADER.get_or_init(|| {
+        let header = serde_json::json!({"alg": "HS256", "typ": "JWT"});
+        let header_json = serde_json::to_string(&header).unwrap();
+        URL_SAFE_NO_PAD.encode(header_json.as_bytes())
+    });
 
-    let encoded_header = URL_SAFE_NO_PAD.encode(header_json.as_bytes());
+    let payload_json = serde_json::to_string(&claims).unwrap();
     let encoded_payload = URL_SAFE_NO_PAD.encode(payload_json.as_bytes());
 
     let data = format!("{}.{}", encoded_header, encoded_payload);
@@ -58,7 +62,8 @@ pub fn decode(token: &str, secret: &str) -> Result<Claims, String> {
         return Err("invalid token format".to_string());
     }
 
-    let data = format!("{}.{}", parts[0], parts[1]);
+    let last_dot = token.rfind('.').ok_or("invalid token format".to_string())?;
+    let data = &token[..last_dot];
     let signature = URL_SAFE_NO_PAD.decode(parts[2]).map_err(|e| format!("invalid signature encoding: {}", e))?;
 
     let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC can take key of any size");

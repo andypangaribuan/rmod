@@ -61,7 +61,9 @@ pub(crate) fn set_db(
     let pools = Box::leak(Box::new(DbPools { write: write_pool, read: read_pool }));
 
     let mut store = get_db_store().write().unwrap();
-    store.keys.push(key.to_string());
+    if !store.keys.contains(&key.to_string()) {
+        store.keys.push(key.to_string());
+    }
     store.map.insert(key.to_string(), pools);
     store.updated_at.insert(key.to_string(), updated_at);
     store.state.insert(key.to_string(), state.to_string());

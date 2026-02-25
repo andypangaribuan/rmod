@@ -93,7 +93,14 @@ where
     pub async fn insert(&self, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
         let table_name = args.opt.as_ref().and_then(|o| o.table_name.as_ref()).map(|s| s.as_str()).unwrap_or(self.table_name);
         let count = self.columns.split(',').count();
-        let placeholders = (1..=count).map(|i| format!("${}", i)).collect::<Vec<_>>().join(", ");
+        let mut placeholders = String::with_capacity(count * 4);
+        for i in 1..=count {
+            if i > 1 {
+                placeholders.push_str(", ");
+            }
+            use std::fmt::Write;
+            let _ = write!(placeholders, "${}", i);
+        }
         let sql = format!("INSERT INTO {} ({}) VALUES ({})", table_name, self.columns, placeholders);
         crate::db::execute(&sql, args).await
     }
@@ -101,7 +108,14 @@ where
     pub async fn insert_on(&self, key: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
         let table_name = args.opt.as_ref().and_then(|o| o.table_name.as_ref()).map(|s| s.as_str()).unwrap_or(self.table_name);
         let count = self.columns.split(',').count();
-        let placeholders = (1..=count).map(|i| format!("${}", i)).collect::<Vec<_>>().join(", ");
+        let mut placeholders = String::with_capacity(count * 4);
+        for i in 1..=count {
+            if i > 1 {
+                placeholders.push_str(", ");
+            }
+            use std::fmt::Write;
+            let _ = write!(placeholders, "${}", i);
+        }
         let sql = format!("INSERT INTO {} ({}) VALUES ({})", table_name, self.columns, placeholders);
         crate::db::execute_on(key, &sql, args).await
     }
@@ -128,7 +142,14 @@ where
     pub async fn tx_insert(&self, tx: &Tx, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
         let table_name = args.opt.as_ref().and_then(|o| o.table_name.as_ref()).map(|s| s.as_str()).unwrap_or(self.table_name);
         let count = self.columns.split(',').count();
-        let placeholders = (1..=count).map(|i| format!("${}", i)).collect::<Vec<_>>().join(", ");
+        let mut placeholders = String::with_capacity(count * 4);
+        for i in 1..=count {
+            if i > 1 {
+                placeholders.push_str(", ");
+            }
+            use std::fmt::Write;
+            let _ = write!(placeholders, "${}", i);
+        }
         let sql = format!("INSERT INTO {} ({}) VALUES ({})", table_name, self.columns, placeholders);
         crate::db::tx_execute(tx, &sql, args).await
     }

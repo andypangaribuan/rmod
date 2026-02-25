@@ -53,10 +53,12 @@ pub fn start() {
             let mut guard = CALLBACKS.lock().unwrap();
             std::mem::take(&mut *guard)
         };
+
+        let mut handles = Vec::with_capacity(cbs.len());
         for cb in cbs {
-            tokio::spawn(async move {
+            handles.push(tokio::spawn(async move {
                 cb();
-            });
+            }));
         }
 
         let wait = {
@@ -64,8 +66,10 @@ pub fn start() {
             guard.unwrap_or(Duration::from_secs(10))
         };
 
-        tokio::time::sleep(wait).await;
-        println!("graceful shutdown timeout reached, forcing exit");
+        if tokio::time::timeout(wait, futures_util::future::join_all(handles)).await.is_err() {
+            println!("graceful shutdown timeout reached, forcing exit");
+        }
+
         std::process::exit(0);
     });
 }
