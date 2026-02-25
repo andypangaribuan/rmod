@@ -178,6 +178,8 @@ impl Fuse {
             })
             .await
             .unwrap();
+
+        crate::util::lifecycle::wait().await;
     }
 }
 

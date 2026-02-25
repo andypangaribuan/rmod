@@ -22,9 +22,16 @@ static SHUTDOWN_DURATION: LazyLock<Mutex<Option<Duration>>> = LazyLock::new(|| M
 static CALLBACKS: LazyLock<Mutex<Vec<ShutdownCallback>>> = LazyLock::new(|| Mutex::new(Vec::new()));
 static STARTED: LazyLock<Mutex<bool>> = LazyLock::new(|| Mutex::new(false));
 static SHUTDOWN_TX: LazyLock<broadcast::Sender<()>> = LazyLock::new(|| broadcast::channel(1).0);
+static WAIT_TX: LazyLock<broadcast::Sender<()>> = LazyLock::new(|| broadcast::channel(1).0);
 
 pub fn subscribe() -> broadcast::Receiver<()> {
     SHUTDOWN_TX.subscribe()
+}
+
+/// Wait for the lifecycle shutdown process to complete.
+pub async fn wait() {
+    let mut rx = WAIT_TX.subscribe();
+    let _ = rx.recv().await;
 }
 
 pub fn before_graceful_shutdown<F, Fut>(callbacks: Vec<F>)
@@ -65,10 +72,11 @@ pub fn start() {
 
         let wait_duration = {
             let guard = SHUTDOWN_DURATION.lock().unwrap();
-            guard.unwrap_or(Duration::from_secs(10))
+            (*guard).unwrap_or(Duration::from_secs(10))
         };
 
-        // 2. Run the "before shutdown" callbacks
+        // 2. Run the "before shutdown" callbacks FIRST.
+        // We wait as long as they take to finish.
         let cbs = {
             let mut guard = CALLBACKS.lock().unwrap();
             std::mem::take(&mut *guard)
@@ -79,16 +87,22 @@ pub fn start() {
             for cb in cbs {
                 handles.push(tokio::spawn(cb()));
             }
-
-            // Wait for all registered callbacks to finish
+            // Wait for all registered callbacks to finish completely
             let _ = futures_util::future::join_all(handles).await;
         }
 
-        // 3. Calculate remaining time to wait from SHUTDOWN_DURATION
+        // 3. After callbacks are done, calculate if we still need to wait to reach SHUTDOWN_DURATION.
         let elapsed = start_time.elapsed();
         if elapsed < wait_duration {
-            tokio::time::sleep(wait_duration - elapsed).await;
+            let remaining = wait_duration - elapsed;
+            tokio::time::sleep(remaining).await;
         }
+
+        // 4. Notify that the lifecycle task is done
+        let _ = WAIT_TX.send(());
+
+        // Give a tiny moment for main thread to exit naturally
+        tokio::time::sleep(Duration::from_millis(50)).await;
 
         std::process::exit(0);
     });
