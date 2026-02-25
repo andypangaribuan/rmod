@@ -23,7 +23,9 @@ use std::backtrace::Backtrace;
 use std::collections::HashMap;
 
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
+
+static MAX_BODY_SIZE: OnceLock<usize> = OnceLock::new();
 
 pub type FuseResult = Result<(StatusCode, Arc<dyn Any + Send + Sync>), (StatusCode, Arc<dyn Any + Send + Sync>)>;
 pub type FuseHandler = for<'a> fn(&'a mut FuseRContext) -> BoxFuture<'a, FuseResult>;
@@ -146,7 +148,9 @@ impl Fuse {
 
             let precondition = Arc::new(precondition.clone());
 
-            let limit = std::env::var("RMOD_MAX_BODY_SIZE").ok().and_then(|s| s.parse::<usize>().ok()).unwrap_or(100 * 1024 * 1024);
+            let limit = *MAX_BODY_SIZE.get_or_init(|| {
+                std::env::var("RMOD_MAX_BODY_SIZE").ok().and_then(|s| s.parse::<usize>().ok()).unwrap_or(100 * 1024 * 1024)
+            });
 
             let handler_fn = move |req: Request<Body>| async move {
                 let (parts, body) = req.into_parts();

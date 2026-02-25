@@ -142,4 +142,21 @@ where
     ) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
         crate::db::tx_update(tx, self.table_name, set, condition, args).await
     }
+
+    /// Fetches the count of rows using the first initialized database pool.
+    pub async fn count(&self, where_clause: &str, args: PgArgs<T>) -> Result<i64, sqlx::Error> {
+        let sql = super::build_count_sql(self.table_name, where_clause, args.opt.as_ref());
+        crate::db::count::<T>(&sql, args).await
+    }
+
+    /// Fetches the count of rows from a specific database.
+    pub async fn count_on(&self, key: &str, where_clause: &str, args: PgArgs<T>) -> Result<i64, sqlx::Error> {
+        let sql = super::build_count_sql(self.table_name, where_clause, args.opt.as_ref());
+        crate::db::count_on::<T>(key, &sql, args).await
+    }
+
+    pub async fn tx_count(&self, tx: &Tx, where_clause: &str, args: PgArgs<T>) -> Result<i64, sqlx::Error> {
+        let sql = super::build_count_sql(self.table_name, where_clause, args.opt.as_ref());
+        crate::db::tx_count::<T>(tx, &sql, args).await
+    }
 }

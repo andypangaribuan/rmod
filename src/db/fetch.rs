@@ -166,18 +166,28 @@ where
     sqlx::query_as_with(sql, args.build_inner()).fetch_all(&mut **inner_tx).await
 }
 
-// Executes a query and returns a single row.
-// pub async fn fetch_one<T>(key: &str, sql: &str, args: PgArguments) -> Result<T, sqlx::Error>
-// where
-//     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
-// {
-//     sqlx::query_as_with(sql, args).fetch_one(store::db_read(key)).await
-// }
+/// Executes a count query using the first initialized database pool and returns the count (i64).
+pub async fn count<T>(sql: &str, args: PgArgs<T>) -> Result<i64, sqlx::Error> {
+    let force_rw = args.is_force_rw();
+    let use_read = !force_rw && store::db_is_read_real();
+    let pool = if use_read { store::db_read() } else { store::db() };
 
-// Executes a query using the first initialized database pool and returns a single row.
-// pub async fn fetch1_one<T>(sql: &str, args: PgArguments) -> Result<T, sqlx::Error>
-// where
-//     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin,
-// {
-//     sqlx::query_as_with(sql, args).fetch_one(store::db1_read()).await
-// }
+    let res: i64 = sqlx::query_scalar_with(sql, args.build_inner()).fetch_one(pool).await?;
+    Ok(res)
+}
+
+/// Executes a count query on a specific database and returns the count (i64).
+pub async fn count_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<i64, sqlx::Error> {
+    let force_rw = args.is_force_rw();
+    let use_read = !force_rw && store::db_is_read_real_on(key);
+    let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
+
+    let res: i64 = sqlx::query_scalar_with(sql, args.build_inner()).fetch_one(pool).await?;
+    Ok(res)
+}
+
+pub async fn tx_count<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<i64, sqlx::Error> {
+    let mut lock = tx.inner.lock().await;
+    let inner_tx = lock.as_mut().expect("Transaction already committed or rolled back");
+    sqlx::query_scalar_with(sql, args.build_inner()).fetch_one(&mut **inner_tx).await
+}
