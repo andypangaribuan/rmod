@@ -12,3 +12,5 @@ timelike
 timenow
 arcx
 vmove
+healthcheck
+healthz

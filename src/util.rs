@@ -12,6 +12,7 @@ pub mod crypto;
 pub mod defer;
 pub use defer::Defer;
 pub mod env;
+pub mod ext;
 pub mod jwt;
 pub mod lifecycle;
 pub mod support;
