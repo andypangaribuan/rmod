@@ -53,6 +53,7 @@ pub use tonic::server;
 pub use tonic::transport;
 #[doc(hidden)]
 pub use tonic::*;
+pub use tonic_health;
 
 // Re-exports for sqlx macros when using rmod as a sqlx proxy
 pub use sqlx::{ColumnIndex, Decode, Encode, Error, FromRow, Row, Type};

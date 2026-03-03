@@ -12,6 +12,7 @@ pub use prost;
 use std::net::SocketAddr;
 pub use tonic;
 use tonic::transport::Server;
+pub use tonic_health;
 
 pub async fn grpc<S, F>(addr: &str, service: S, on_start: Option<F>)
 where
@@ -33,7 +34,12 @@ where
         f();
     }
 
+    let (mut health_reporter, health_service) = tonic_health::server::health_reporter();
+    health_reporter.set_serving::<S>().await;
+    health_reporter.set_service_status("", tonic_health::ServingStatus::Serving).await;
+
     Server::builder()
+        .add_service(health_service)
         .add_service(service)
         .serve_with_shutdown(addr, async move {
             let _ = shutdown_rx.recv().await;
