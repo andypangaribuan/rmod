@@ -11,3 +11,7 @@
 #[path = "fuse.rs"]
 pub mod _fuse;
 pub use _fuse::*;
+
+#[path = "fuse_grpc.rs"]
+pub mod _fuse_grpc;
+pub use _fuse_grpc::*;

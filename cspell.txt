@@ -14,3 +14,4 @@ arcx
 vmove
 healthcheck
 healthz
+codegen

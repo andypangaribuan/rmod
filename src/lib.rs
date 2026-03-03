@@ -31,8 +31,13 @@ pub use types::ArcX;
 pub use ::serde;
 pub use ::serde::{Deserialize, Serialize, de, ser};
 pub use ::serde_json as json;
+pub use bytes;
 pub use chrono;
 pub use chrono::{DateTime, Datelike, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Timelike, Utc};
+pub use prost;
+pub use prost::alloc;
+#[doc(hidden)]
+pub use prost::*;
 pub use rust_decimal;
 pub use rust_decimal::*;
 pub use rust_decimal_macros;
@@ -40,6 +45,14 @@ pub use rust_decimal_macros::dec;
 pub use tokio;
 pub use tokio::main;
 pub use tokio::runtime;
+pub use tonic;
+pub use tonic::async_trait;
+pub use tonic::client;
+pub use tonic::codegen;
+pub use tonic::server;
+pub use tonic::transport;
+#[doc(hidden)]
+pub use tonic::*;
 
 // Re-exports for sqlx macros when using rmod as a sqlx proxy
 pub use sqlx::{ColumnIndex, Decode, Encode, Error, FromRow, Row, Type};
