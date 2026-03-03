@@ -13,7 +13,7 @@ use std::net::SocketAddr;
 pub use tonic;
 use tonic::transport::Server;
 
-pub async fn grpc<S>(addr: &str, service: S)
+pub async fn grpc<S, F>(addr: &str, service: S, on_start: Option<F>)
 where
     S: tonic::codegen::Service<
             tonic::codegen::http::Request<tonic::body::BoxBody>,
@@ -24,9 +24,14 @@ where
         + Send
         + 'static,
     S::Future: Send + 'static,
+    F: FnOnce(),
 {
     let addr: SocketAddr = addr.parse().unwrap();
     let mut shutdown_rx = crate::util::lifecycle::subscribe();
+
+    if let Some(f) = on_start {
+        f();
+    }
 
     Server::builder()
         .add_service(service)
