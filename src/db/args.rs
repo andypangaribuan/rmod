@@ -83,6 +83,30 @@ impl<T> Opt<T> {
         self.validate_count = Some(Box::new(f));
         self
     }
+
+    pub fn merge(&mut self, other: Self) {
+        if other.table_name.is_some() {
+            self.table_name = other.table_name;
+        }
+        if other.tail_query.is_some() {
+            self.tail_query = other.tail_query;
+        }
+        if other.force_rw.is_some() {
+            self.force_rw = other.force_rw;
+        }
+        if other.with_deleted_at.is_some() {
+            self.with_deleted_at = other.with_deleted_at;
+        }
+        if other.validate.is_some() {
+            self.validate = other.validate;
+        }
+        if other.validate_all.is_some() {
+            self.validate_all = other.validate_all;
+        }
+        if other.validate_count.is_some() {
+            self.validate_count = other.validate_count;
+        }
+    }
 }
 
 pub struct PgArgs<T = ()> {
@@ -125,6 +149,17 @@ impl<T> PgArgs<T> {
         arg.add_to(&mut self);
         self
     }
+
+    pub fn with_default_opt(mut self, default: Opt<T>) -> Self {
+        if let Some(existing) = self.take_opt() {
+            let mut merged = default;
+            merged.merge(existing);
+            self.set_opt(Some(merged));
+        } else {
+            self.set_opt(Some(default));
+        }
+        self
+    }
 }
 
 pub trait PgArg<T> {
@@ -144,7 +179,11 @@ where
 
 impl<T> PgArg<T> for Opt<T> {
     fn add_to(self, args: &mut PgArgs<T>) {
-        args.opt = Some(self);
+        if let Some(existing) = &mut args.opt {
+            existing.merge(self);
+        } else {
+            args.opt = Some(self);
+        }
     }
 }
 
