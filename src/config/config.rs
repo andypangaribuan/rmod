@@ -25,6 +25,10 @@ pub struct DbConfig {
     pub idle_timeout: Option<i16>,
 }
 
+pub fn timezone(val: &str) {
+    crate::store::update_timezone(val.to_string());
+}
+
 pub async fn db_setup(
     key: &str,
     write: DbConfig,

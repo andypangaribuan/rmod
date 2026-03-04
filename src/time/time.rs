@@ -12,6 +12,16 @@ pub use chrono::Duration as ChronoDuration;
 pub use chrono::{self, DateTime, Datelike, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeDelta, TimeZone, Timelike, Utc};
 pub use tokio::time::Duration;
 
+pub fn to_rfc3339(dt: DateTime<Utc>) -> String {
+    use chrono_tz::Tz;
+
+    if let Some(tz) = crate::store::get_timezone().and_then(|tz_str| tz_str.parse::<Tz>().ok()) {
+        return dt.with_timezone(&tz).to_rfc3339();
+    }
+
+    dt.to_rfc3339()
+}
+
 pub fn now() -> DateTime<Utc> {
     Utc::now()
 }

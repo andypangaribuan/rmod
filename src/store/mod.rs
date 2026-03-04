@@ -8,6 +8,10 @@
  * All Rights Reserved.
  */
 
-#[path = "store.rs"]
-mod _store;
-pub use _store::*;
+#[path = "db_store.rs"]
+mod db_store;
+pub use db_store::*;
+
+#[path = "var_store.rs"]
+mod var_store;
+pub(crate) use var_store::*;
