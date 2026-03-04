@@ -18,9 +18,12 @@ use serde::{Deserialize, Serialize};
 
 #[macro_export]
 macro_rules! fct {
-    ($($t:tt)*) => {
-        $crate::fct::FCT(rust_decimal_macros::dec!($($t)*))
-    };
+    ($val:literal) => {{
+        let s = stringify!($val);
+        let s = if s.starts_with('"') && s.ends_with('"') { &s[1..s.len() - 1] } else { s };
+
+        $crate::fct::FCT(s.parse::<$crate::rust_decimal::Decimal>().expect("invalid fct literal"))
+    }};
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, sqlx::Type)]
