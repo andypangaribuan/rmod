@@ -38,7 +38,7 @@ pub async fn grpc_healthcheck(port: i16) {
         use tonic_health::pb::health_client::HealthClient;
 
         let addr = format!("http://127.0.0.1:{}", port);
-        
+
         // Try to connect with a few retries as the server might be booting up
         let mut channel = None;
         for _ in 0..10 {
