@@ -31,61 +31,51 @@ pub fn healthcheck(port: i16) {
     }
 }
 
-pub fn grpc_healthcheck(port: i16) {
+pub async fn grpc_healthcheck(port: i16) {
     let args: Vec<String> = std::env::args().collect();
     if args.len() > 1 && args[1] == "--healthcheck" {
         use tonic_health::pb::HealthCheckRequest;
         use tonic_health::pb::health_client::HealthClient;
 
-        let check = async move {
-            let addr = format!("http://127.0.0.1:{}", port);
-
-            // Try to connect with a few retries as the server might be booting up
-            let mut channel = None;
-            for _ in 0..3 {
-                if let Ok(endpoint) = tonic::transport::Endpoint::from_shared(addr.clone()) {
-                    let endpoint = endpoint.connect_timeout(std::time::Duration::from_secs(2));
-                    if let Ok(ch) = endpoint.connect().await {
-                        channel = Some(ch);
-                        break;
-                    }
+        let addr = format!("http://127.0.0.1:{}", port);
+        
+        // Try to connect with a few retries as the server might be booting up
+        let mut channel = None;
+        for _ in 0..10 {
+            if let Ok(endpoint) = tonic::transport::Endpoint::from_shared(addr.clone()) {
+                let endpoint = endpoint.connect_timeout(std::time::Duration::from_secs(2));
+                if let Ok(ch) = endpoint.connect().await {
+                    channel = Some(ch);
+                    break;
                 }
-                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
             }
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        }
 
-            let channel = match channel {
-                Some(ch) => ch,
-                None => {
-                    eprintln!("healthcheck failed: could not connect to {}", addr);
-                    std::process::exit(1);
-                }
-            };
-
-            let mut client = HealthClient::new(channel);
-            let request = tonic::Request::new(HealthCheckRequest { service: "".to_string() });
-
-            match client.check(request).await {
-                Ok(resp) => {
-                    use tonic_health::pb::health_check_response::ServingStatus;
-                    if resp.into_inner().status == ServingStatus::Serving as i32 {
-                        std::process::exit(0);
-                    } else {
-                        eprintln!("healthcheck failed: service status is not Serving");
-                        std::process::exit(1);
-                    }
-                }
-                Err(e) => {
-                    eprintln!("healthcheck failed: {}", e);
-                    std::process::exit(1);
-                }
+        let channel = match channel {
+            Some(ch) => ch,
+            None => {
+                eprintln!("healthcheck failed: could not connect to {} after 10 attempts", addr);
+                std::process::exit(1);
             }
         };
 
-        match tokio::runtime::Handle::try_current() {
-            Ok(handle) => handle.block_on(check),
-            Err(_) => {
-                let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
-                rt.block_on(check);
+        let mut client = HealthClient::new(channel);
+        let request = tonic::Request::new(HealthCheckRequest { service: "".to_string() });
+
+        match client.check(request).await {
+            Ok(resp) => {
+                use tonic_health::pb::health_check_response::ServingStatus;
+                if resp.into_inner().status == ServingStatus::Serving as i32 {
+                    std::process::exit(0);
+                } else {
+                    eprintln!("healthcheck failed: service status is not Serving");
+                    std::process::exit(1);
+                }
+            }
+            Err(e) => {
+                eprintln!("healthcheck failed: {}", e);
+                std::process::exit(1);
             }
         }
     }
