@@ -30,3 +30,40 @@ pub fn healthcheck(port: i16) {
         }
     }
 }
+
+pub fn grpc_healthcheck(port: i16) {
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() > 1 && args[1] == "--healthcheck" {
+        use tonic_health::pb::HealthCheckRequest;
+        use tonic_health::pb::health_client::HealthClient;
+
+        let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+
+        rt.block_on(async {
+            let addr = format!("http://127.0.0.1:{}", port);
+            let channel = match tonic::transport::Endpoint::from_shared(addr) {
+                Ok(endpoint) => match endpoint.connect().await {
+                    Ok(channel) => channel,
+                    Err(_) => std::process::exit(1),
+                },
+                Err(_) => std::process::exit(1),
+            };
+
+            let mut client = HealthClient::new(channel);
+
+            let request = tonic::Request::new(HealthCheckRequest { service: "".to_string() });
+
+            match client.check(request).await {
+                Ok(resp) => {
+                    use tonic_health::pb::health_check_response::ServingStatus;
+                    if resp.into_inner().status == ServingStatus::Serving as i32 {
+                        std::process::exit(0);
+                    } else {
+                        std::process::exit(1);
+                    }
+                }
+                Err(_) => std::process::exit(1),
+            }
+        });
+    }
+}
