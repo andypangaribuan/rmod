@@ -14,5 +14,4 @@ mod tests;
 
 #[path = "time.rs"]
 mod _time;
-
 pub use _time::*;
