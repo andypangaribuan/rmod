@@ -12,7 +12,6 @@
 #[path = "test/arcx.rs"]
 mod tests;
 
-#[path = "arcx.rs"]
-mod _arcx;
-pub use _arcx::*;
+mod arcx;
+pub use arcx::*;
 pub use sqlx::types::*;
