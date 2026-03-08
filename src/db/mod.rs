@@ -8,25 +8,18 @@
  * All Rights Reserved.
  */
 
-#[path = "args.rs"]
-mod _args;
-#[path = "db_external.rs"]
-mod _db_external;
-#[path = "exec.rs"]
-mod _exec;
-#[path = "fetch.rs"]
-mod _fetch;
-#[path = "function.rs"]
-mod _function;
-#[path = "repo.rs"]
-mod _repo;
-#[path = "tx.rs"]
-mod _tx;
+mod args;
+mod db_external;
+mod exec;
+mod fetch;
+mod function;
+mod repo;
+mod tx;
 
-pub use _args::*;
-pub use _db_external::*;
-pub use _exec::*;
-pub use _fetch::*;
-pub(crate) use _function::*;
-pub use _repo::*;
-pub use _tx::*;
+pub use args::*;
+pub use db_external::*;
+pub use exec::*;
+pub use fetch::*;
+pub(crate) use function::*;
+pub use repo::*;
+pub use tx::*;
