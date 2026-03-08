@@ -13,6 +13,7 @@ pub mod defer;
 pub use defer::Defer;
 pub mod env;
 pub mod ext;
+pub mod grpc_client;
 pub mod jwt;
 pub mod lifecycle;
 pub mod support;
