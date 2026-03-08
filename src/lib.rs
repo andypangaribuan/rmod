@@ -42,6 +42,7 @@ pub use rust_decimal;
 pub use rust_decimal::*;
 pub use rust_decimal_macros;
 pub use rust_decimal_macros::dec;
+pub use rustls;
 pub use tokio;
 pub use tokio::main;
 pub use tokio::runtime;

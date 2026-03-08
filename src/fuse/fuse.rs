@@ -430,6 +430,20 @@ impl FuseRContext {
         serde_path_to_error::deserialize(&mut de)
     }
 
+    pub fn query(&self) -> HashMap<String, String> {
+        let mut map = HashMap::new();
+        if let Some(query) = self.req.uri().query() {
+            for pair in query.split('&') {
+                let mut kv = pair.splitn(2, '=');
+                if let Some(k) = kv.next() {
+                    let v = kv.next().unwrap_or("");
+                    map.insert(k.to_string(), v.to_string());
+                }
+            }
+        }
+        map
+    }
+
     pub fn set<T: Send + Sync + 'static>(&self, key: &str, value: T) {
         let mut data = self.data.lock().unwrap();
         data.insert(key.to_string(), Arc::new(value));

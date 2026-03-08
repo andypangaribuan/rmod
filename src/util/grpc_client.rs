@@ -12,9 +12,17 @@ use crate::tonic::transport::{Channel, Endpoint};
 use std::time::Duration;
 
 pub async fn connect(url: &str) -> Result<Channel, crate::tonic::transport::Error> {
-    Endpoint::from_shared(url.to_string())?.connect().await
+    let mut endpoint = Endpoint::from_shared(url.to_string())?;
+    if url.starts_with("https://") {
+        endpoint = endpoint.tls_config(crate::tonic::transport::ClientTlsConfig::new().with_native_roots())?;
+    }
+    endpoint.connect().await
 }
 
 pub async fn connect_with_timeout(url: &str, timeout: Duration) -> Result<Channel, crate::tonic::transport::Error> {
-    Endpoint::from_shared(url.to_string())?.timeout(timeout).connect().await
+    let mut endpoint = Endpoint::from_shared(url.to_string())?.timeout(timeout);
+    if url.starts_with("https://") {
+        endpoint = endpoint.tls_config(crate::tonic::transport::ClientTlsConfig::new().with_native_roots())?;
+    }
+    endpoint.connect().await
 }
