@@ -9,21 +9,21 @@
 
 #: do cargo build and lint
 function run {
-  devbox run check
-  devbox run build
-  devbox run lint
+  cargo check
+  cargo build
+  cargo clippy && cargo fmt --check
 }
 
 
 #: clean the project
 function clean {
-  devbox run clean
+  cargo clean
 }
 
 
 #: do cargo test
 function test {
-  devbox run test
+  cargo test -q -- --test-threads=1
 }
 
 
@@ -38,16 +38,32 @@ function spell {
 
 #: open devbox shell #: opt: --fresh (delete .cargo and .rustup directories first)
 function shell {
+  if [ "$DEVBOX_SHELL_ENABLED" = "1" ]; then
+    echo "ℹ️  You are already in an active Devbox shell."
+    return 0
+  fi
+
   if [[ $1 == "--fresh" ]]; then
     rm -rf .cargo .rustup
   fi
 
-  devbox shell
+  DEVBOX_PROJECT_CWD="$PWD" devbox shell --config ~/.devbox/global/rust-1.93/devbox.json
+}
+
+
+#: show unused dependencies
+function udeps {
+  cargo +nightly udeps
+}
+
+
+#: remove unused directories
+function rmd {
+  rm -rf .cargo .devbox .rustup debug target test-debug
 }
 
 
 #: space
-
 
 
 #: show contributor who make commits
