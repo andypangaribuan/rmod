@@ -22,6 +22,10 @@ pub fn to_rfc3339(dt: DateTime<Utc>) -> String {
     dt.to_rfc3339()
 }
 
+pub fn from_rfc3339(rfc3339: &str) -> Result<DateTime<Utc>, chrono::ParseError> {
+    DateTime::parse_from_rfc3339(rfc3339).map(|dt| dt.with_timezone(&Utc))
+}
+
 pub fn now() -> DateTime<Utc> {
     Utc::now()
 }
