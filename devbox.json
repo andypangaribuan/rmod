@@ -1,6 +1,12 @@
 {
   "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.16.0/.schema/devbox.schema.json",
-  "packages": ["rustup@1.28.2", "libiconv@2.42", "lldb@21.1.8", "git@latest"],
+  "packages": [
+    "rustup@1.28.2",
+    "libiconv@2.42",
+    "lldb@21.1.8",
+    "git@latest",
+    "cargo-udeps@latest"
+  ],
   "env": {
     "PROJECT_DIR": "$PWD"
   },
@@ -15,10 +21,13 @@
     "scripts": {
       "check": "cargo check",
       "build": "cargo build",
+      "start": "cargo run",
       "clean": "cargo clean",
       "test": "cargo test -q -- --test-threads=1",
       "lint": "cargo clippy && cargo fmt --check",
-      "build-docs": "cargo doc"
+      "release": "cargo build --release",
+      "build-docs": "cargo doc",
+      "udeps": "cargo +nightly udeps"
     }
   }
 }
