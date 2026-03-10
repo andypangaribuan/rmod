@@ -47,6 +47,15 @@ impl FCT {
             format!("{:.*}", precision, val)
         }
     }
+
+    pub fn to_json(&self) -> crate::json::Value {
+        let s = self.0.normalize().to_string();
+        crate::json::from_str::<crate::json::Value>(&s).unwrap_or(crate::json::json!(s))
+    }
+
+    pub fn to_json_val(val: &str) -> crate::json::Value {
+        val.parse::<Self>().map(|fct| fct.to_json()).unwrap_or(crate::json::json!(val))
+    }
 }
 
 impl From<Decimal> for FCT {
