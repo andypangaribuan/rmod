@@ -34,13 +34,13 @@ pub fn from_rfc3339(rfc3339: &str) -> Result<DateTime<Utc>, chrono::ParseError> 
     DateTime::parse_from_rfc3339(rfc3339).map(|dt| dt.with_timezone(&Utc))
 }
 
-pub fn now() -> DateTime<Tz> {
-    let tz = crate::store::get_timezone().and_then(|tz_str| tz_str.parse::<Tz>().ok()).unwrap_or(Tz::UTC);
-    Utc::now().with_timezone(&tz)
+pub fn now() -> DateTime<Utc> {
+    Utc::now()
 }
 
-pub fn now_utc() -> DateTime<Utc> {
-    Utc::now()
+pub fn now_tz() -> DateTime<Tz> {
+    let tz = crate::store::get_timezone().and_then(|tz_str| tz_str.parse::<Tz>().ok()).unwrap_or(Tz::UTC);
+    Utc::now().with_timezone(&tz)
 }
 
 pub trait ToDuration {
