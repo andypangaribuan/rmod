@@ -95,6 +95,7 @@ pub struct FuseRContext {
     pub res_status: Option<StatusCode>,
     pub res_body: Option<Arc<dyn Any + Send + Sync>>,
     pub res_backtrace: Option<Arc<Backtrace>>,
+    pub res_location: Option<&'static std::panic::Location<'static>>,
     pub res_source: FuseResSource,
 
     response: Option<Response>,
@@ -191,6 +192,7 @@ impl FuseRContext {
             res_status: None,
             res_body: None,
             res_backtrace: None,
+            res_location: None,
             res_source: FuseResSource::new(""),
 
             response: None,
@@ -322,9 +324,18 @@ impl FuseRContext {
 
     #[inline(never)]
     pub fn backtrace_json(&self) -> serde_json::Value {
+        let mut frames = Vec::new();
+
+        if let Some(loc) = self.res_location {
+            let mut frame_map = serde_json::Map::new();
+            frame_map.insert("fn".to_string(), serde_json::json!("(caller)"));
+            frame_map.insert("at".to_string(), serde_json::json!(format!("{}:{}", loc.file(), loc.line())));
+            frames.push(serde_json::Value::Object(frame_map));
+        }
+
         if let Some(bt) = &self.res_backtrace {
             let bt_str = format!("{:#?}", bt);
-            let mut frames = Vec::new();
+            let mut bt_frames = Vec::new();
 
             // 1. Try to parse the "raw" list format: { fn: "...", file: "...", line: ... }
             if bt_str.contains("{ fn: \"") {
@@ -356,13 +367,13 @@ impl FuseRContext {
                     }
 
                     if !frame_map.is_empty() {
-                        frames.push(serde_json::Value::Object(frame_map));
+                        bt_frames.push(serde_json::Value::Object(frame_map));
                     }
                 }
             }
 
             // 2. Fallback to the multi-line "at " format
-            if frames.is_empty() {
+            if bt_frames.is_empty() {
                 let mut current_frame: Option<serde_json::Map<String, serde_json::Value>> = None;
                 for line in bt_str.lines() {
                     let line = line.trim();
@@ -373,11 +384,11 @@ impl FuseRContext {
                     if let Some(stripped) = line.strip_prefix("at ") {
                         if let Some(mut frame) = current_frame.take() {
                             frame.insert("at".to_string(), serde_json::json!(stripped.trim()));
-                            frames.push(serde_json::Value::Object(frame));
+                            bt_frames.push(serde_json::Value::Object(frame));
                         }
                     } else {
                         if let Some(frame) = current_frame.take() {
-                            frames.push(serde_json::Value::Object(frame));
+                            bt_frames.push(serde_json::Value::Object(frame));
                         }
 
                         let mut frame = serde_json::Map::new();
@@ -386,42 +397,34 @@ impl FuseRContext {
                     }
                 }
                 if let Some(frame) = current_frame {
-                    frames.push(serde_json::Value::Object(frame));
+                    bt_frames.push(serde_json::Value::Object(frame));
                 }
             }
 
-            let mut result = serde_json::json!(frames);
-            if let Some(arr) = result.as_array_mut() {
-                let mut first_rmod_idx = None;
-                let mut last_relevant_idx = None;
+            let mut first_rmod_idx = None;
+            let mut last_relevant_idx = None;
 
-                for (i, frame) in arr.iter().enumerate() {
-                    if let Some(obj) = frame.as_object()
-                        && let Some(f_name) = obj.get("fn").and_then(|v| v.as_str())
-                        && f_name.contains("rmod::")
-                    {
-                        if first_rmod_idx.is_none() {
-                            first_rmod_idx = Some(i);
-                        }
-
-                        last_relevant_idx = Some(i);
+            for (i, frame) in bt_frames.iter().enumerate() {
+                if let Some(obj) = frame.as_object()
+                    && let Some(f_name) = obj.get("fn").and_then(|v| v.as_str())
+                    && f_name.contains("rmod::")
+                {
+                    if first_rmod_idx.is_none() {
+                        first_rmod_idx = Some(i);
                     }
-                }
-
-                if let Some(start) = first_rmod_idx {
-                    let end = last_relevant_idx.unwrap_or(start);
-                    if start <= end {
-                        *arr = arr[start..=end].to_vec();
-                    } else {
-                        *arr = arr[start..=start].to_vec();
-                    }
+                    last_relevant_idx = Some(i);
                 }
             }
 
-            return result;
+            if let Some(start) = first_rmod_idx {
+                let end = last_relevant_idx.unwrap_or(start);
+                for frame in bt_frames.iter().take(end + 1).skip(start) {
+                    frames.push(frame.clone());
+                }
+            }
         }
 
-        serde_json::json!([])
+        serde_json::json!(frames)
     }
 
     pub fn json<T: serde::de::DeserializeOwned>(&self) -> Result<T, serde_path_to_error::Error<serde_json::Error>> {
@@ -455,25 +458,33 @@ impl FuseRContext {
     }
 
     #[inline(never)]
+    #[track_caller]
     pub fn ok<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) -> FuseResult {
+        self.res_location = Some(std::panic::Location::caller());
         self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
         Ok((status, Arc::new(body)))
     }
 
     #[inline(never)]
+    #[track_caller]
     pub fn err<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) -> FuseResult {
+        self.res_location = Some(std::panic::Location::caller());
         self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
         Err((status, Arc::new(body)))
     }
 
     #[inline(never)]
+    #[track_caller]
     pub fn ok_val<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) -> (StatusCode, Arc<dyn Any + Send + Sync>) {
+        self.res_location = Some(std::panic::Location::caller());
         self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
         (status, Arc::new(body))
     }
 
     #[inline(never)]
+    #[track_caller]
     pub fn err_val<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) -> (StatusCode, Arc<dyn Any + Send + Sync>) {
+        self.res_location = Some(std::panic::Location::caller());
         self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
         (status, Arc::new(body))
     }
