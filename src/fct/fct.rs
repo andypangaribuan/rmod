@@ -24,6 +24,9 @@ macro_rules! fct {
 
         $crate::fct::FCT(s.parse::<$crate::rust_decimal::Decimal>().expect("invalid fct literal"))
     }};
+    ($val:expr) => {
+        $val.parse::<$crate::fct::FCT>().expect("invalid fct value")
+    };
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, sqlx::Type)]

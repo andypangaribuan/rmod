@@ -9,16 +9,16 @@
  */
 
 use super::*;
-use chrono::TimeDelta;
+use crate::time;
 
 #[test]
 fn test_jwt_encode_decode() {
     let sub = "1234567890".to_string();
     let iss = "rmod".to_string();
-    let exp_delta = TimeDelta::hours(24);
+    let duration = time::to_delta("1d");
     let secret = "secret";
 
-    let token = encode(sub.clone(), iss.clone(), secret, exp_delta);
+    let token = encode(sub.clone(), iss.clone(), secret, duration);
     let decoded = decode(&token, secret).unwrap();
 
     println!("token: {}", token);
@@ -31,11 +31,11 @@ fn test_jwt_encode_decode() {
 fn test_jwt_invalid_secret() {
     let sub = "1234567890".to_string();
     let iss = "rmod".to_string();
-    let exp_delta = TimeDelta::hours(24);
+    let duration = time::to_delta("1d");
     let secret = "secret";
     let wrong_secret = "wrong_secret";
 
-    let token = encode(sub, iss, secret, exp_delta);
+    let token = encode(sub, iss, secret, duration);
     let result = decode(&token, wrong_secret);
 
     assert!(result.is_err());
@@ -46,10 +46,10 @@ fn test_jwt_invalid_secret() {
 fn test_jwt_expired() {
     let sub = "1234567890".to_string();
     let iss = "rmod".to_string();
-    let exp_delta = TimeDelta::seconds(-10); // 10 seconds ago
+    let duration = time::to_delta("-10s");
     let secret = "secret";
 
-    let token = encode(sub, iss, secret, exp_delta);
+    let token = encode(sub, iss, secret, duration);
     let result = decode(&token, secret);
 
     assert!(result.is_err());

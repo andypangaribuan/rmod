@@ -115,3 +115,14 @@ fn test_trim() {
     assert_eq!(v2.trim(3), fct!(3.003));
     assert_eq!(v2.trim(4), fct!(3.0037));
 }
+
+#[test]
+fn test_string_var() {
+    let s = "1.23".to_string();
+    let v = fct!(s);
+    assert_eq!(v, fct!(1.23));
+
+    let s2 = "4.56";
+    let v2 = fct!(s2);
+    assert_eq!(v2, fct!(4.56));
+}

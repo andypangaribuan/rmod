@@ -70,9 +70,17 @@ pub async fn sleep<T: ToDuration>(duration: T) {
 }
 
 pub fn to_duration(duration: &str) -> Duration {
+    let delta = to_delta(duration);
+    let ms = delta.num_milliseconds();
+    if ms < 0 { Duration::from_secs(0) } else { Duration::from_millis(ms as u64) }
+}
+
+pub fn to_delta(duration: &str) -> TimeDelta {
     if duration.is_empty() {
-        return Duration::from_secs(0);
+        return TimeDelta::zero();
     }
+
+    let (duration, is_neg) = if let Some(stripped) = duration.strip_prefix('-') { (stripped, true) } else { (duration, false) };
 
     let (val_str, unit) = if let Some(stripped) = duration.strip_suffix("ms") {
         (stripped, "ms")
@@ -88,14 +96,16 @@ pub fn to_duration(duration: &str) -> Duration {
         (duration, "s")
     };
 
-    let val = val_str.parse::<u64>().unwrap_or(0);
+    let val = val_str.parse::<i64>().unwrap_or(0);
 
-    match unit {
-        "ms" => Duration::from_millis(val),
-        "s" => Duration::from_secs(val),
-        "m" => Duration::from_secs(val * 60),
-        "h" => Duration::from_secs(val * 3600),
-        "d" => Duration::from_secs(val * 86400),
-        _ => Duration::from_secs(val),
-    }
+    let delta = match unit {
+        "ms" => TimeDelta::try_milliseconds(val).unwrap_or_default(),
+        "s" => TimeDelta::try_seconds(val).unwrap_or_default(),
+        "m" => TimeDelta::try_minutes(val).unwrap_or_default(),
+        "h" => TimeDelta::try_hours(val).unwrap_or_default(),
+        "d" => TimeDelta::try_days(val).unwrap_or_default(),
+        _ => TimeDelta::try_seconds(val).unwrap_or_default(),
+    };
+
+    if is_neg { -delta } else { delta }
 }
