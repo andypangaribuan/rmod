@@ -13,6 +13,17 @@ pub use chrono::{self, DateTime, Datelike, FixedOffset, Local, NaiveDate, NaiveD
 pub use tokio::time::Duration;
 
 pub fn to_rfc3339(dt: DateTime<Utc>) -> String {
+    use chrono::SecondsFormat;
+    use chrono_tz::Tz;
+
+    if let Some(tz) = crate::store::get_timezone().and_then(|tz_str| tz_str.parse::<Tz>().ok()) {
+        return dt.with_timezone(&tz).to_rfc3339_opts(SecondsFormat::Secs, false);
+    }
+
+    dt.to_rfc3339_opts(SecondsFormat::Secs, false)
+}
+
+pub fn to_rfc3339_full(dt: DateTime<Utc>) -> String {
     use chrono_tz::Tz;
 
     if let Some(tz) = crate::store::get_timezone().and_then(|tz_str| tz_str.parse::<Tz>().ok()) {

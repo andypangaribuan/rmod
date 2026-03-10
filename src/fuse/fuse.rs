@@ -17,6 +17,7 @@ use axum::{
     routing::{MethodFilter, Router, on},
 };
 pub use futures_util::future::BoxFuture;
+use percent_encoding::percent_decode_str;
 use std::any::Any;
 use std::backtrace::Backtrace;
 use std::collections::HashMap;
@@ -440,7 +441,9 @@ impl FuseRContext {
                 let mut kv = pair.splitn(2, '=');
                 if let Some(k) = kv.next() {
                     let v = kv.next().unwrap_or("");
-                    map.insert(k.to_string(), v.to_string());
+                    let k = percent_decode_str(k).decode_utf8_lossy().to_string();
+                    let v = percent_decode_str(v).decode_utf8_lossy().to_string();
+                    map.insert(k, v);
                 }
             }
         }
