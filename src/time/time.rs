@@ -9,13 +9,12 @@
  */
 
 pub use chrono::Duration as ChronoDuration;
+use chrono::SecondsFormat;
 pub use chrono::{self, DateTime, Datelike, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeDelta, TimeZone, Timelike, Utc};
+use chrono_tz::Tz;
 pub use tokio::time::Duration;
 
 pub fn to_rfc3339(dt: DateTime<Utc>) -> String {
-    use chrono::SecondsFormat;
-    use chrono_tz::Tz;
-
     if let Some(tz) = crate::store::get_timezone().and_then(|tz_str| tz_str.parse::<Tz>().ok()) {
         return dt.with_timezone(&tz).to_rfc3339_opts(SecondsFormat::Secs, false);
     }
@@ -24,8 +23,6 @@ pub fn to_rfc3339(dt: DateTime<Utc>) -> String {
 }
 
 pub fn to_rfc3339_full(dt: DateTime<Utc>) -> String {
-    use chrono_tz::Tz;
-
     if let Some(tz) = crate::store::get_timezone().and_then(|tz_str| tz_str.parse::<Tz>().ok()) {
         return dt.with_timezone(&tz).to_rfc3339();
     }
@@ -39,6 +36,11 @@ pub fn from_rfc3339(rfc3339: &str) -> Result<DateTime<Utc>, chrono::ParseError> 
 
 pub fn now() -> DateTime<Utc> {
     Utc::now()
+}
+
+pub fn now_tz() -> DateTime<Tz> {
+    let tz = crate::store::get_timezone().and_then(|tz_str| tz_str.parse::<Tz>().ok()).unwrap_or(Tz::UTC);
+    Utc::now().with_timezone(&tz)
 }
 
 pub trait ToDuration {

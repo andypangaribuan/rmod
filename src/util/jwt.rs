@@ -13,7 +13,7 @@
 mod tests;
 
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
-use chrono::{TimeDelta, Utc};
+use chrono::Utc;
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
@@ -30,10 +30,10 @@ pub struct Claims {
     pub exp: u32,
 }
 
-pub fn encode(sub: String, iss: String, secret: &str, exp_delta: TimeDelta) -> String {
+pub fn encode(sub: String, iss: String, secret: &str, duration: std::time::Duration) -> String {
     let timenow = Utc::now();
     let iat = timenow.timestamp() as u32;
-    let exp = (timenow + exp_delta).timestamp() as u32;
+    let exp = (timenow + duration).timestamp() as u32;
 
     let claims = Claims { sub, iss, iat, exp };
 

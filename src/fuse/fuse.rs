@@ -124,7 +124,7 @@ impl Fuse {
         Self { router: Router::new() }
     }
 
-    pub fn endpoints(&mut self, precondition: Vec<FuseHandler>, defer: FuseHandler, mapping: HashMap<&'static str, Vec<FuseHandler>>) {
+    pub fn endpoints(&mut self, defer: FuseHandler, precondition: Vec<FuseHandler>, mapping: HashMap<&'static str, Vec<FuseHandler>>) {
         for (key, handlers) in mapping {
             let parts: Vec<&str> = key.split(": ").collect();
             if parts.len() != 2 {
