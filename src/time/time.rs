@@ -43,6 +43,11 @@ pub fn now_tz() -> DateTime<Tz> {
     Utc::now().with_timezone(&tz)
 }
 
+pub fn is_timezone_utc() -> bool {
+    let tz = crate::store::get_timezone().unwrap_or_default();
+    tz.is_empty() || tz.eq_ignore_ascii_case("utc")
+}
+
 pub trait ToDuration {
     fn to_duration(&self) -> Duration;
 }

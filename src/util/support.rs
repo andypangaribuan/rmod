@@ -18,7 +18,11 @@ use std::collections::HashSet;
 #[macro_export]
 macro_rules! log {
     ($($arg:tt)*) => {
-        println!("{} {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f %:z"), format!($($arg)*));
+        if $crate::time::is_timezone_utc() {
+            println!("{} {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f %:z"), format!($($arg)*));
+        } else {
+            println!("{} {}", $crate::time::now_tz().format("%Y-%m-%d %H:%M:%S%.3f %:z"), format!($($arg)*));
+        }
     };
 }
 
