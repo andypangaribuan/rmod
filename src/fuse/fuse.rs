@@ -434,6 +434,15 @@ impl FuseRContext {
         serde_path_to_error::deserialize(&mut de)
     }
 
+    pub fn json_parse<T: serde::de::DeserializeOwned>(&self) -> Result<T, String> {
+        self.json::<T>().map_err(|e| {
+            let msg_str = e.to_string();
+            let msg = msg_str.split(" at line ").next().unwrap_or(&msg_str);
+            let msg = msg.split(" at column ").next().unwrap_or(msg);
+            msg.to_string()
+        })
+    }
+
     pub fn query(&self) -> HashMap<String, String> {
         let mut map = HashMap::new();
         if let Some(query) = self.req.uri().query() {
