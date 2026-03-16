@@ -28,7 +28,7 @@ impl DistLock {
             let key = self.key.clone();
             if let Ok(handle) = tokio::runtime::Handle::try_current() {
                 handle.spawn(async move {
-                    crate::lock::pg_lock::unlock(conn, &key).await;
+                    super::pg_lock::unlock(conn, &key).await;
                 });
             } else {
                 let _ = conn.detach();
@@ -38,7 +38,7 @@ impl DistLock {
             let key = self.key.clone();
             if let Ok(handle) = tokio::runtime::Handle::try_current() {
                 handle.spawn(async move {
-                    crate::lock::redis_lock::unlock(&key, &val).await;
+                    super::redis_lock::unlock(&key, &val).await;
                 });
             }
         }
@@ -76,11 +76,11 @@ pub async fn lock(key: &str, opt: Option<LockOptions>) -> Result<DistLock, Strin
 
     match t {
         DistLockType::Pg => {
-            let conn = crate::lock::pg_lock::lock(key, wait_ms).await?;
+            let conn = super::pg_lock::lock(key, wait_ms).await?;
             Ok(DistLock { key: key.to_string(), pg_conn: Some(conn), redis_val: None })
         }
         DistLockType::Redis => {
-            let val = crate::lock::redis_lock::lock(key, ttl_ms, wait_ms).await?;
+            let val = super::redis_lock::lock(key, ttl_ms, wait_ms).await?;
             Ok(DistLock { key: key.to_string(), pg_conn: None, redis_val: Some(val) })
         }
     }

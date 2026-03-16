@@ -38,7 +38,7 @@ pub(crate) async fn initialize(config: &crate::config::DbConfig) -> Result<(), S
 
     POOL.set(pool).map_err(|_| "Pg Lock Pool already initialized".to_string())?;
     LOCK_TIMEOUT.set(config.lock_timeout.unwrap_or(30)).ok();
-    crate::lock::LOCK_TYPE.set(crate::lock::DistLockType::Pg).ok();
+    super::LOCK_TYPE.set(super::DistLockType::Pg).ok();
     Ok(())
 }
 

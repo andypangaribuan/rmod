@@ -25,7 +25,7 @@ pub(crate) async fn initialize(config: &RedisLockConfig) -> Result<(), String> {
     let client = redis::Client::open(url).map_err(|e| e.to_string())?;
     REDIS_CLIENT.set(client).map_err(|_| "Redis Client already initialized".to_string())?;
     LOCK_TTL.set(config.ttl.unwrap_or(30000)).ok();
-    crate::lock::LOCK_TYPE.set(crate::lock::DistLockType::Redis).ok();
+    super::LOCK_TYPE.set(super::DistLockType::Redis).ok();
     Ok(())
 }
 
