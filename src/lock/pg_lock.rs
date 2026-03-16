@@ -8,8 +8,12 @@
  * All Rights Reserved.
  */
 
+use siphasher::sip::SipHasher13;
 use sqlx::Postgres;
-use std::sync::OnceLock;
+use std::{
+    hash::{Hash, Hasher},
+    sync::OnceLock,
+};
 
 static POOL: OnceLock<sqlx::PgPool> = OnceLock::new();
 static LOCK_TIMEOUT: OnceLock<i16> = OnceLock::new();
@@ -42,8 +46,6 @@ pub(crate) async fn lock(key: &str, opt_wait_ms: Option<i64>) -> Result<sqlx::po
     let pool = POOL.get().expect("Pg lock pool not initialized");
     let timeout_ms = opt_wait_ms.unwrap_or_else(|| *LOCK_TIMEOUT.get().unwrap_or(&30) as i64 * 1000) as u64;
 
-    use siphasher::sip::SipHasher13;
-    use std::hash::{Hash, Hasher};
     let mut hasher = SipHasher13::new();
     key.hash(&mut hasher);
     let lock_key = hasher.finish() as i64;
@@ -68,8 +70,6 @@ pub(crate) async fn lock(key: &str, opt_wait_ms: Option<i64>) -> Result<sqlx::po
 }
 
 pub(crate) async fn unlock(mut conn: sqlx::pool::PoolConnection<Postgres>, key: &str) {
-    use siphasher::sip::SipHasher13;
-    use std::hash::{Hash, Hasher};
     let mut hasher = SipHasher13::new();
     key.hash(&mut hasher);
     let lock_key = hasher.finish() as i64;

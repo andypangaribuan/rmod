@@ -15,3 +15,5 @@ vmove
 healthcheck
 healthz
 codegen
+siphasher
+redis
