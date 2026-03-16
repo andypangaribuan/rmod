@@ -31,15 +31,21 @@ impl DistLock {
     fn perform_unlock(&mut self) {
         if let Some(conn) = self.pg_conn.take() {
             let key = self.key.clone();
-            tokio::spawn(async move {
-                crate::lock::pg_lock::unlock(conn, &key).await;
-            });
+            if let Ok(handle) = tokio::runtime::Handle::try_current() {
+                handle.spawn(async move {
+                    crate::lock::pg_lock::unlock(conn, &key).await;
+                });
+            } else {
+                let _ = conn.detach();
+            }
         }
         if let Some(val) = self.redis_val.take() {
             let key = self.key.clone();
-            tokio::spawn(async move {
-                crate::lock::redis_lock::unlock(&key, &val).await;
-            });
+            if let Ok(handle) = tokio::runtime::Handle::try_current() {
+                handle.spawn(async move {
+                    crate::lock::redis_lock::unlock(&key, &val).await;
+                });
+            }
         }
     }
 }
