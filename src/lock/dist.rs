@@ -18,39 +18,6 @@ pub(super) enum DistLockType {
 
 pub(super) static LOCK_TYPE: OnceLock<DistLockType> = OnceLock::new();
 
-impl DistLock {
-    pub fn unlock(mut self) {
-        self.perform_unlock();
-    }
-
-    fn perform_unlock(&mut self) {
-        if let Some(conn) = self.pg_conn.take() {
-            let key = self.key.clone();
-            if let Ok(handle) = tokio::runtime::Handle::try_current() {
-                handle.spawn(async move {
-                    super::pg_lock::unlock(conn, &key).await;
-                });
-            } else {
-                let _ = conn.detach();
-            }
-        }
-        if let Some(val) = self.redis_val.take() {
-            let key = self.key.clone();
-            if let Ok(handle) = tokio::runtime::Handle::try_current() {
-                handle.spawn(async move {
-                    super::redis_lock::unlock(&key, &val).await;
-                });
-            }
-        }
-    }
-}
-
-impl Drop for DistLock {
-    fn drop(&mut self) {
-        self.perform_unlock();
-    }
-}
-
 pub fn opt() -> LockOptions {
     LockOptions { ttl_ms: None, wait_ms: None }
 }

@@ -9,6 +9,7 @@
  */
 
 mod dist;
+mod lock_impl;
 mod model;
 mod pg_lock;
 mod redis_lock;
