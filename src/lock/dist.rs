@@ -25,6 +25,10 @@ pub struct DistLock {
 
 impl DistLock {
     pub fn unlock(mut self) {
+        self.perform_unlock();
+    }
+
+    fn perform_unlock(&mut self) {
         if let Some(conn) = self.pg_conn.take() {
             let key = self.key.clone();
             tokio::spawn(async move {
@@ -37,6 +41,12 @@ impl DistLock {
                 crate::lock::redis_lock::unlock(&key, &val).await;
             });
         }
+    }
+}
+
+impl Drop for DistLock {
+    fn drop(&mut self) {
+        self.perform_unlock();
     }
 }
 

@@ -33,8 +33,7 @@ pub(crate) async fn lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Option<i6
     let client = REDIS_CLIENT.get().expect("Redis lock client not initialized");
     let ttl = opt_ttl.unwrap_or_else(|| *LOCK_TTL.get().unwrap_or(&30000));
     let wait_ms = opt_wait_ms.unwrap_or(30000) as u64;
-    let mut conn: redis::aio::MultiplexedConnection =
-        client.get_multiplexed_async_connection().await.map_err(|e| e.to_string())?;
+    let mut conn: redis::aio::MultiplexedConnection = client.get_multiplexed_async_connection().await.map_err(|e| e.to_string())?;
 
     let val = format!("{}-{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos(), std::process::id());
 
