@@ -12,14 +12,6 @@ use super::model::RedisLockConfig;
 use crate::config::DbConfig;
 
 pub async fn pg_lock(config: &DbConfig) -> Result<(), String> {
-    pg_lock_initialize(config).await
-}
-
-pub async fn redis_lock(config: &RedisLockConfig) -> Result<(), String> {
-    redis_lock_initialize(config).await
-}
-
-pub async fn pg_lock_initialize(config: &DbConfig) -> Result<(), String> {
     if config.host.is_empty() {
         return Err("host cannot be empty".to_string());
     }
@@ -36,7 +28,7 @@ pub async fn pg_lock_initialize(config: &DbConfig) -> Result<(), String> {
     crate::lock::pg_lock_initialize(config).await
 }
 
-pub async fn redis_lock_initialize(config: &RedisLockConfig) -> Result<(), String> {
+pub async fn redis_lock(config: &RedisLockConfig) -> Result<(), String> {
     if config.host.is_empty() {
         return Err("host cannot be empty".to_string());
     }
