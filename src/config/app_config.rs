@@ -8,22 +8,12 @@
  * All Rights Reserved.
  */
 
-use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
-use sqlx::{Pool, Postgres};
+use super::model::DbConfig;
+use sqlx::{
+    Pool, Postgres,
+    postgres::{PgConnectOptions, PgPoolOptions},
+};
 use std::time::Duration;
-
-pub struct DbConfig {
-    pub host: String,
-    pub port: u16,
-    pub database: String,
-    pub schema: Option<String>,
-    pub username: String,
-    pub password: String,
-    pub max_connections: u32,
-    pub min_connections: u32,
-    pub acquire_timeout: Option<i16>,
-    pub idle_timeout: Option<i16>,
-}
 
 pub fn timezone(val: &str) {
     crate::store::update_timezone(val.to_string());

@@ -1,0 +1,72 @@
+/*
+ * Copyright (c) 2026.
+ * Created by Andy Pangaribuan (iam.pangaribuan@gmail.com)
+ * https://github.com/apangaribuan
+ *
+ * This product is protected by copyright and distributed under
+ * licenses restricting copying, distribution and decompilation.
+ * All Rights Reserved.
+ */
+
+use std::sync::OnceLock;
+
+pub enum DistLockType {
+    Pg,
+    Redis,
+}
+
+pub static LOCK_TYPE: OnceLock<DistLockType> = OnceLock::new();
+
+pub struct DistLock {
+    key: String,
+    pg_conn: Option<sqlx::pool::PoolConnection<sqlx::Postgres>>,
+    redis_val: Option<String>,
+}
+
+impl DistLock {
+    pub fn unlock(mut self) {
+        if let Some(conn) = self.pg_conn.take() {
+            let key = self.key.clone();
+            tokio::spawn(async move {
+                crate::lock::pg_lock::unlock(conn, &key).await;
+            });
+        }
+        if let Some(val) = self.redis_val.take() {
+            let key = self.key.clone();
+            tokio::spawn(async move {
+                crate::lock::redis_lock::unlock(&key, &val).await;
+            });
+        }
+    }
+}
+
+pub struct LockOptions {
+    ttl_ms: Option<i64>,
+}
+
+pub fn opt() -> LockOptions {
+    LockOptions { ttl_ms: None }
+}
+
+impl LockOptions {
+    pub fn ttl<T: crate::time::ToDuration>(mut self, duration: T) -> Self {
+        self.ttl_ms = Some(duration.to_duration().as_millis() as i64);
+        self
+    }
+}
+
+pub async fn lock(key: &str, opt: Option<LockOptions>) -> DistLock {
+    let t = LOCK_TYPE.get().expect("Distribution lock not initialized");
+    let ttl_ms = opt.and_then(|o| o.ttl_ms);
+
+    match t {
+        DistLockType::Pg => {
+            let conn = crate::lock::pg_lock::lock(key).await;
+            DistLock { key: key.to_string(), pg_conn: Some(conn), redis_val: None }
+        }
+        DistLockType::Redis => {
+            let val = crate::lock::redis_lock::lock(key, ttl_ms).await;
+            DistLock { key: key.to_string(), pg_conn: None, redis_val: Some(val) }
+        }
+    }
+}

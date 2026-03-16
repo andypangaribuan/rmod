@@ -8,10 +8,11 @@
  * All Rights Reserved.
  */
 
-mod app_config;
-mod dist_lock;
-mod model;
+mod dist;
+mod pg_lock;
+mod redis_lock;
 
-pub use app_config::*;
-pub use dist_lock::*;
-pub use model::*;
+pub use dist::*;
+
+pub(crate) use pg_lock::initialize as pg_lock_initialize;
+pub(crate) use redis_lock::initialize as redis_lock_initialize;

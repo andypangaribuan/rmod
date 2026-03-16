@@ -14,6 +14,7 @@ pub mod fuse;
 pub mod future;
 pub mod http;
 pub mod job;
+pub mod lock;
 pub mod store;
 pub mod time;
 pub mod uid;
