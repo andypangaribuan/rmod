@@ -67,6 +67,9 @@ pub(crate) async fn unlock(key: &str, val: &str) {
                 end
                 "#,
         );
-        let _: redis::RedisResult<i32> = script.key(key).arg(val).invoke_async(&mut conn).await;
+        let res: redis::RedisResult<i32> = script.key(key).arg(val).invoke_async(&mut conn).await;
+        if let Err(e) = res {
+            eprintln!("Failed to unlock redis lock for key '{}': {}", key, e);
+        }
     }
 }

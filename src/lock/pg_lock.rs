@@ -74,5 +74,11 @@ pub(crate) async fn unlock(mut conn: sqlx::pool::PoolConnection<Postgres>, key: 
     key.hash(&mut hasher);
     let lock_key = hasher.finish() as i64;
 
-    let _: Result<(bool,), _> = sqlx::query_as("SELECT pg_advisory_unlock($1)").bind(lock_key).fetch_one(&mut *conn).await;
+    let res: Result<(bool,), _> = sqlx::query_as("SELECT pg_advisory_unlock($1)").bind(lock_key).fetch_one(&mut *conn).await;
+
+    // If the unlock query fails, detach the connection to ensure it is closed and the session lock is released,
+    // rather than returning a locked connection to the pool.
+    if res.is_err() {
+        let _ = conn.detach();
+    }
 }
