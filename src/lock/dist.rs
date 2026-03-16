@@ -42,10 +42,11 @@ impl DistLock {
 
 pub struct LockOptions {
     ttl_ms: Option<i64>,
+    wait_ms: Option<i64>,
 }
 
 pub fn opt() -> LockOptions {
-    LockOptions { ttl_ms: None }
+    LockOptions { ttl_ms: None, wait_ms: None }
 }
 
 impl LockOptions {
@@ -53,20 +54,28 @@ impl LockOptions {
         self.ttl_ms = Some(duration.to_duration().as_millis() as i64);
         self
     }
+
+    pub fn wait<T: crate::time::ToDuration>(mut self, duration: T) -> Self {
+        self.wait_ms = Some(duration.to_duration().as_millis() as i64);
+        self
+    }
 }
 
-pub async fn lock(key: &str, opt: Option<LockOptions>) -> DistLock {
-    let t = LOCK_TYPE.get().expect("Distribution lock not initialized");
-    let ttl_ms = opt.and_then(|o| o.ttl_ms);
+pub async fn lock(key: &str, opt: Option<LockOptions>) -> Result<DistLock, String> {
+    let t = LOCK_TYPE.get().ok_or("Distribution lock not initialized")?;
+    let (ttl_ms, wait_ms) = match opt {
+        Some(o) => (o.ttl_ms, o.wait_ms),
+        None => (None, None),
+    };
 
     match t {
         DistLockType::Pg => {
-            let conn = crate::lock::pg_lock::lock(key).await;
-            DistLock { key: key.to_string(), pg_conn: Some(conn), redis_val: None }
+            let conn = crate::lock::pg_lock::lock(key, wait_ms).await?;
+            Ok(DistLock { key: key.to_string(), pg_conn: Some(conn), redis_val: None })
         }
         DistLockType::Redis => {
-            let val = crate::lock::redis_lock::lock(key, ttl_ms).await;
-            DistLock { key: key.to_string(), pg_conn: None, redis_val: Some(val) }
+            let val = crate::lock::redis_lock::lock(key, ttl_ms, wait_ms).await?;
+            Ok(DistLock { key: key.to_string(), pg_conn: None, redis_val: Some(val) })
         }
     }
 }

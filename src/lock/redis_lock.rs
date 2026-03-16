@@ -29,10 +29,12 @@ pub(crate) async fn initialize(config: &RedisLockConfig) -> Result<(), String> {
     Ok(())
 }
 
-pub(crate) async fn lock(key: &str, opt_ttl: Option<i64>) -> String {
+pub(crate) async fn lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Option<i64>) -> Result<String, String> {
     let client = REDIS_CLIENT.get().expect("Redis lock client not initialized");
     let ttl = opt_ttl.unwrap_or_else(|| *LOCK_TTL.get().unwrap_or(&30000));
-    let mut conn: redis::aio::MultiplexedConnection = client.get_multiplexed_async_connection().await.expect("Failed to get connection");
+    let wait_ms = opt_wait_ms.unwrap_or(30000) as u64;
+    let mut conn: redis::aio::MultiplexedConnection =
+        client.get_multiplexed_async_connection().await.map_err(|e| e.to_string())?;
 
     let val = format!("{}-{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos(), std::process::id());
 
@@ -42,11 +44,11 @@ pub(crate) async fn lock(key: &str, opt_ttl: Option<i64>) -> String {
             redis::cmd("SET").arg(key).arg(&val).arg("NX").arg("PX").arg(ttl).query_async(&mut conn).await;
 
         if let Ok(true) = result {
-            return val;
+            return Ok(val);
         }
 
-        if start.elapsed().as_secs() >= 30 {
-            panic!("Failed to acquire redis lock for key '{}' within 30 seconds", key);
+        if start.elapsed().as_millis() as u64 >= wait_ms {
+            return Err(format!("Failed to acquire redis lock for key '{}' within {} ms", key, wait_ms));
         }
 
         tokio::time::sleep(Duration::from_millis(100)).await;

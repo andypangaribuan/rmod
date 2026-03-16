@@ -38,29 +38,29 @@ pub(crate) async fn initialize(config: &crate::config::DbConfig) -> Result<(), S
     Ok(())
 }
 
-pub(crate) async fn lock(key: &str) -> sqlx::pool::PoolConnection<Postgres> {
+pub(crate) async fn lock(key: &str, opt_wait_ms: Option<i64>) -> Result<sqlx::pool::PoolConnection<Postgres>, String> {
     let pool = POOL.get().expect("Pg lock pool not initialized");
-    let timeout = *LOCK_TIMEOUT.get().unwrap_or(&30) as u64;
+    let timeout_ms = opt_wait_ms.unwrap_or_else(|| *LOCK_TIMEOUT.get().unwrap_or(&30) as i64 * 1000) as u64;
 
-    use std::collections::hash_map::DefaultHasher;
+    use siphasher::sip::SipHasher13;
     use std::hash::{Hash, Hasher};
-    let mut hasher = DefaultHasher::new();
+    let mut hasher = SipHasher13::new();
     key.hash(&mut hasher);
     let lock_key = hasher.finish() as i64;
 
     let start = std::time::Instant::now();
     loop {
-        let mut conn = pool.acquire().await.expect("Failed to acquire pg lock connection");
+        let mut conn = pool.acquire().await.map_err(|e| e.to_string())?;
 
         let result: Result<(bool,), sqlx::Error> =
             sqlx::query_as("SELECT pg_try_advisory_lock($1)").bind(lock_key).fetch_one(&mut *conn).await;
 
         if let Ok((true,)) = result {
-            return conn;
+            return Ok(conn);
         }
 
-        if start.elapsed().as_secs() >= timeout {
-            panic!("Failed to acquire pg advisory lock for key '{}' within {} seconds", key, timeout);
+        if start.elapsed().as_millis() as u64 >= timeout_ms {
+            return Err(format!("Failed to acquire pg advisory lock for key '{}' within {} ms", key, timeout_ms));
         }
 
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -68,9 +68,9 @@ pub(crate) async fn lock(key: &str) -> sqlx::pool::PoolConnection<Postgres> {
 }
 
 pub(crate) async fn unlock(mut conn: sqlx::pool::PoolConnection<Postgres>, key: &str) {
-    use std::collections::hash_map::DefaultHasher;
+    use siphasher::sip::SipHasher13;
     use std::hash::{Hash, Hasher};
-    let mut hasher = DefaultHasher::new();
+    let mut hasher = SipHasher13::new();
     key.hash(&mut hasher);
     let lock_key = hasher.finish() as i64;
 
