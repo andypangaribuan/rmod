@@ -8,13 +8,13 @@
  * All Rights Reserved.
  */
 
-mod dist;
-mod model;
-mod pg_lock;
-mod redis_lock;
+pub struct DistLock {
+    pub(super) key: String,
+    pub(super) pg_conn: Option<sqlx::pool::PoolConnection<sqlx::Postgres>>,
+    pub(super) redis_val: Option<String>,
+}
 
-pub use dist::*;
-
-pub(super) use model::*;
-pub(crate) use pg_lock::initialize as pg_lock_initialize;
-pub(crate) use redis_lock::initialize as redis_lock_initialize;
+pub struct LockOptions {
+    pub(super) ttl_ms: Option<i64>,
+    pub(super) wait_ms: Option<i64>,
+}

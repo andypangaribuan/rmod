@@ -42,7 +42,7 @@ pub(crate) async fn initialize(config: &crate::config::DbConfig) -> Result<(), S
     Ok(())
 }
 
-pub(crate) async fn lock(key: &str, opt_wait_ms: Option<i64>) -> Result<sqlx::pool::PoolConnection<Postgres>, String> {
+pub(super) async fn lock(key: &str, opt_wait_ms: Option<i64>) -> Result<sqlx::pool::PoolConnection<Postgres>, String> {
     let pool = POOL.get().expect("Pg lock pool not initialized");
     let timeout_ms = opt_wait_ms.unwrap_or_else(|| *LOCK_TIMEOUT.get().unwrap_or(&30) as i64 * 1000) as u64;
 
@@ -69,7 +69,7 @@ pub(crate) async fn lock(key: &str, opt_wait_ms: Option<i64>) -> Result<sqlx::po
     }
 }
 
-pub(crate) async fn unlock(mut conn: sqlx::pool::PoolConnection<Postgres>, key: &str) {
+pub(super) async fn unlock(mut conn: sqlx::pool::PoolConnection<Postgres>, key: &str) {
     let mut hasher = SipHasher13::new();
     key.hash(&mut hasher);
     let lock_key = hasher.finish() as i64;

@@ -8,20 +8,15 @@
  * All Rights Reserved.
  */
 
+use super::{DistLock, LockOptions};
 use std::sync::OnceLock;
 
-pub enum DistLockType {
+pub(super) enum DistLockType {
     Pg,
     Redis,
 }
 
-pub static LOCK_TYPE: OnceLock<DistLockType> = OnceLock::new();
-
-pub struct DistLock {
-    key: String,
-    pg_conn: Option<sqlx::pool::PoolConnection<sqlx::Postgres>>,
-    redis_val: Option<String>,
-}
+pub(super) static LOCK_TYPE: OnceLock<DistLockType> = OnceLock::new();
 
 impl DistLock {
     pub fn unlock(mut self) {
@@ -54,11 +49,6 @@ impl Drop for DistLock {
     fn drop(&mut self) {
         self.perform_unlock();
     }
-}
-
-pub struct LockOptions {
-    ttl_ms: Option<i64>,
-    wait_ms: Option<i64>,
 }
 
 pub fn opt() -> LockOptions {
