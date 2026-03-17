@@ -42,14 +42,14 @@ pub(crate) async fn initialize(config: &crate::config::DbConfig) -> Result<(), S
     Ok(())
 }
 
-pub(super) async fn lock(key: &str, opt_wait_ms: Option<i64>) -> Result<(sqlx::pool::PoolConnection<Postgres>, Vec<i64>), String> {
+pub(super) async fn lock(key: &str, opt_wait_ms: Option<i64>) -> Result<(sqlx::pool::PoolConnection<Postgres>, Vec<(i32, i32)>), String> {
     lock_many(vec![key], opt_wait_ms).await
 }
 
 pub(super) async fn lock_many(
     keys: Vec<&str>,
     opt_wait_ms: Option<i64>,
-) -> Result<(sqlx::pool::PoolConnection<Postgres>, Vec<i64>), String> {
+) -> Result<(sqlx::pool::PoolConnection<Postgres>, Vec<(i32, i32)>), String> {
     let pool = POOL.get().expect("Pg lock pool not initialized");
     let timeout_ms = opt_wait_ms.unwrap_or_else(|| *LOCK_TIMEOUT.get().unwrap_or(&30) as i64 * 1000) as u64;
 
@@ -57,23 +57,31 @@ pub(super) async fn lock_many(
     for key in &keys {
         let mut hasher = SipHasher13::new_with_keys(0, 0);
         key.hash(&mut hasher);
-        lock_keys.push(hasher.finish() as i64);
+        let hash = hasher.finish();
+        // Split 64-bit hash into two 32-bit integers for Postgres compat
+        let k1 = (hash >> 32) as i32;
+        let k2 = (hash & 0xFFFFFFFF) as i32;
+        lock_keys.push((k1, k2));
     }
 
-    let mut conn = pool.acquire().await.map_err(|e| e.to_string())?;
-    let pid: i32 = sqlx::query_scalar("SELECT pg_backend_pid()").fetch_one(&mut *conn).await.map_err(|e| e.to_string())?;
+    lock_keys.sort_unstable();
+    lock_keys.dedup();
 
+    let mut conn = pool.acquire().await.map_err(|e| e.to_string())?;
     let start = std::time::Instant::now();
-    let mut acquired_keys = Vec::new();
 
     loop {
+        // Begin a transaction. This pins the connection in PgBouncer (Transaction mode).
+        let _ = sqlx::query("BEGIN").execute(&mut *conn).await.ok();
+
         let mut all_success = true;
-        for &lock_key in &lock_keys {
+        for &(k1, k2) in &lock_keys {
+            // Using xact_lock guarantees automatic release on COMMIT/ROLLBACK
             let result: Result<bool, sqlx::Error> =
-                sqlx::query_scalar("SELECT pg_try_advisory_lock($1)").bind(lock_key).fetch_one(&mut *conn).await;
+                sqlx::query_scalar("SELECT pg_try_advisory_xact_lock($1, $2)").bind(k1).bind(k2).fetch_one(&mut *conn).await;
 
             if let Ok(true) = result {
-                acquired_keys.push(lock_key);
+                // Lock acquired for this key.
             } else {
                 all_success = false;
                 break;
@@ -81,48 +89,23 @@ pub(super) async fn lock_many(
         }
 
         if all_success {
-            println!("Acquired pg multi-lock: {:?} (IDs: {:?}, PID: {})", keys, lock_keys, pid);
+            // Success! The active transaction holds all requested locks safely.
             return Ok((conn, lock_keys));
         }
 
-        // Rolling back if not all could be acquired in this attempt
-        for &lock_key in acquired_keys.iter() {
-            let _: Result<bool, _> = sqlx::query_scalar("SELECT pg_advisory_unlock($1)").bind(lock_key).fetch_one(&mut *conn).await;
-        }
-        acquired_keys.clear();
+        // If we fail to acquire all, rollback the transaction to release partial locks instantly.
+        let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await.ok();
 
         if start.elapsed().as_millis() as u64 >= timeout_ms {
             drop(conn);
             return Err(format!("Failed to acquire pg multi-lock for keys '{:?}' within {} ms", keys, timeout_ms));
         }
 
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     }
 }
 
-pub(super) async fn unlock(mut conn: sqlx::pool::PoolConnection<Postgres>, key: &str, lock_keys: Vec<i64>) {
-    let pid_res: Result<i32, _> = sqlx::query_scalar("SELECT pg_backend_pid()").fetch_one(&mut *conn).await;
-    let pid = pid_res.unwrap_or(-1);
-
-    for lock_key in lock_keys {
-        let res: Result<bool, _> = sqlx::query_scalar("SELECT pg_advisory_unlock($1)").bind(lock_key).fetch_one(&mut *conn).await;
-        match res {
-            Ok(true) => {
-                println!("Successfully unlocked pg lock item: {} (ID: {}, PID: {})", key, lock_key, pid);
-            }
-            Ok(false) => {
-                eprintln!(
-                    "Failed to release pg lock item: {} (ID: {}, PID: {}). Returned false. Detaching connection.",
-                    key, lock_key, pid
-                );
-                let _ = conn.detach();
-                return;
-            }
-            Err(e) => {
-                eprintln!("Error executing pg unlock for item: {} (ID: {}). Error: {}. Detaching connection.", key, lock_key, e);
-                let _ = conn.detach();
-                return;
-            }
-        }
-    }
+pub(super) async fn unlock(mut conn: sqlx::pool::PoolConnection<Postgres>, _key: &str, _lock_keys: Vec<(i32, i32)>) {
+    // Simply rolling back the transaction will release all xact_locks and unpin PgBouncer.
+    let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await.ok();
 }

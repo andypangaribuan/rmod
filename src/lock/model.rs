@@ -11,7 +11,7 @@
 pub struct DistLock {
     pub(super) key: String,
     pub(super) pg_conn: Option<sqlx::pool::PoolConnection<sqlx::Postgres>>,
-    pub(super) pg_lock_keys: Vec<i64>,
+    pub(super) pg_lock_keys: Vec<(i32, i32)>,
     pub(super) redis_val: Option<String>,
 }
 
