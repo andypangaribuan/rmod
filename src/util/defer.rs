@@ -38,3 +38,16 @@ macro_rules! defer {
         });
     };
 }
+
+#[macro_export]
+macro_rules! defer_async {
+    ($($body:tt)*) => {
+        let _defer = $crate::util::Defer::new(|| {
+            if let Ok(handle) = $crate::tokio::runtime::Handle::try_current() {
+                handle.spawn(async move {
+                    $($body)*
+                });
+            }
+        });
+    };
+}

@@ -12,33 +12,44 @@ use super::DistLock;
 
 impl Drop for DistLock {
     fn drop(&mut self) {
-        self.perform_unlock();
+        if (self.pg_conn.is_some() || self.redis_val.is_some())
+            && let Ok(handle) = tokio::runtime::Handle::try_current()
+        {
+            let mut conn = self.pg_conn.take();
+            let mut redis_val = self.redis_val.take();
+            let pg_lock_keys = std::mem::take(&mut self.pg_lock_keys);
+            let key = self.key.clone();
+
+            handle.spawn(async move {
+                if let (Some(c), keys) = (conn.take(), pg_lock_keys)
+                    && !keys.is_empty()
+                {
+                    super::pg_lock::unlock(c, &key, keys).await;
+                }
+
+                if let Some(v) = redis_val.take() {
+                    super::redis_lock::unlock(&key, &v).await;
+                }
+            });
+        }
     }
 }
 
 impl DistLock {
-    pub fn unlock(mut self) {
-        self.perform_unlock();
+    pub async fn unlock(mut self) {
+        self.perform_unlock().await;
     }
 
-    pub(super) fn perform_unlock(&mut self) {
+    pub(super) async fn perform_unlock(&mut self) {
         if let Some(conn) = self.pg_conn.take() {
             let key = self.key.clone();
-            if let Ok(handle) = tokio::runtime::Handle::try_current() {
-                handle.spawn(async move {
-                    super::pg_lock::unlock(conn, &key).await;
-                });
-            } else {
-                let _ = conn.detach();
-            }
+            let pg_lock_keys = std::mem::take(&mut self.pg_lock_keys);
+            super::pg_lock::unlock(conn, &key, pg_lock_keys).await;
         }
+
         if let Some(val) = self.redis_val.take() {
             let key = self.key.clone();
-            if let Ok(handle) = tokio::runtime::Handle::try_current() {
-                handle.spawn(async move {
-                    super::redis_lock::unlock(&key, &val).await;
-                });
-            }
+            super::redis_lock::unlock(&key, &val).await;
         }
     }
 }
