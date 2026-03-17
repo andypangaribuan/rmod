@@ -15,19 +15,19 @@ impl Drop for DistLock {
         if (self.pg_conn.is_some() || self.redis_val.is_some())
             && let Ok(handle) = tokio::runtime::Handle::try_current()
         {
-            let mut conn = self.pg_conn.take();
-            let mut redis_val = self.redis_val.take();
+            let conn = self.pg_conn.take();
+            let redis_val = self.redis_val.take();
             let pg_lock_keys = std::mem::take(&mut self.pg_lock_keys);
             let key = self.key.clone();
 
             handle.spawn(async move {
-                if let (Some(c), keys) = (conn.take(), pg_lock_keys)
+                if let (Some(c), keys) = (conn, pg_lock_keys)
                     && !keys.is_empty()
                 {
                     super::pg_lock::unlock(c, &key, keys).await;
                 }
 
-                if let Some(v) = redis_val.take() {
+                if let Some(v) = redis_val {
                     super::redis_lock::unlock(&key, &v).await;
                 }
             });
