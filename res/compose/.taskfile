@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+
+# Copyright (c) 2026.
+# Created by Andy Pangaribuan. All Rights Reserved.
+# This product is protected by copyright and distributed under
+# licenses restricting copying, distribution and decompilation.
+
+[ -f .env ] && set -a; . ./.env; set +a
+
+
+
+#: create all databases
+function create-db {
+  # Fail fast if env vars are missing
+  : "${PG_DB:?PG_DB not set}"
+  : "${PG_USER:?PG_USER not set}"
+  : "${PG_DATABASES:?PG_DATABASES not set}"
+
+  for db in $PG_DATABASES; do
+    if docker exec rmod-pg psql -U "$PG_USER" -d "$PG_DB" -t -A \
+        -c "SELECT 1 FROM pg_database WHERE datname = '$db';" \
+      | grep -q 1; then
+      echo "Database '$db' already exists"
+    else
+      echo "Creating database '$db'"
+      docker exec rmod-pg psql -U "$PG_USER" -d "$PG_DB" -v ON_ERROR_STOP=1 \
+        -c "CREATE DATABASE \"$db\" OWNER \"$PG_USER\" ENCODING 'UTF8';"
+      docker exec rmod-pg psql -U "$PG_USER" -d "$db" -v ON_ERROR_STOP=1 \
+        -c "ALTER SCHEMA public OWNER TO \"$PG_USER\";"
+    fi
+  done
+}
+
+
+#: drop a database
+function drop-db {
+  # Fail fast if env vars are missing
+  : "${PG_DB:?PG_DB not set}"
+  : "${PG_USER:?PG_USER not set}"
+  : "${PG_DATABASES:?PG_DATABASES not set}"
+
+  db='partner-asset-db'
+  echo "Dropping database '$db'"
+  docker exec rmod-pg psql -U "$PG_USER" -d "$PG_DB" -v ON_ERROR_STOP=1 \
+    -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='$db' AND pid <> pg_backend_pid();"
+  docker exec rmod-pg psql -U "$PG_USER" -d "$PG_DB" -v ON_ERROR_STOP=1 \
+    -c "DROP DATABASE \"$db\";"
+}
+
+
+#: show list of role
+function ls-role {
+  docker exec rmod-pg psql -U $PG_USER -d postgres -c "\du"
+}
+
+#: show list of database
+function ls-db {
+  # Fail fast if env vars are missing
+  : "${PG_USER:?PG_USER not set}"
+
+  docker exec -i rmod-pg psql -U "$PG_USER" -d postgres <<'SQL'
+\pset footer off
+SELECT datname, pg_get_userbyid(datdba)
+FROM pg_database
+WHERE datistemplate = false;
+SQL
+}
+
+
+
+#: space
+[ -z "$TASKFILE_EXECUTOR" ] && sq taskfile --execute "$@"
