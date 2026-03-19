@@ -19,6 +19,7 @@ test-debug/*
 # Environment files
 .env
 !.env.template
+!res/compose/.env
 
 *.lock
 
