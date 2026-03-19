@@ -21,3 +21,6 @@ test-debug/*
 !.env.template
 
 *.lock
+
+# Compose
+res/compose/vol
