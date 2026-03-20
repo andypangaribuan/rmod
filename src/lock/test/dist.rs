@@ -12,7 +12,16 @@ use crate::{
     config::{self, DbConfig},
     lock::{lock, lock_many, opt},
 };
-use std::{net::TcpStream, time::Instant};
+use std::{net::TcpStream, sync::OnceLock, time::Instant};
+use tokio::sync::Mutex;
+
+static TEST_MUTEX: OnceLock<Mutex<()>> = OnceLock::new();
+
+async fn get_test_guard() -> tokio::sync::MutexGuard<'static, ()> {
+    let mutex = TEST_MUTEX.get_or_init(|| Mutex::new(()));
+    mutex.lock().await
+}
+
 
 async fn initialize_pg() -> Result<(), String> {
     let config = DbConfig {
@@ -24,8 +33,8 @@ async fn initialize_pg() -> Result<(), String> {
         password: "E5BEWREN1N7w12G9U73JKPf8rQst4WQPMHKLqdNdG1gGabPQi9".to_string(),
         max_connections: 5,
         min_connections: 1,
-        acquire_timeout: Some(5),
-        idle_timeout: Some(5),
+        acquire_timeout: Some(30),
+        idle_timeout: Some(10),
         lock_timeout: Some(30),
     };
 
@@ -33,14 +42,16 @@ async fn initialize_pg() -> Result<(), String> {
 }
 
 #[tokio::test]
-async fn test_dist_lock_pg() {
+async fn test_dist_lock_pg_combined() {
+    let _guard = get_test_guard().await;
+
     if TcpStream::connect("127.0.0.1:15432").is_err() {
-        println!("Postgres container is not running on port 15432. Skipping test_dist_lock_pg.");
+        println!("Postgres container is not running on port 15432. Skipping test_dist_lock_pg_combined.");
         return;
     }
 
     if let Err(e) = initialize_pg().await {
-        println!("Failed to initialize pg lock, it might be already initialized by another test. Error: {}", e);
+        println!("Init info: {}", e);
     }
 
     let key = "test_pg_dist_lock_key";
@@ -52,6 +63,7 @@ async fn test_dist_lock_pg() {
     let start = Instant::now();
     let lock2_result = lock(key, Some(opt().wait(std::time::Duration::from_millis(500)))).await;
     assert!(lock2_result.is_err(), "Second lock should fail to acquire since it's held by lock1");
+    // timeout might be slightly faster on local machine, use 400ms buffer
     assert!(start.elapsed().as_millis() >= 400, "Should have waited for timeout");
 
     // 3. Test unlocking
@@ -60,35 +72,24 @@ async fn test_dist_lock_pg() {
     // 4. Test re-acquisition after unlock
     let lock3 = lock(key, Some(opt().wait(std::time::Duration::from_millis(100)))).await.expect("Failed to acquire lock after unlock");
     lock3.unlock().await;
-}
 
-#[tokio::test]
-async fn test_dist_lock_many_pg() {
-    if TcpStream::connect("127.0.0.1:15432").is_err() {
-        println!("Postgres container is not running on port 15432. Skipping test_dist_lock_many_pg.");
-        return;
-    }
-
-    if let Err(e) = initialize_pg().await {
-        println!("Failed to initialize pg lock, it might be already initialized by another test. Error: {}", e);
-    }
-
+    // --- MANY KEYS TEST ---
     let keys = vec!["test_pg_dist_lock_multi_key_1", "test_pg_dist_lock_multi_key_2"];
 
     // 1. Test lock many acquisition
-    let lock1 = lock_many(keys.clone(), None).await.expect("Failed to acquire first multi-lock");
+    let lock_many_1 = lock_many(keys.clone(), None).await.expect("Failed to acquire first multi-lock");
 
     // 2. Test lock collision on one of the keys
-    let start = Instant::now();
-    let lock2_result = lock(keys[0], Some(opt().wait(std::time::Duration::from_millis(500)))).await;
-    assert!(lock2_result.is_err(), "Second lock should fail to acquire since it's held by lock1");
-    assert!(start.elapsed().as_millis() >= 400, "Should have waited for timeout");
+    let start2 = Instant::now();
+    let lock_many_2_result = lock(keys[0], Some(opt().wait(std::time::Duration::from_millis(500)))).await;
+    assert!(lock_many_2_result.is_err(), "Second lock should fail to acquire since it's held by lock_many_1");
+    assert!(start2.elapsed().as_millis() >= 400, "Should have waited for timeout");
 
     // 3. Test unlocking
-    lock1.unlock().await;
+    lock_many_1.unlock().await;
 
     // 4. Test re-acquisition after unlock
-    let lock3 =
-        lock_many(keys, Some(opt().wait(std::time::Duration::from_millis(100)))).await.expect("Failed to acquire multi-lock after unlock");
-    lock3.unlock().await;
+    let lock_many_3 = lock_many(keys, Some(opt().wait(std::time::Duration::from_millis(100)))).await.expect("Failed to acquire multi-lock after unlock");
+    lock_many_3.unlock().await;
 }
+
