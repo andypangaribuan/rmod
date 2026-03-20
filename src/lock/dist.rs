@@ -8,6 +8,10 @@
  * All Rights Reserved.
  */
 
+#[cfg(test)]
+#[path = "test/dist.rs"]
+mod tests;
+
 use super::{DistLock, LockOptions};
 use std::sync::OnceLock;
 
