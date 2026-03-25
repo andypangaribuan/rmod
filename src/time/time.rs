@@ -85,21 +85,36 @@ pub fn to_delta(duration: &str) -> TimeDelta {
         return TimeDelta::zero();
     }
 
-    let (duration, is_neg) = if let Some(stripped) = duration.strip_prefix('-') { (stripped, true) } else { (duration, false) };
-
-    let (val_str, unit) = if let Some(stripped) = duration.strip_suffix("ms") {
-        (stripped, "ms")
-    } else if let Some(stripped) = duration.strip_suffix('s') {
-        (stripped, "s")
-    } else if let Some(stripped) = duration.strip_suffix('m') {
-        (stripped, "m")
-    } else if let Some(stripped) = duration.strip_suffix('h') {
-        (stripped, "h")
-    } else if let Some(stripped) = duration.strip_suffix('d') {
-        (stripped, "d")
+    let (duration, is_neg) = if let Some(stripped) = duration.trim().strip_prefix('-') {
+        (stripped, true)
     } else {
-        (duration, "s")
+        (duration.trim(), false)
     };
+
+    let mut val_str = duration;
+    let mut unit = "s";
+
+    // Longest to shortest to avoid partial matches on trailing 's'
+    let suffixes = [
+        ("ms", "milliseconds"), ("ms", "millisecond"),
+        ("s", "seconds"), ("s", "second"),
+        ("m", "minutes"), ("m", "minute"),
+        ("h", "hours"), ("h", "hour"),
+        ("d", "days"), ("d", "day"),
+        ("ms", "ms"),
+        ("s", "s"),
+        ("m", "m"),
+        ("h", "h"),
+        ("d", "d"),
+    ];
+
+    for (u, suf) in suffixes {
+        if let Some(stripped) = duration.strip_suffix(suf) {
+            val_str = stripped.trim_end();
+            unit = u;
+            break;
+        }
+    }
 
     let val = val_str.parse::<i64>().unwrap_or(0);
 
