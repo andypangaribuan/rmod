@@ -10,8 +10,10 @@
 
 #[cfg(test)]
 #[path = "test/cache.rs"]
-mod tests;
+mod test;
 
-#[path = "cache.rs"]
-mod _cache;
-pub use _cache::*;
+mod exp_cache;
+mod simple_cache;
+
+pub use exp_cache::*;
+pub use simple_cache::*;

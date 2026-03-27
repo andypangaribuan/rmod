@@ -18,7 +18,7 @@ use std::{
 
 static GROUPS: OnceLock<RwLock<HashMap<String, Box<dyn Any + Send + Sync>>>> = OnceLock::new();
 
-fn get_groups() -> &'static RwLock<HashMap<String, Box<dyn Any + Send + Sync>>> {
+pub(super) fn get_groups() -> &'static RwLock<HashMap<String, Box<dyn Any + Send + Sync>>> {
     GROUPS.get_or_init(|| RwLock::new(HashMap::new()))
 }
 

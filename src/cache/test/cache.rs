@@ -88,3 +88,32 @@ async fn test_cache_ttl_reset() {
     let val_c = get::<String>(group, key).await;
     assert_eq!(val_c, None);
 }
+
+#[tokio::test]
+async fn test_cache_exp() {
+    let group = "test_custom_exp";
+    add_group_exp::<String>(group, 10);
+
+    // Put key1 with 1s TTL
+    put_exp::<String>(group, "key1", "val1".to_string(), "1s").await;
+    // Put key2 with 3s TTL
+    put_exp::<String>(group, "key2", "val2".to_string(), "3s").await;
+
+    // Wait for 1.2s
+    sleep(Duration::from_millis(1200)).await;
+
+    // key1 should be expired
+    let val1 = get_exp::<String>(group, "key1").await;
+    assert_eq!(val1, None, "key1 should be expired");
+
+    // key2 should STILL be alive since it had 3s TTL
+    let val2 = get_exp::<String>(group, "key2").await;
+    assert_eq!(val2, Some("val2".to_string()), "key2 should still be alive");
+
+    // Wait for another 2s (Total 3.2s)
+    sleep(Duration::from_millis(2000)).await;
+
+    // key2 should now be expired
+    let val2_expired = get_exp::<String>(group, "key2").await;
+    assert_eq!(val2_expired, None, "key2 should be expired now");
+}
