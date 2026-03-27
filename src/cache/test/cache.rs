@@ -53,3 +53,38 @@ async fn test_cache_unlimited_capacity() {
     let output = get::<u64>(group, "number").await;
     assert_eq!(output, Some(42), "Retrieved number from numeric cache group succeeds");
 }
+
+#[tokio::test]
+async fn test_cache_ttl_reset() {
+    let group = "test_group_ttl";
+    let ttl = "1s";
+
+    add_group::<String>(group, ttl, 10);
+
+    let key = "the_key";
+
+    // T = 0ms: Put value A
+    put::<String>(group, key, "value_A".to_string()).await;
+
+    // T = 800ms
+    sleep(Duration::from_millis(800)).await;
+
+    // Check it's still there
+    let val = get::<String>(group, key).await;
+    assert_eq!(val, Some("value_A".to_string()));
+
+    // Put value B over the same key, which should reset the 1s TTL timer
+    put::<String>(group, key, "value_B".to_string()).await;
+
+    // T = 1300ms (500ms since Put B, 1300ms since Put A)
+    // If the timer didn't reset, it would be dead (1300ms > 1s TTL)
+    sleep(Duration::from_millis(500)).await;
+    let val_b = get::<String>(group, key).await;
+    assert_eq!(val_b, Some("value_B".to_string()));
+
+    // T = 2000ms (1200ms since Put B)
+    // Should now definitively be dead
+    sleep(Duration::from_millis(700)).await;
+    let val_c = get::<String>(group, key).await;
+    assert_eq!(val_c, None);
+}
