@@ -17,3 +17,4 @@ healthz
 codegen
 siphasher
 redis
+moka
