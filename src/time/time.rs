@@ -85,22 +85,24 @@ pub fn to_delta(duration: &str) -> TimeDelta {
         return TimeDelta::zero();
     }
 
-    let (duration, is_neg) = if let Some(stripped) = duration.trim().strip_prefix('-') {
-        (stripped, true)
-    } else {
-        (duration.trim(), false)
-    };
+    let (duration, is_neg) =
+        if let Some(stripped) = duration.trim().strip_prefix('-') { (stripped, true) } else { (duration.trim(), false) };
 
     let mut val_str = duration;
     let mut unit = "s";
 
     // Longest to shortest to avoid partial matches on trailing 's'
     let suffixes = [
-        ("ms", "milliseconds"), ("ms", "millisecond"),
-        ("s", "seconds"), ("s", "second"),
-        ("m", "minutes"), ("m", "minute"),
-        ("h", "hours"), ("h", "hour"),
-        ("d", "days"), ("d", "day"),
+        ("ms", "milliseconds"),
+        ("ms", "millisecond"),
+        ("s", "seconds"),
+        ("s", "second"),
+        ("m", "minutes"),
+        ("m", "minute"),
+        ("h", "hours"),
+        ("h", "hour"),
+        ("d", "days"),
+        ("d", "day"),
         ("ms", "ms"),
         ("s", "s"),
         ("m", "m"),

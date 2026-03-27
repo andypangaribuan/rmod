@@ -38,7 +38,7 @@ impl LockOptions {
     }
 }
 
-pub async fn lock(key: &str, opt: Option<LockOptions>) -> Result<DistLock, String> {
+pub async fn dist(key: &str, opt: Option<LockOptions>) -> Result<DistLock, String> {
     let t = LOCK_TYPE.get().ok_or("Distribution lock not initialized")?;
     let (ttl_ms, wait_ms) = match opt {
         Some(o) => (o.ttl_ms, o.wait_ms),
@@ -47,17 +47,17 @@ pub async fn lock(key: &str, opt: Option<LockOptions>) -> Result<DistLock, Strin
 
     match t {
         DistLockType::Pg => {
-            let (conn, lock_keys) = super::pg_lock::lock(key, wait_ms).await?;
+            let (conn, lock_keys) = super::pg_lock::dist_lock(key, wait_ms).await?;
             Ok(DistLock { key: key.to_string(), pg_conn: Some(conn), pg_lock_keys: lock_keys, redis_val: None })
         }
         DistLockType::Redis => {
-            let val = super::redis_lock::lock(key, ttl_ms, wait_ms).await?;
+            let val = super::redis_lock::dist_lock(key, ttl_ms, wait_ms).await?;
             Ok(DistLock { key: key.to_string(), pg_conn: None, pg_lock_keys: vec![], redis_val: Some(val) })
         }
     }
 }
 
-pub async fn lock_many(keys: Vec<&str>, opt: Option<LockOptions>) -> Result<DistLock, String> {
+pub async fn dist_many(keys: Vec<&str>, opt: Option<LockOptions>) -> Result<DistLock, String> {
     let t = LOCK_TYPE.get().ok_or("Distribution lock not initialized")?;
     let wait_ms = match opt {
         Some(o) => o.wait_ms,
@@ -66,9 +66,9 @@ pub async fn lock_many(keys: Vec<&str>, opt: Option<LockOptions>) -> Result<Dist
 
     match t {
         DistLockType::Pg => {
-            let (conn, lock_keys) = super::pg_lock::lock_many(keys.clone(), wait_ms).await?;
+            let (conn, lock_keys) = super::pg_lock::dist_lock_many(keys.clone(), wait_ms).await?;
             Ok(DistLock { key: keys.join(","), pg_conn: Some(conn), pg_lock_keys: lock_keys, redis_val: None })
         }
-        DistLockType::Redis => Err("Redis multi-lock not implemented".to_string()),
+        DistLockType::Redis => Err("Redis dist multi-lock not implemented".to_string()),
     }
 }

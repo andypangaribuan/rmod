@@ -17,5 +17,5 @@ mod redis_lock;
 pub use dist::*;
 
 pub(super) use model::*;
-pub(crate) use pg_lock::initialize as pg_lock_initialize;
-pub(crate) use redis_lock::initialize as redis_lock_initialize;
+pub(crate) use pg_lock::initialize_dist_lock as pg_lock_initialize;
+pub(crate) use redis_lock::initialize_dist_lock as redis_lock_initialize;

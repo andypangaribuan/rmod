@@ -18,7 +18,7 @@ use std::{
 static POOL: OnceLock<sqlx::PgPool> = OnceLock::new();
 static LOCK_TIMEOUT: OnceLock<i16> = OnceLock::new();
 
-pub(crate) async fn initialize(config: &crate::config::DbConfig) -> Result<(), String> {
+pub(crate) async fn initialize_dist_lock(config: &crate::config::DbConfig) -> Result<(), String> {
     let connect_options = sqlx::postgres::PgConnectOptions::new()
         .host(&config.host)
         .port(config.port)
@@ -42,11 +42,14 @@ pub(crate) async fn initialize(config: &crate::config::DbConfig) -> Result<(), S
     Ok(())
 }
 
-pub(super) async fn lock(key: &str, opt_wait_ms: Option<i64>) -> Result<(sqlx::pool::PoolConnection<Postgres>, Vec<(i32, i32)>), String> {
-    lock_many(vec![key], opt_wait_ms).await
+pub(super) async fn dist_lock(
+    key: &str,
+    opt_wait_ms: Option<i64>,
+) -> Result<(sqlx::pool::PoolConnection<Postgres>, Vec<(i32, i32)>), String> {
+    dist_lock_many(vec![key], opt_wait_ms).await
 }
 
-pub(super) async fn lock_many(
+pub(super) async fn dist_lock_many(
     keys: Vec<&str>,
     opt_wait_ms: Option<i64>,
 ) -> Result<(sqlx::pool::PoolConnection<Postgres>, Vec<(i32, i32)>), String> {
@@ -105,7 +108,7 @@ pub(super) async fn lock_many(
     }
 }
 
-pub(super) async fn unlock(mut conn: sqlx::pool::PoolConnection<Postgres>, _key: &str, _lock_keys: Vec<(i32, i32)>) {
+pub(super) async fn dist_unlock(mut conn: sqlx::pool::PoolConnection<Postgres>, _key: &str, _lock_keys: Vec<(i32, i32)>) {
     // Simply rolling back the transaction will release all xact_locks and unpin PgBouncer.
     let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await.ok();
 }

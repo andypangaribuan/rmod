@@ -24,11 +24,11 @@ impl Drop for DistLock {
                 if let (Some(c), keys) = (conn, pg_lock_keys)
                     && !keys.is_empty()
                 {
-                    super::pg_lock::unlock(c, &key, keys).await;
+                    super::pg_lock::dist_unlock(c, &key, keys).await;
                 }
 
                 if let Some(v) = redis_val {
-                    super::redis_lock::unlock(&key, &v).await;
+                    super::redis_lock::dist_unlock(&key, &v).await;
                 }
             });
         }
@@ -44,12 +44,12 @@ impl DistLock {
         if let Some(conn) = self.pg_conn.take() {
             let key = self.key.clone();
             let pg_lock_keys = std::mem::take(&mut self.pg_lock_keys);
-            super::pg_lock::unlock(conn, &key, pg_lock_keys).await;
+            super::pg_lock::dist_unlock(conn, &key, pg_lock_keys).await;
         }
 
         if let Some(val) = self.redis_val.take() {
             let key = self.key.clone();
-            super::redis_lock::unlock(&key, &val).await;
+            super::redis_lock::dist_unlock(&key, &val).await;
         }
     }
 }

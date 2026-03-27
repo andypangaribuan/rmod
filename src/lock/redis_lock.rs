@@ -14,7 +14,7 @@ use std::{sync::OnceLock, time::Duration};
 static REDIS_CLIENT: OnceLock<redis::Client> = OnceLock::new();
 static LOCK_TTL: OnceLock<i64> = OnceLock::new();
 
-pub(crate) async fn initialize(config: &RedisLockConfig) -> Result<(), String> {
+pub(crate) async fn initialize_dist_lock(config: &RedisLockConfig) -> Result<(), String> {
     let auth = if let Some(pass) = &config.password {
         if let Some(user) = &config.username { format!("{}:{}@", user, pass) } else { format!(":{}@", pass) }
     } else {
@@ -29,7 +29,7 @@ pub(crate) async fn initialize(config: &RedisLockConfig) -> Result<(), String> {
     Ok(())
 }
 
-pub(super) async fn lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Option<i64>) -> Result<String, String> {
+pub(super) async fn dist_lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Option<i64>) -> Result<String, String> {
     let client = REDIS_CLIENT.get().expect("Redis lock client not initialized");
     let ttl = opt_ttl.unwrap_or_else(|| *LOCK_TTL.get().unwrap_or(&30000));
     let wait_ms = opt_wait_ms.unwrap_or(30000) as u64;
@@ -54,7 +54,7 @@ pub(super) async fn lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Option<i6
     }
 }
 
-pub(super) async fn unlock(key: &str, val: &str) {
+pub(super) async fn dist_unlock(key: &str, val: &str) {
     if let Some(client) = REDIS_CLIENT.get()
         && let Ok(mut conn) = client.get_multiplexed_async_connection().await
     {
