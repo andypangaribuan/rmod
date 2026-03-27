@@ -18,3 +18,7 @@ codegen
 siphasher
 redis
 moka
+splitn
+fastly
+xact
+rfind
