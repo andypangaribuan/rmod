@@ -34,7 +34,7 @@ pub fn add_group_ttl<T: Clone + Send + Sync + 'static>(group_name: &str, ttl: &s
     groups.insert(group_name.to_string(), Box::new(cache));
 }
 
-pub async fn put<T: Clone + Send + Sync + 'static>(group_name: &str, key: &str, value: T) {
+pub async fn put_ttl<T: Clone + Send + Sync + 'static>(group_name: &str, key: &str, value: T) {
     let cache = {
         let groups = get_groups().read().unwrap();
         if let Some(c) = groups.get(group_name) { c.downcast_ref::<Cache<String, T>>().cloned() } else { None }
@@ -45,7 +45,7 @@ pub async fn put<T: Clone + Send + Sync + 'static>(group_name: &str, key: &str, 
     }
 }
 
-pub async fn get<T: Clone + Send + Sync + 'static>(group_name: &str, key: &str) -> Option<T> {
+pub async fn get_ttl<T: Clone + Send + Sync + 'static>(group_name: &str, key: &str) -> Option<T> {
     let cache = {
         let groups = get_groups().read().unwrap();
         if let Some(c) = groups.get(group_name) { c.downcast_ref::<Cache<String, T>>().cloned() } else { None }
