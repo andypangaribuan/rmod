@@ -18,7 +18,7 @@ async fn test_cache() {
     let max_capacity = 10;
 
     // Initialize cache group natively supporting String types
-    add_group::<String>(group, ttl, max_capacity);
+    add_group_ttl::<String>(group, ttl, max_capacity);
 
     let key = "test_key";
     let val = "test_value".to_string();
@@ -46,7 +46,7 @@ async fn test_cache_unlimited_capacity() {
     let ttl = "10m"; // long duration
 
     // Initialize group with no capacity constraints (-1) on a numeric u64 cache
-    add_group::<u64>(group, ttl, -1);
+    add_group_ttl::<u64>(group, ttl, -1);
 
     put::<u64>(group, "number", 42).await;
 
@@ -59,7 +59,7 @@ async fn test_cache_ttl_reset() {
     let group = "test_group_ttl";
     let ttl = "1s";
 
-    add_group::<String>(group, ttl, 10);
+    add_group_ttl::<String>(group, ttl, 10);
 
     let key = "the_key";
 

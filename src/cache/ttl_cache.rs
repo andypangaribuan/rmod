@@ -22,7 +22,7 @@ pub(super) fn get_groups() -> &'static RwLock<HashMap<String, Box<dyn Any + Send
     GROUPS.get_or_init(|| RwLock::new(HashMap::new()))
 }
 
-pub fn add_group<T: Clone + Send + Sync + 'static>(group_name: &str, ttl: &str, maximum_capacity: i64) {
+pub fn add_group_ttl<T: Clone + Send + Sync + 'static>(group_name: &str, ttl: &str, maximum_capacity: i64) {
     let mut builder = Cache::builder().time_to_live(time::to_duration(ttl));
 
     if maximum_capacity > 0 {

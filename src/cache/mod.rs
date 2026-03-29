@@ -13,7 +13,7 @@
 mod test;
 
 mod exp_cache;
-mod simple_cache;
+mod ttl_cache;
 
 pub use exp_cache::*;
-pub use simple_cache::*;
+pub use ttl_cache::*;
