@@ -13,10 +13,13 @@ use crate::store;
 
 /// Executes an UPDATE query using the first initialized database pool.
 pub async fn update<T>(table: &str, set: &str, condition: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    let original_table = table;
     let table = args.opt.as_ref().and_then(|o| o.table_name.as_ref()).map(|s| s.as_str()).unwrap_or(table);
     let with_deleted_at = args.opt.as_ref().and_then(|o| o.with_deleted_at).unwrap_or_else(crate::store::get_db_with_deleted_at);
 
-    let sql = if condition.trim().is_empty() {
+    let sql = if let Some(full_query) = args.opt.as_ref().and_then(|o| o.full_query.as_ref()) {
+        if original_table != table { full_query.replace(original_table, table) } else { full_query.to_string() }
+    } else if condition.trim().is_empty() {
         if with_deleted_at {
             format!("UPDATE {} SET {} WHERE deleted_at IS NULL", table, set)
         } else {
@@ -39,10 +42,13 @@ pub async fn update_on<T>(
     condition: &str,
     args: PgArgs<T>,
 ) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    let original_table = table;
     let table = args.opt.as_ref().and_then(|o| o.table_name.as_ref()).map(|s| s.as_str()).unwrap_or(table);
     let with_deleted_at = args.opt.as_ref().and_then(|o| o.with_deleted_at).unwrap_or_else(crate::store::get_db_with_deleted_at);
 
-    let sql = if condition.trim().is_empty() {
+    let sql = if let Some(full_query) = args.opt.as_ref().and_then(|o| o.full_query.as_ref()) {
+        if original_table != table { full_query.replace(original_table, table) } else { full_query.to_string() }
+    } else if condition.trim().is_empty() {
         if with_deleted_at {
             format!("UPDATE {} SET {} WHERE deleted_at IS NULL", table, set)
         } else {
@@ -65,10 +71,13 @@ pub async fn tx_update<T>(
     condition: &str,
     args: PgArgs<T>,
 ) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    let original_table = table;
     let table = args.opt.as_ref().and_then(|o| o.table_name.as_ref()).map(|s| s.as_str()).unwrap_or(table);
     let with_deleted_at = args.opt.as_ref().and_then(|o| o.with_deleted_at).unwrap_or_else(crate::store::get_db_with_deleted_at);
 
-    let sql = if condition.trim().is_empty() {
+    let sql = if let Some(full_query) = args.opt.as_ref().and_then(|o| o.full_query.as_ref()) {
+        if original_table != table { full_query.replace(original_table, table) } else { full_query.to_string() }
+    } else if condition.trim().is_empty() {
         if with_deleted_at {
             format!("UPDATE {} SET {} WHERE deleted_at IS NULL", table, set)
         } else {
@@ -87,16 +96,19 @@ pub async fn tx_update<T>(
 
 /// Executes a query using the first initialized database pool that does not return rows (e.g., INSERT, UPDATE, DELETE).
 pub async fn execute<T>(sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    let sql = args.opt.as_ref().and_then(|o| o.full_query.as_ref()).map(|s| s.as_str()).unwrap_or(sql);
     sqlx::query_with(sql, args.build_inner()).execute(store::db()).await
 }
 
 /// Executes a query that does not return rows (e.g., INSERT, UPDATE, DELETE).
 pub async fn execute_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
+    let sql = args.opt.as_ref().and_then(|o| o.full_query.as_ref()).map(|s| s.as_str()).unwrap_or(sql);
     sqlx::query_with(sql, args.build_inner()).execute(store::db_on(key)).await
 }
 
 pub async fn tx_execute<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
     let mut lock = tx.inner.lock().await;
     let inner_tx = lock.as_mut().expect("Transaction already committed or rolled back");
+    let sql = args.opt.as_ref().and_then(|o| o.full_query.as_ref()).map(|s| s.as_str()).unwrap_or(sql);
     sqlx::query_with(sql, args.build_inner()).execute(&mut **inner_tx).await
 }

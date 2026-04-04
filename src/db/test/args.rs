@@ -29,11 +29,18 @@ fn test_db_args_with_opt_rw() {
 
 #[test]
 fn test_opt_builder() {
-    let opt = Opt::<i32>::new().table_name("users").with_deleted_at(false).tail_query("LIMIT 10").force_rw().validate(|res| res.is_some());
+    let opt = Opt::<i32>::new()
+        .table_name("users")
+        .with_deleted_at(false)
+        .tail_query("LIMIT 10")
+        .full_query("SELECT 1")
+        .force_rw()
+        .validate(|res| res.is_some());
 
     assert_eq!(opt.table_name, Some("users".to_string()));
     assert_eq!(opt.with_deleted_at, Some(false));
     assert_eq!(opt.tail_query, Some("LIMIT 10".to_string()));
+    assert_eq!(opt.full_query, Some("SELECT 1".to_string()));
     assert_eq!(opt.force_rw, Some(true));
     assert!(opt.validate.is_some());
 

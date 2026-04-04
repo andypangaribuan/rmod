@@ -23,6 +23,7 @@ pub type OptValidatorCount = Box<dyn Fn(i64) -> bool + Send + Sync>;
 pub struct Opt<T = ()> {
     pub(crate) table_name: Option<String>,
     pub(crate) tail_query: Option<String>,
+    pub(crate) full_query: Option<String>,
     pub(crate) force_rw: Option<bool>,
     pub(crate) with_deleted_at: Option<bool>,
     pub(crate) validate: Option<OptValidator<T>>,
@@ -35,6 +36,7 @@ impl<T> Default for Opt<T> {
         Self {
             table_name: None,
             tail_query: None,
+            full_query: None,
             force_rw: None,
             with_deleted_at: None,
             validate: None,
@@ -56,6 +58,11 @@ impl<T> Opt<T> {
 
     pub fn tail_query(mut self, query: &str) -> Self {
         self.tail_query = Some(query.to_string());
+        self
+    }
+
+    pub fn full_query(mut self, query: &str) -> Self {
+        self.full_query = Some(query.to_string());
         self
     }
 
@@ -90,6 +97,9 @@ impl<T> Opt<T> {
         }
         if other.tail_query.is_some() {
             self.tail_query = other.tail_query;
+        }
+        if other.full_query.is_some() {
+            self.full_query = other.full_query;
         }
         if other.force_rw.is_some() {
             self.force_rw = other.force_rw;
@@ -203,6 +213,7 @@ pub fn args_opt<T>() -> Opt<T> {
     Opt {
         table_name: None,
         tail_query: None,
+        full_query: None,
         force_rw: None,
         with_deleted_at: None,
         validate: None,

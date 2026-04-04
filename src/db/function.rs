@@ -11,6 +11,13 @@
 use std::fmt::Write;
 
 pub(crate) fn build_select_sql<T>(table_name: &str, where_clause: &str, opt: Option<&crate::db::Opt<T>>) -> String {
+    if let Some(full_query) = opt.and_then(|o| o.full_query.as_ref()) {
+        if let Some(new_table) = opt.and_then(|o| o.table_name.as_ref()) {
+            return full_query.replace(table_name, new_table);
+        }
+        return full_query.to_string();
+    }
+
     let table_name = opt.and_then(|o| o.table_name.as_ref()).map(|s| s.as_str()).unwrap_or(table_name);
     let with_deleted_at = opt.and_then(|o| o.with_deleted_at).unwrap_or_else(crate::store::get_db_with_deleted_at);
     let mut sql = if where_clause.trim().is_empty() {
@@ -34,6 +41,13 @@ pub(crate) fn build_select_sql<T>(table_name: &str, where_clause: &str, opt: Opt
 }
 
 pub(crate) fn build_count_sql<T>(table_name: &str, where_clause: &str, opt: Option<&crate::db::Opt<T>>) -> String {
+    if let Some(full_query) = opt.and_then(|o| o.full_query.as_ref()) {
+        if let Some(new_table) = opt.and_then(|o| o.table_name.as_ref()) {
+            return full_query.replace(table_name, new_table);
+        }
+        return full_query.to_string();
+    }
+
     let table_name = opt.and_then(|o| o.table_name.as_ref()).map(|s| s.as_str()).unwrap_or(table_name);
     let with_deleted_at = opt.and_then(|o| o.with_deleted_at).unwrap_or_else(crate::store::get_db_with_deleted_at);
     let mut sql = if where_clause.trim().is_empty() {
@@ -56,6 +70,13 @@ pub(crate) fn build_count_sql<T>(table_name: &str, where_clause: &str, opt: Opti
     sql
 }
 pub(crate) fn build_insert_sql<T>(table_name: &str, columns: &str, opt: Option<&crate::db::Opt<T>>) -> String {
+    if let Some(full_query) = opt.and_then(|o| o.full_query.as_ref()) {
+        if let Some(new_table) = opt.and_then(|o| o.table_name.as_ref()) {
+            return full_query.replace(table_name, new_table);
+        }
+        return full_query.to_string();
+    }
+
     let table_name = opt.and_then(|o| o.table_name.as_ref()).map(|s| s.as_str()).unwrap_or(table_name);
 
     let mut count = 0;
