@@ -60,7 +60,7 @@ pub(crate) fn set_db(
 ) {
     let pools = Box::leak(Box::new(DbPools { write: write_pool, read: read_pool }));
 
-    let mut store = get_db_store().write().unwrap();
+    let mut store = get_db_store().write().unwrap_or_else(|poisoned| poisoned.into_inner());
     if !store.keys.contains(&key.to_string()) {
         store.keys.push(key.to_string());
     }
@@ -71,39 +71,39 @@ pub(crate) fn set_db(
 }
 
 fn get_pools(key: &str) -> &'static DbPools {
-    let store = get_db_store().read().unwrap();
+    let store = get_db_store().read().unwrap_or_else(|poisoned| poisoned.into_inner());
     store.map.get(key).copied().unwrap_or_else(|| panic!("DB Pool with key '{}' not initialized", key))
 }
 
 pub fn is_db_exists(key: &str) -> bool {
-    let store = get_db_store().read().unwrap();
+    let store = get_db_store().read().unwrap_or_else(|poisoned| poisoned.into_inner());
     store.map.contains_key(key)
 }
 
 pub fn get_db_updated_at(key: &str) -> i64 {
-    let store = get_db_store().read().unwrap();
+    let store = get_db_store().read().unwrap_or_else(|poisoned| poisoned.into_inner());
     *store.updated_at.get(key).unwrap_or(&0)
 }
 
 pub fn get_db_state(key: &str) -> String {
-    let store = get_db_store().read().unwrap();
+    let store = get_db_store().read().unwrap_or_else(|poisoned| poisoned.into_inner());
     store.state.get(key).unwrap_or(&"".to_string()).clone()
 }
 
 pub fn get_db_conn_str(key: &str) -> String {
-    let store = get_db_store().read().unwrap();
+    let store = get_db_store().read().unwrap_or_else(|poisoned| poisoned.into_inner());
     store.conn_str.get(key).unwrap_or(&"".to_string()).clone()
 }
 
 pub fn update_db_payload(key: &str, updated_at: i64, state: &str, conn_str: &str) {
-    let mut store = get_db_store().write().unwrap();
+    let mut store = get_db_store().write().unwrap_or_else(|poisoned| poisoned.into_inner());
     store.updated_at.insert(key.to_string(), updated_at);
     store.state.insert(key.to_string(), state.to_string());
     store.conn_str.insert(key.to_string(), conn_str.to_string());
 }
 
 fn get_first_pools() -> &'static DbPools {
-    let store = get_db_store().read().unwrap();
+    let store = get_db_store().read().unwrap_or_else(|poisoned| poisoned.into_inner());
     let key = store.keys.first().expect("No DB Pools initialized");
     store.map.get(key).copied().unwrap()
 }

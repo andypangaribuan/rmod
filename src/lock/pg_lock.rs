@@ -72,6 +72,8 @@ pub(super) async fn dist_lock_many(
 
     let mut conn = pool.acquire().await.map_err(|e| e.to_string())?;
     let start = std::time::Instant::now();
+    let mut current_backoff_ms = 50;
+    let max_backoff_ms = 500;
 
     loop {
         // Begin a transaction. This pins the connection in PgBouncer (Transaction mode).
@@ -104,7 +106,10 @@ pub(super) async fn dist_lock_many(
             return Err(format!("Failed to acquire pg multi-lock for keys '{:?}' within {} ms", keys, timeout_ms));
         }
 
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        let sleep_ms = rand::random_range((current_backoff_ms / 2)..=current_backoff_ms);
+        tokio::time::sleep(std::time::Duration::from_millis(sleep_ms)).await;
+
+        current_backoff_ms = (current_backoff_ms * 2).min(max_backoff_ms);
     }
 }
 

@@ -14,7 +14,7 @@ static TIMEZONE: OnceLock<RwLock<Option<String>>> = OnceLock::new();
 
 pub(crate) fn update_timezone(val: String) {
     let lock = TIMEZONE.get_or_init(|| RwLock::new(None));
-    let mut store = lock.write().unwrap();
+    let mut store = lock.write().unwrap_or_else(|poisoned| poisoned.into_inner());
     *store = Some(val);
 }
 
