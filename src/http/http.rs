@@ -17,6 +17,8 @@ use std::time::Duration;
 
 use std::sync::LazyLock;
 
+static DOMAIN_TIMEOUTS: LazyLock<DashMap<String, Duration>> = LazyLock::new(DashMap::new);
+
 static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| {
     Client::builder()
         .connect_timeout(Duration::from_secs(10))
@@ -26,8 +28,6 @@ static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| {
         .build()
         .unwrap_or_default()
 });
-
-static DOMAIN_TIMEOUTS: LazyLock<DashMap<String, Duration>> = LazyLock::new(DashMap::new);
 
 fn get_domain(url: &str) -> String {
     reqwest::Url::parse(url).ok().and_then(|u| u.host_str().map(|h| h.to_string())).unwrap_or_else(|| "default".to_string())
