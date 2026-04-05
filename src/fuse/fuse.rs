@@ -168,18 +168,27 @@ impl Fuse {
     }
 
     pub(crate) async fn run<F: FnOnce()>(self, addr: &str, on_start: Option<F>) {
-        let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+        let listener = match tokio::net::TcpListener::bind(addr).await {
+            Ok(l) => l,
+            Err(e) => {
+                tracing::error!("Failed to bind REST server to address '{}': {}", addr, e);
+                std::process::exit(1);
+            }
+        };
         if let Some(f) = on_start {
             f();
         }
 
         let mut shutdown_rx = crate::util::lifecycle::subscribe();
-        axum::serve(listener, self.router.into_make_service_with_connect_info::<SocketAddr>())
+        if let Err(e) = axum::serve(listener, self.router.into_make_service_with_connect_info::<SocketAddr>())
             .with_graceful_shutdown(async move {
                 let _ = shutdown_rx.recv().await;
             })
             .await
-            .unwrap();
+        {
+            tracing::error!("REST server failed: {}", e);
+            std::process::exit(1);
+        }
 
         crate::util::lifecycle::wait().await;
     }
