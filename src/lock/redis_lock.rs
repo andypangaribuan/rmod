@@ -75,7 +75,7 @@ pub(super) async fn dist_unlock(key: &str, val: &str) {
         );
         let res: redis::RedisResult<i32> = script.key(key).arg(val).invoke_async(&mut conn).await;
         if let Err(e) = res {
-            eprintln!("Failed to unlock redis lock for key '{}': {}", key, e);
+            tracing::error!("Failed to unlock redis lock for key '{}': {}", key, e);
         }
     }
 }
