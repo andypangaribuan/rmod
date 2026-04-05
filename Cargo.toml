@@ -39,3 +39,4 @@ percent-encoding = "2.3.1"
 redis = { version = "1.0.5", features = ["tokio-comp"] }
 siphasher = "1.0.2"
 moka = { version = "0.12.15", features = ["future", "sync"] }
+dashmap = "6.1.0"

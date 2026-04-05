@@ -9,15 +9,16 @@
  */
 
 pub use axum::http::StatusCode;
+use dashmap::DashMap;
 use reqwest::{Client, Method, Response, header::HeaderMap};
 use serde::Serialize;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 
 use std::sync::LazyLock;
 
-static CLIENTS: LazyLock<Mutex<HashMap<String, Arc<Http>>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+static CLIENTS: LazyLock<DashMap<String, Arc<Http>>> = LazyLock::new(DashMap::new);
 
 struct Http {
     client: Client,
@@ -137,15 +138,12 @@ fn get_domain(url: &str) -> String {
 
 fn get_client(url: &str) -> Arc<Http> {
     let domain = get_domain(url);
-
-    let mut clients = CLIENTS.lock().unwrap();
-    clients.entry(domain).or_insert_with(Http::new_arc).clone()
+    CLIENTS.entry(domain).or_insert_with(Http::new_arc).clone()
 }
 
 pub fn client(url: &str, timeout: Duration) {
     let domain = get_domain(url);
-    let mut clients = CLIENTS.lock().unwrap();
-    clients.insert(domain, Http::new_arc_with_timeout(timeout));
+    CLIENTS.insert(domain, Http::new_arc_with_timeout(timeout));
 }
 
 pub async fn get(
@@ -193,6 +191,5 @@ pub async fn delete(
 
 #[cfg(test)]
 pub(crate) fn clear_cache() {
-    let mut clients = CLIENTS.lock().unwrap();
-    clients.clear();
+    CLIENTS.clear();
 }
