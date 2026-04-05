@@ -8,7 +8,7 @@
  * All Rights Reserved.
  */
 
-use super::{PgArgs, Tx};
+use super::{PgArgs, Tx, function::replace_table_name};
 use crate::store;
 
 /// Executes an UPDATE query using the first initialized database pool.
@@ -18,7 +18,7 @@ pub async fn update<T>(table: &str, set: &str, condition: &str, args: PgArgs<T>)
     let with_deleted_at = args.opt.as_ref().and_then(|o| o.with_deleted_at).unwrap_or_else(crate::store::get_db_with_deleted_at);
 
     let sql = if let Some(full_query) = args.opt.as_ref().and_then(|o| o.full_query.as_ref()) {
-        if original_table != table { full_query.replace(original_table, table) } else { full_query.to_string() }
+        if original_table != table { replace_table_name(full_query, original_table, table) } else { full_query.to_string() }
     } else if condition.trim().is_empty() {
         if with_deleted_at {
             format!("UPDATE {} SET {} WHERE deleted_at IS NULL", table, set)
@@ -47,7 +47,7 @@ pub async fn update_on<T>(
     let with_deleted_at = args.opt.as_ref().and_then(|o| o.with_deleted_at).unwrap_or_else(crate::store::get_db_with_deleted_at);
 
     let sql = if let Some(full_query) = args.opt.as_ref().and_then(|o| o.full_query.as_ref()) {
-        if original_table != table { full_query.replace(original_table, table) } else { full_query.to_string() }
+        if original_table != table { replace_table_name(full_query, original_table, table) } else { full_query.to_string() }
     } else if condition.trim().is_empty() {
         if with_deleted_at {
             format!("UPDATE {} SET {} WHERE deleted_at IS NULL", table, set)
@@ -76,7 +76,7 @@ pub async fn tx_update<T>(
     let with_deleted_at = args.opt.as_ref().and_then(|o| o.with_deleted_at).unwrap_or_else(crate::store::get_db_with_deleted_at);
 
     let sql = if let Some(full_query) = args.opt.as_ref().and_then(|o| o.full_query.as_ref()) {
-        if original_table != table { full_query.replace(original_table, table) } else { full_query.to_string() }
+        if original_table != table { replace_table_name(full_query, original_table, table) } else { full_query.to_string() }
     } else if condition.trim().is_empty() {
         if with_deleted_at {
             format!("UPDATE {} SET {} WHERE deleted_at IS NULL", table, set)

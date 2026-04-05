@@ -13,7 +13,7 @@ use std::fmt::Write;
 pub(crate) fn build_select_sql<T>(table_name: &str, where_clause: &str, opt: Option<&crate::db::Opt<T>>) -> String {
     if let Some(full_query) = opt.and_then(|o| o.full_query.as_ref()) {
         if let Some(new_table) = opt.and_then(|o| o.table_name.as_ref()) {
-            return full_query.replace(table_name, new_table);
+            return replace_table_name(full_query, table_name, new_table);
         }
         return full_query.to_string();
     }
@@ -43,7 +43,7 @@ pub(crate) fn build_select_sql<T>(table_name: &str, where_clause: &str, opt: Opt
 pub(crate) fn build_count_sql<T>(table_name: &str, where_clause: &str, opt: Option<&crate::db::Opt<T>>) -> String {
     if let Some(full_query) = opt.and_then(|o| o.full_query.as_ref()) {
         if let Some(new_table) = opt.and_then(|o| o.table_name.as_ref()) {
-            return full_query.replace(table_name, new_table);
+            return replace_table_name(full_query, table_name, new_table);
         }
         return full_query.to_string();
     }
@@ -72,7 +72,7 @@ pub(crate) fn build_count_sql<T>(table_name: &str, where_clause: &str, opt: Opti
 pub(crate) fn build_insert_sql<T>(table_name: &str, columns: &str, opt: Option<&crate::db::Opt<T>>) -> String {
     if let Some(full_query) = opt.and_then(|o| o.full_query.as_ref()) {
         if let Some(new_table) = opt.and_then(|o| o.table_name.as_ref()) {
-            return full_query.replace(table_name, new_table);
+            return replace_table_name(full_query, table_name, new_table);
         }
         return full_query.to_string();
     }
@@ -100,4 +100,35 @@ pub(crate) fn build_insert_sql<T>(table_name: &str, columns: &str, opt: Option<&
         write!(placeholders, "${}", i).unwrap();
     }
     format!("INSERT INTO {} ({}) VALUES ({})", table_name, columns, placeholders)
+}
+
+pub(super) fn replace_table_name(query: &str, original: &str, new_table: &str) -> String {
+    let mut result = String::with_capacity(query.len() + new_table.len());
+    let mut last_end = 0;
+
+    for (start, _) in query.match_indices(original) {
+        let end = start + original.len();
+
+        let is_valid_start = if start == 0 {
+            true
+        } else {
+            let ch = query[..start].chars().next_back().unwrap();
+            !(ch.is_ascii_alphanumeric() || ch == '_' || ch == '.')
+        };
+
+        let is_valid_end = if end == query.len() {
+            true
+        } else {
+            let ch = query[end..].chars().next().unwrap();
+            !(ch.is_ascii_alphanumeric() || ch == '_' || ch == '.')
+        };
+
+        if is_valid_start && is_valid_end {
+            result.push_str(&query[last_end..start]);
+            result.push_str(new_table);
+            last_end = end;
+        }
+    }
+    result.push_str(&query[last_end..]);
+    result
 }
