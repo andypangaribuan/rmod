@@ -38,6 +38,9 @@ pub(super) async fn dist_lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Opti
     let val = format!("{}-{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos(), std::process::id());
 
     let start = std::time::Instant::now();
+    let mut current_backoff_ms = 10;
+    let max_backoff_ms = 500;
+
     loop {
         let result: redis::RedisResult<bool> =
             redis::cmd("SET").arg(key).arg(&val).arg("NX").arg("PX").arg(ttl).query_async(&mut conn).await;
@@ -50,7 +53,10 @@ pub(super) async fn dist_lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Opti
             return Err(format!("Failed to acquire redis lock for key '{}' within {} ms", key, wait_ms));
         }
 
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        let sleep_ms = rand::random_range((current_backoff_ms / 2)..=current_backoff_ms);
+        tokio::time::sleep(Duration::from_millis(sleep_ms)).await;
+
+        current_backoff_ms = (current_backoff_ms * 2).min(max_backoff_ms);
     }
 }
 
