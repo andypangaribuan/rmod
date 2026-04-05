@@ -50,14 +50,14 @@ pub fn add_group_exp<T: Clone + Send + Sync + 'static>(group_name: &str, maximum
     }
 
     let cache: Cache<String, (T, Duration)> = builder.build();
-    let mut groups = get_groups().write().unwrap();
+    let mut groups = get_groups().write().unwrap_or_else(|poisoned| poisoned.into_inner());
     groups.insert(group_name.to_string(), Box::new(cache));
 }
 
 pub async fn put_exp<T: Clone + Send + Sync + 'static>(group_name: &str, key: &str, value: T, ttl: &str) {
     let duration = time::to_duration(ttl);
     let cache = {
-        let groups = get_groups().read().unwrap();
+        let groups = get_groups().read().unwrap_or_else(|poisoned| poisoned.into_inner());
         if let Some(c) = groups.get(group_name) { c.downcast_ref::<Cache<String, (T, Duration)>>().cloned() } else { None }
     };
 
@@ -68,7 +68,7 @@ pub async fn put_exp<T: Clone + Send + Sync + 'static>(group_name: &str, key: &s
 
 pub async fn get_exp<T: Clone + Send + Sync + 'static>(group_name: &str, key: &str) -> Option<T> {
     let cache = {
-        let groups = get_groups().read().unwrap();
+        let groups = get_groups().read().unwrap_or_else(|poisoned| poisoned.into_inner());
         if let Some(c) = groups.get(group_name) { c.downcast_ref::<Cache<String, (T, Duration)>>().cloned() } else { None }
     };
 
