@@ -61,13 +61,21 @@ pub fn start() {
                     tokio::select! {
                         _ = shutdown_rx.recv() => break,
                         _ = interval.tick() => {
-                            (job.handler)().await;
+                            if let Err(e) = tokio::spawn((job.handler)()).await {
+                                if e.is_panic() {
+                                    eprintln!("Background job panicked: {:?}", e);
+                                }
+                            }
                         }
                     }
                 }
             } else {
                 loop {
-                    (job.handler)().await;
+                    if let Err(e) = tokio::spawn((job.handler)()).await {
+                        if e.is_panic() {
+                            eprintln!("Background job panicked: {:?}", e);
+                        }
+                    }
 
                     tokio::select! {
                         _ = shutdown_rx.recv() => break,
