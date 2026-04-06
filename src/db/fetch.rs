@@ -205,3 +205,49 @@ pub async fn tx_count<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<i64, sql
     let inner_tx = lock.as_mut().expect("Transaction already committed or rolled back");
     sqlx::query_scalar_with(sql, args.build_inner()).fetch_one(&mut **inner_tx).await
 }
+
+pub async fn select<T, A>(sql: &str, args: PgArgs<T>) -> Result<A, sqlx::Error>
+where
+    A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+{
+    let force_rw = args.is_force_rw();
+    let use_read = !force_rw && store::db_is_read_real();
+    let pool = if use_read { store::db_read() } else { store::db() };
+
+    let mut res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(pool).await?;
+
+    if use_read && res.is_none() {
+        // Fallback or retry on master could be added if needed, but for now we just try it directly.
+        // Wait, normally `query` requires fetching exactly one row. If `fetch_optional` is None, we error or return A?
+        // Query returns `Result<T, Error>`. Let's fallback like `query` does if None.
+        res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(store::db()).await?;
+    }
+
+    res.ok_or(sqlx::Error::RowNotFound)
+}
+
+pub async fn select_on<T, A>(key: &str, sql: &str, args: PgArgs<T>) -> Result<A, sqlx::Error>
+where
+    A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+{
+    let force_rw = args.is_force_rw();
+    let use_read = !force_rw && store::db_is_read_real_on(key);
+    let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
+
+    let mut res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(pool).await?;
+
+    if use_read && res.is_none() {
+        res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(store::db_on(key)).await?;
+    }
+
+    res.ok_or(sqlx::Error::RowNotFound)
+}
+
+pub async fn tx_select<T, A>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<A, sqlx::Error>
+where
+    A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+{
+    let mut lock = tx.inner.lock().await;
+    let inner_tx = lock.as_mut().expect("Transaction already committed or rolled back");
+    sqlx::query_as_with(sql, args.build_inner()).fetch_one(&mut **inner_tx).await
+}
