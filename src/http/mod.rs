@@ -13,6 +13,7 @@ pub use axum::{
     body::Body,
     http::{StatusCode, header},
 };
+pub use axum_extra::extract::cookie::CookieJar;
 pub use mime_guess;
 
 #[cfg(test)]

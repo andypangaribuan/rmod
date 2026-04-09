@@ -7,8 +7,9 @@ edition = "2024"
 chrono = "0.4.43"
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "macros", "rust_decimal", "chrono"] }
 tokio = { version = "1.49.0", features = ["full", "macros", "rt-multi-thread"] }
-axum = "0.8.8"
 tower = "0.5.3"
+axum = "0.8.8"
+axum-extra = { version = "0.10.0", features = ["cookie"] }
 tower-http = "0.6.8"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = { version = "1.0.149", features = ["preserve_order"] }
