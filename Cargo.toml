@@ -42,3 +42,4 @@ moka = { version = "0.12.15", features = ["future", "sync"] }
 dashmap = "6.1.0"
 tracing = "0.1"
 mime_guess = "2.0.5"
+askama = "0.15.6"

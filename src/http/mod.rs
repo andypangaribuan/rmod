@@ -8,10 +8,12 @@
  * All Rights Reserved.
  */
 
+pub use askama::Template;
 pub use axum::{
     body::Body,
     http::{StatusCode, header},
 };
+pub use mime_guess;
 
 #[cfg(test)]
 #[path = "test/http.rs"]

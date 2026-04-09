@@ -23,3 +23,4 @@ fastly
 xact
 rfind
 nodelay
+askama
