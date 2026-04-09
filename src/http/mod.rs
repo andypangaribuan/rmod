@@ -8,7 +8,7 @@
  * All Rights Reserved.
  */
 
-pub use askama::Template;
+pub use askama::{self, Template};
 pub use axum::{
     body::Body,
     http::{StatusCode, header},
