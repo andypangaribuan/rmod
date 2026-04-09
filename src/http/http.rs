@@ -9,6 +9,8 @@
  */
 
 pub use axum::http::StatusCode;
+pub use axum::http::header;
+
 use dashmap::DashMap;
 use reqwest::{Client, Method, Response, header::HeaderMap};
 use serde::Serialize;
