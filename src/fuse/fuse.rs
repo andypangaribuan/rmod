@@ -99,7 +99,7 @@ pub struct FuseRContext {
     pub res_location: Option<&'static std::panic::Location<'static>>,
     pub res_source: FuseResSource,
 
-    response: Option<Response>,
+    pub response: Option<Response>,
     pub body: Option<axum::body::Bytes>,
 }
 
@@ -288,13 +288,22 @@ impl FuseRContext {
             }
         }
 
-        if let (Some(status), Some(body)) = (self.res_status, &self.res_body) {
+        if let (Some(status), Some(body)) = (self.res_status, &self.res_body)
+            && self.response.is_none()
+        {
             if let Some(text) = body.downcast_ref::<String>() {
-                self.response = Some((status, text.clone()).into_response());
+                let trimmed = text.trim();
+                if trimmed.starts_with("<") {
+                    self.response = Some((status, axum::response::Html(text.clone())).into_response());
+                } else {
+                    self.response = Some((status, text.clone()).into_response());
+                }
             } else if let Some(text) = body.downcast_ref::<&'static str>() {
                 self.response = Some((status, (*text).to_string()).into_response());
             } else if let Some(json) = body.downcast_ref::<serde_json::Value>() {
                 self.response = Some((status, axum::Json(json.clone())).into_response());
+            } else if let Some(bytes) = body.downcast_ref::<Vec<u8>>() {
+                self.response = Some((status, bytes.clone()).into_response());
             }
         }
 
