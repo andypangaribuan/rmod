@@ -243,6 +243,40 @@ where
     res.ok_or(sqlx::Error::RowNotFound)
 }
 
+pub async fn select_all<T, A>(sql: &str, args: PgArgs<T>) -> Result<Vec<A>, sqlx::Error>
+where
+    A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+{
+    let force_rw = args.is_force_rw();
+    let use_read = !force_rw && store::db_is_read_real();
+    let pool = if use_read { store::db_read() } else { store::db() };
+
+    let mut res = sqlx::query_as_with(sql, args.build_inner()).fetch_all(pool).await?;
+
+    if use_read && res.is_empty() {
+        res = sqlx::query_as_with(sql, args.build_inner()).fetch_all(store::db()).await?;
+    }
+
+    Ok(res)
+}
+
+pub async fn select_all_on<T, A>(key: &str, sql: &str, args: PgArgs<T>) -> Result<Vec<A>, sqlx::Error>
+where
+    A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+{
+    let force_rw = args.is_force_rw();
+    let use_read = !force_rw && store::db_is_read_real_on(key);
+    let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
+
+    let mut res = sqlx::query_as_with(sql, args.build_inner()).fetch_all(pool).await?;
+
+    if use_read && res.is_empty() {
+        res = sqlx::query_as_with(sql, args.build_inner()).fetch_all(store::db_on(key)).await?;
+    }
+
+    Ok(res)
+}
+
 pub async fn tx_select<T, A>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<A, sqlx::Error>
 where
     A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,

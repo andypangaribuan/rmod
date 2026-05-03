@@ -39,6 +39,7 @@ pub use axum::response;
 pub use bytes;
 pub use chrono;
 pub use chrono::{DateTime, Datelike, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Timelike, Utc};
+pub use chrono_tz::{self, Tz};
 pub use prost;
 pub use prost::alloc;
 #[doc(hidden)]

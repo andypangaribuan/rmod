@@ -51,6 +51,35 @@ impl FCT {
         }
     }
 
+    pub fn to_display(&self, thousand_separator: &str, decimal_separator: &str) -> String {
+        let s = self.0.to_string();
+        let parts: Vec<&str> = s.split('.').collect();
+        let int_part = parts[0];
+
+        // Optimize capacity estimation
+        let mut formatted_int = String::with_capacity(int_part.len() + int_part.len() / 3 * thousand_separator.len());
+        let mut count = 0;
+        let is_negative = int_part.starts_with('-');
+        let digits = if is_negative { &int_part[1..] } else { int_part };
+
+        for c in digits.chars().rev() {
+            if count == 3 {
+                for sc in thousand_separator.chars().rev() {
+                    formatted_int.push(sc);
+                }
+                count = 0;
+            }
+            formatted_int.push(c);
+            count += 1;
+        }
+        if is_negative {
+            formatted_int.push('-');
+        }
+        let formatted_int: String = formatted_int.chars().rev().collect();
+
+        if parts.len() > 1 { format!("{}{}{}", formatted_int, decimal_separator, parts[1]) } else { formatted_int }
+    }
+
     pub fn to_json(&self) -> crate::json::Value {
         let s = self.0.normalize().to_string();
         crate::json::from_str::<crate::json::Value>(&s).unwrap_or(crate::json::json!(s))

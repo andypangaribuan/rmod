@@ -167,6 +167,22 @@ where
         crate::db::select_on::<T, A>(key, &sql, args).await
     }
 
+    pub async fn select_all<A>(&self, select_clause: &str, where_clause: &str, args: PgArgs<T>) -> Result<Vec<A>, sqlx::Error>
+    where
+        A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+    {
+        let sql = super::build_custom_select_sql(self.table_name, select_clause, where_clause, args.opt.as_ref());
+        crate::db::select_all::<T, A>(&sql, args).await
+    }
+
+    pub async fn select_all_on<A>(&self, key: &str, select_clause: &str, where_clause: &str, args: PgArgs<T>) -> Result<Vec<A>, sqlx::Error>
+    where
+        A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+    {
+        let sql = super::build_custom_select_sql(self.table_name, select_clause, where_clause, args.opt.as_ref());
+        crate::db::select_all_on::<T, A>(key, &sql, args).await
+    }
+
     pub async fn tx_select<A>(&self, tx: &Tx, select_clause: &str, where_clause: &str, args: PgArgs<T>) -> Result<A, sqlx::Error>
     where
         A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,

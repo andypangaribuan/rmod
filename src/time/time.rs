@@ -30,6 +30,14 @@ pub fn to_rfc3339_full(dt: DateTime<Utc>) -> String {
     dt.to_rfc3339()
 }
 
+pub fn format(dt: DateTime<Utc>, format: &str) -> String {
+    if let Some(tz) = crate::store::get_timezone().and_then(|tz_str| tz_str.parse::<Tz>().ok()) {
+        return dt.with_timezone(&tz).format(format).to_string();
+    }
+
+    dt.format(format).to_string()
+}
+
 pub fn from_rfc3339(rfc3339: &str) -> Result<DateTime<Utc>, chrono::ParseError> {
     DateTime::parse_from_rfc3339(rfc3339).map(|dt| dt.with_timezone(&Utc))
 }
