@@ -135,6 +135,18 @@ impl<T> PgArgs<T> {
         Self { collectors: Vec::new(), opt: None }
     }
 
+    pub fn len(&self) -> usize {
+        self.collectors.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.collectors.is_empty()
+    }
+
+    pub fn add<V: PgArg<T>>(&mut self, arg: V) {
+        arg.add_to(self);
+    }
+
     pub(crate) fn build_inner(&self) -> PgArguments {
         let mut inner = PgArguments::default();
         for collector in &self.collectors {
