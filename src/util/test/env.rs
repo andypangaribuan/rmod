@@ -159,3 +159,39 @@ fn test_env_ls_bool() {
     let list: Vec<bool> = ls("BOOL_LIST", ",");
     assert_eq!(list, vec![true, false, true]);
 }
+
+#[test]
+fn test_zx_env_fallback() {
+    unsafe {
+        env::set_var(
+            "ZX_ENV",
+            "
+            ZX_APP_NAME=partner-asset-price-fetcher
+            ZX_APP_NAME_C=partner-asset-price-fetcher-c # this is a comment
+            ZX_APP_PORT_RESTFUL=10101     # comment
+            ZX_APP_COUNTRY_CODE=id
+            ZX_QUOTED_VAL=\"hello world\"
+            ZX_SINGLE_QUOTED_VAL='single quote'
+            # ZX_COMMENT=should_be_ignored
+        ",
+        );
+        // Ensure standard variables are not overridden if already set in OS env
+        env::set_var("ZX_APP_COUNTRY_CODE", "us");
+    }
+
+    // fallback should work
+    assert_eq!(string("ZX_APP_NAME"), "partner-asset-price-fetcher");
+    assert_eq!(string("ZX_APP_NAME_C"), "partner-asset-price-fetcher-c");
+    assert_eq!(int::<i32>("ZX_APP_PORT_RESTFUL"), 10101);
+
+    // standard env::var takes precedence over ZX_ENV
+    assert_eq!(string("ZX_APP_COUNTRY_CODE"), "us");
+
+    // quotes are stripped correctly
+    assert_eq!(string("ZX_QUOTED_VAL"), "hello world");
+    assert_eq!(string("ZX_SINGLE_QUOTED_VAL"), "single quote");
+
+    // comments and non-existent are handled correctly
+    assert_eq!(string_opt("ZX_COMMENT"), None);
+    assert_eq!(string_opt("ZX_NON_EXISTENT_VAR"), None);
+}
