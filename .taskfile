@@ -7,8 +7,8 @@
 
 
 
-#: do cargo build and lint
-function run {
+#: check the code with cargo check, build, clippy and fmt
+function check {
   cargo check
   cargo build
   cargo clippy && cargo fmt --check
@@ -47,7 +47,7 @@ function shell {
     rm -rf .cargo .rustup
   fi
 
-  DEVBOX_PROJECT_CWD="$PWD" devbox shell --config ~/.devbox/global/rust-1.95/devbox.json
+  DEVBOX_PROJECT_CWD="$PWD" devbox shell --config ~/.devbox/global/rust-1.96/devbox.json
 }
 
 
