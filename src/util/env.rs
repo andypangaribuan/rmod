@@ -176,6 +176,7 @@ where
 
     val.split(sep)
         .map(|s| {
+            let s = s.trim();
             s.parse::<T>().unwrap_or_else(|e| panic!("failed to parse part of {} as requested type, value: {}, error: {}", name, s, e))
         })
         .collect()

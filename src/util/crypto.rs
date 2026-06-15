@@ -137,3 +137,7 @@ pub fn argon2id_match(password: &str, encoded_hash: &str) -> Result<bool, String
         Err(e) => Err(e.to_string()),
     }
 }
+
+pub fn base64_encode(data: &[u8]) -> String {
+    STANDARD.encode(data)
+}
