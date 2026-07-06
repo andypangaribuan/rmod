@@ -61,12 +61,8 @@ pub fn is_timezone_utc() -> bool {
     tz.is_empty() || tz.eq_ignore_ascii_case("utc")
 }
 
-pub fn get_duration(time: DateTime<Utc>) -> Duration {
-    (now() - time).to_std().unwrap_or(Duration::from_secs(0))
-}
-
-pub fn get_duration_tz(time: DateTime<Tz>) -> Duration {
-    (now_tz() - time).to_std().unwrap_or(Duration::from_secs(0))
+pub fn get_duration<T: TimeZone>(time: DateTime<T>) -> Duration {
+    (now() - time.with_timezone(&Utc)).to_std().unwrap_or(Duration::from_secs(0))
 }
 
 pub trait ToDuration {
