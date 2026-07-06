@@ -12,6 +12,7 @@ pub use chrono::Duration as ChronoDuration;
 use chrono::SecondsFormat;
 pub use chrono::{self, DateTime, Datelike, FixedOffset, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeDelta, TimeZone, Timelike, Utc};
 use chrono_tz::Tz;
+use std::time::Instant;
 pub use tokio::time::Duration;
 
 pub fn to_rfc3339(dt: DateTime<Utc>) -> String {
@@ -49,6 +50,10 @@ pub fn now() -> DateTime<Utc> {
 pub fn now_tz() -> DateTime<Tz> {
     let tz = crate::store::get_timezone().and_then(|tz_str| tz_str.parse::<Tz>().ok()).unwrap_or(Tz::UTC);
     Utc::now().with_timezone(&tz)
+}
+
+pub fn instant_now() -> Instant {
+    Instant::now()
 }
 
 pub fn is_timezone_utc() -> bool {
