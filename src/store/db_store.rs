@@ -72,7 +72,13 @@ pub(crate) fn set_db(
 
 fn get_pools(key: &str) -> &'static DbPools {
     let store = get_db_store().read().unwrap_or_else(|poisoned| poisoned.into_inner());
-    store.map.get(key).copied().unwrap_or_else(|| panic!("DB Pool with key '{}' not initialized", key))
+    store.map.get(key).copied().unwrap_or_else(|| {
+        if let Some(first_key) = store.keys.first() {
+            store.map.get(first_key).copied().unwrap()
+        } else {
+            panic!("DB Pool with key '{}' not initialized and no fallback pools exist", key)
+        }
+    })
 }
 
 pub fn is_db_exists(key: &str) -> bool {
