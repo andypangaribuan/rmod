@@ -119,9 +119,31 @@ impl<T> Opt<T> {
     }
 }
 
+impl<T> std::fmt::Debug for Opt<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Opt")
+            .field("table_name", &self.table_name)
+            .field("tail_query", &self.tail_query)
+            .field("full_query", &self.full_query)
+            .field("force_rw", &self.force_rw)
+            .field("with_deleted_at", &self.with_deleted_at)
+            .finish()
+    }
+}
+
 pub struct PgArgs<T = ()> {
     pub(crate) collectors: Vec<PgArgCollector>,
+    pub(crate) debug_values: Vec<String>,
     pub(crate) opt: Option<Opt<T>>,
+}
+
+impl<T> std::fmt::Debug for PgArgs<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PgArgs")
+            .field("values", &self.debug_values)
+            .field("opt", &self.opt)
+            .finish()
+    }
 }
 
 impl<T> Default for PgArgs<T> {
@@ -132,7 +154,7 @@ impl<T> Default for PgArgs<T> {
 
 impl<T> PgArgs<T> {
     pub fn new() -> Self {
-        Self { collectors: Vec::new(), opt: None }
+        Self { collectors: Vec::new(), debug_values: Vec::new(), opt: None }
     }
 
     pub fn len(&self) -> usize {
@@ -141,6 +163,10 @@ impl<T> PgArgs<T> {
 
     pub fn is_empty(&self) -> bool {
         self.collectors.is_empty()
+    }
+
+    pub fn values(&self) -> &[String] {
+        &self.debug_values
     }
 
     pub fn add<V: PgArg<T>>(&mut self, arg: V) {
@@ -190,9 +216,10 @@ pub trait PgArg<T> {
 
 impl<T, V> PgArg<T> for V
 where
-    V: for<'q> sqlx::Encode<'q, sqlx::Postgres> + sqlx::Type<sqlx::Postgres> + Send + Sync + Clone + 'static,
+    V: for<'q> sqlx::Encode<'q, sqlx::Postgres> + sqlx::Type<sqlx::Postgres> + Send + Sync + Clone + std::fmt::Debug + 'static,
 {
     fn add_to(self, args: &mut PgArgs<T>) {
+        args.debug_values.push(format!("{:?}", self));
         args.collectors.push(Box::new(move |inner| {
             let _ = inner.add(self.clone());
         }));
@@ -213,6 +240,9 @@ impl<T> PgArg<T> for PgArgs<T> {
     fn add_to(mut self, args: &mut PgArgs<T>) {
         if !self.collectors.is_empty() {
             args.collectors.append(&mut self.collectors);
+        }
+        if !self.debug_values.is_empty() {
+            args.debug_values.append(&mut self.debug_values);
         }
 
         if let Some(opt) = self.take_opt() {
