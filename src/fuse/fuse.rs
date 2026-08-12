@@ -152,14 +152,73 @@ impl Fuse {
                 std::env::var("RMOD_MAX_BODY_SIZE").ok().and_then(|s| s.parse::<usize>().ok()).unwrap_or(100 * 1024 * 1024)
             });
 
+            let path_for_closure = path.clone();
             let handler_fn = move |req: Request<Body>| async move {
                 let (parts, body) = req.into_parts();
                 let bytes = axum::body::to_bytes(body, limit).await.unwrap_or_default();
 
-                let mut ctx = FuseRContext::new(Request::from_parts(parts, Body::from(bytes.clone())));
-                ctx.body = Some(bytes);
+                let trace_id =
+                    parts.headers.get("x-trace-id").and_then(|v| v.to_str().ok()).map(|s| s.to_string()).unwrap_or_else(crate::uid::new);
 
-                ctx.res_handle(precondition, defer, handlers, endpoint_key).await
+                let parent_uid = parts.headers.get("x-parent-uid").and_then(|v| v.to_str().ok()).map(|s| s.to_string());
+
+                let endpoint_uid = crate::uid::new();
+
+                let clog_config = crate::clog::get_config();
+                let service_name = clog_config.map(|c| c.service_name.clone()).unwrap_or_default();
+                let path_clone = path_for_closure.clone();
+                let is_excluded = clog_config
+                    .map(|c| c.exclusion_routes.iter().any(|r| path_clone.starts_with(r) || endpoint_key.contains(r)))
+                    .unwrap_or(false);
+
+                let log_ctx = crate::clog::LogContext {
+                    trace_id: trace_id.clone(),
+                    parent_uid: parent_uid.clone(),
+                    endpoint_uid: endpoint_uid.clone(),
+                    service_name: service_name.clone(),
+                };
+
+                let start_time = std::time::Instant::now();
+                let mut ctx = FuseRContext::new(Request::from_parts(parts, Body::from(bytes.clone())));
+                ctx.body = Some(bytes.clone());
+
+                let response = crate::clog::LOG_CTX.scope(log_ctx, ctx.res_handle(precondition, defer, handlers, endpoint_key)).await;
+
+                if !is_excluded && clog_config.is_some() {
+                    let duration_ms = start_time.elapsed().as_millis() as i32;
+                    let status_code = response.status().as_u16() as i32;
+
+                    let req_body_str = String::from_utf8_lossy(&bytes);
+                    let req_body_truncated = if req_body_str.len() > 100_000 {
+                        format!("{}... [TRUNCATED]", &req_body_str[..100_000])
+                    } else {
+                        req_body_str.to_string()
+                    };
+
+                    let payload_json = serde_json::json!({
+                        "endpoint": endpoint_key,
+                        "path": path_clone,
+                        "method": method_str,
+                        "request_body": req_body_truncated,
+                    })
+                    .to_string();
+
+                    let now_ms = crate::time::now_ms();
+                    crate::clog::push_log(crate::clog::LogEntry {
+                        uid: endpoint_uid,
+                        timestamp_unix_ms: now_ms,
+                        service_name,
+                        trace_id,
+                        parent_uid: parent_uid.unwrap_or_default(),
+                        log_type: "API_INCOMING".to_string(),
+                        action_name: endpoint_key.to_string(),
+                        duration_ms,
+                        status_code,
+                        payload_json,
+                    });
+                }
+
+                response
             };
 
             let router = std::mem::take(&mut self.router);

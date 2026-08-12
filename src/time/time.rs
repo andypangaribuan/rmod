@@ -47,6 +47,10 @@ pub fn now() -> DateTime<Utc> {
     Utc::now()
 }
 
+pub fn now_ms() -> i64 {
+    Utc::now().timestamp_millis()
+}
+
 pub fn now_tz() -> DateTime<Tz> {
     let tz = crate::store::get_timezone().and_then(|tz_str| tz_str.parse::<Tz>().ok()).unwrap_or(Tz::UTC);
     Utc::now().with_timezone(&tz)

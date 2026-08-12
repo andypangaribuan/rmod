@@ -18,20 +18,23 @@ pub async fn query<T>(sql: &str, args: PgArgs<T>) -> Result<T, sqlx::Error>
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    let force_rw = args.is_force_rw();
-    let use_read = !force_rw && store::db_is_read_real();
-    let pool = if use_read { store::db_read() } else { store::db() };
+    super::log_db_exec(sql, async move {
+        let force_rw = args.is_force_rw();
+        let use_read = !force_rw && store::db_is_read_real();
+        let pool = if use_read { store::db_read() } else { store::db() };
 
-    let mut res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(pool).await?;
+        let mut res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(pool).await?;
 
-    if use_read
-        && let Some(validate) = args.opt.as_ref().and_then(|o| o.validate.as_ref())
-        && !validate(&res)
-    {
-        res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(store::db()).await?;
-    }
+        if use_read
+            && let Some(validate) = args.opt.as_ref().and_then(|o| o.validate.as_ref())
+            && !validate(&res)
+        {
+            res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(store::db()).await?;
+        }
 
-    res.ok_or(sqlx::Error::RowNotFound)
+        res.ok_or(sqlx::Error::RowNotFound)
+    })
+    .await
 }
 
 /// Executes a query on a specific database and returns exactly one row.
@@ -39,20 +42,23 @@ pub async fn query_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<T, sql
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    let force_rw = args.is_force_rw();
-    let use_read = !force_rw && store::db_is_read_real_on(key);
-    let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
+    super::log_db_exec(sql, async move {
+        let force_rw = args.is_force_rw();
+        let use_read = !force_rw && store::db_is_read_real_on(key);
+        let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
 
-    let mut res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(pool).await?;
+        let mut res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(pool).await?;
 
-    if use_read
-        && let Some(validate) = args.opt.as_ref().and_then(|o| o.validate.as_ref())
-        && !validate(&res)
-    {
-        res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(store::db_on(key)).await?;
-    }
+        if use_read
+            && let Some(validate) = args.opt.as_ref().and_then(|o| o.validate.as_ref())
+            && !validate(&res)
+        {
+            res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(store::db_on(key)).await?;
+        }
 
-    res.ok_or(sqlx::Error::RowNotFound)
+        res.ok_or(sqlx::Error::RowNotFound)
+    })
+    .await
 }
 
 pub async fn tx_query<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<T, sqlx::Error>

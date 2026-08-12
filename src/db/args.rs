@@ -139,10 +139,7 @@ pub struct PgArgs<T = ()> {
 
 impl<T> std::fmt::Debug for PgArgs<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("PgArgs")
-            .field("values", &self.debug_values)
-            .field("opt", &self.opt)
-            .finish()
+        f.debug_struct("PgArgs").field("values", &self.debug_values).field("opt", &self.opt).finish()
     }
 }
 

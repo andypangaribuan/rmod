@@ -137,6 +137,23 @@ pub(crate) fn build_insert_sql<T>(table_name: &str, columns: &str, opt: Option<&
     format!("INSERT INTO {} ({}) VALUES ({})", table_name, columns, placeholders)
 }
 
+pub(crate) async fn log_db_exec<F, T, E>(sql: &str, fut: F) -> Result<T, E>
+where
+    F: std::future::Future<Output = Result<T, E>>,
+    E: std::fmt::Display,
+{
+    let start = std::time::Instant::now();
+    let res = fut.await;
+    let duration_ms = start.elapsed().as_millis() as i32;
+
+    match &res {
+        Ok(_) => crate::clog::log_db_query(sql, duration_ms, 200, None),
+        Err(e) => crate::clog::log_db_query(sql, duration_ms, 500, Some(&e.to_string())),
+    }
+
+    res
+}
+
 pub(super) fn replace_table_name(query: &str, original: &str, new_table: &str) -> String {
     let mut result = String::with_capacity(query.len() + new_table.len());
     let mut last_end = 0;
