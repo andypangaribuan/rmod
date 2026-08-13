@@ -129,14 +129,23 @@ async fn request<T: Serialize>(
                     res_body_lossy.to_string()
                 };
 
-                let payload_json = serde_json::json!({
+                let mut payload_map = serde_json::json!({
                     "endpoint": action_name,
                     "url": url,
                     "method": method.as_str(),
                     "request_body": req_body_truncated,
                     "response_body": res_body_truncated,
-                })
-                .to_string();
+                });
+
+                if status_code >= 400 {
+                    let bt = std::backtrace::Backtrace::force_capture();
+                    let bt_str = format!("{}", bt);
+                    if !bt_str.trim().is_empty() {
+                        payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+                    }
+                }
+
+                let payload_json = payload_map.to_string();
 
                 let now_ms = crate::time::now_ms();
                 crate::clog::push_log(crate::clog::LogEntry {
@@ -164,14 +173,20 @@ async fn request<T: Serialize>(
                 let req_body_truncated =
                     if req_body_str.len() > 100_000 { format!("{}... [TRUNCATED]", &req_body_str[..100_000]) } else { req_body_str };
 
-                let payload_json = serde_json::json!({
+                let bt = std::backtrace::Backtrace::force_capture();
+                let bt_str = format!("{}", bt);
+                let mut payload_map = serde_json::json!({
                     "endpoint": action_name,
                     "url": url,
                     "method": method.as_str(),
                     "request_body": req_body_truncated,
                     "error": err.to_string(),
-                })
-                .to_string();
+                });
+                if !bt_str.trim().is_empty() {
+                    payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+                }
+
+                let payload_json = payload_map.to_string();
 
                 let now_ms = crate::time::now_ms();
                 crate::clog::push_log(crate::clog::LogEntry {

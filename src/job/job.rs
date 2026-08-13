@@ -52,24 +52,32 @@ async fn run_job_handler(name: String, handler: fn() -> BoxFuture<'static, ()>) 
     let join_res = crate::clog::LOG_CTX.scope(log_ctx, tokio::spawn((handler)())).await;
     let duration_ms = start_time.elapsed().as_millis() as i32;
 
-    let (status_code, error_msg) = match join_res {
-        Ok(()) => (200, None),
+    let (status_code, error_msg, stacktrace) = match join_res {
+        Ok(()) => (200, None, None),
         Err(e) => {
+            let bt = std::backtrace::Backtrace::force_capture();
+            let bt_str = format!("{}", bt);
+            let st = if !bt_str.trim().is_empty() { Some(bt_str) } else { None };
             if e.is_panic() {
                 tracing::error!("Background job '{}' panicked: {:?}", name, e);
-                (500, Some("Job panicked".to_string()))
+                (500, Some("Job panicked".to_string()), st)
             } else {
-                (500, Some(e.to_string()))
+                (500, Some(e.to_string()), st)
             }
         }
     };
 
     if !is_excluded && clog_config.is_some() {
-        let payload_json = serde_json::json!({
+        let mut payload_map = serde_json::json!({
             "job_name": name,
             "error": error_msg,
-        })
-        .to_string();
+        });
+
+        if let Some(st) = stacktrace {
+            payload_map["stacktrace"] = serde_json::Value::String(st);
+        }
+
+        let payload_json = payload_map.to_string();
 
         let now_ms = crate::time::now_ms();
         crate::clog::push_log(crate::clog::LogEntry {

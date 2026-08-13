@@ -40,15 +40,19 @@ pub(super) async fn dist_lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Opti
         Err(e) => {
             let duration_ms = start_lock_time.elapsed().as_millis() as i32;
             let err_msg = e.to_string();
-            let payload_json = serde_json::json!({
+            let bt = std::backtrace::Backtrace::force_capture();
+            let bt_str = format!("{}", bt);
+            let mut payload_map = serde_json::json!({
                 "key": key,
                 "action": "LOCK",
                 "ttl": ttl,
                 "wait_ms": opt_wait_ms,
                 "error": err_msg,
-            })
-            .to_string();
-            crate::clog::log_dist_lock_redis(key, duration_ms, 500, payload_json);
+            });
+            if !bt_str.trim().is_empty() {
+                payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+            }
+            crate::clog::log_dist_lock_redis(key, duration_ms, 500, payload_map.to_string());
             return Err(err_msg);
         }
     };
@@ -80,15 +84,19 @@ pub(super) async fn dist_lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Opti
         if start.elapsed().as_millis() as u64 >= wait_ms {
             let duration_ms = start_lock_time.elapsed().as_millis() as i32;
             let err_msg = format!("Failed to acquire redis lock for key '{}' within {} ms", key, wait_ms);
-            let payload_json = serde_json::json!({
+            let bt = std::backtrace::Backtrace::force_capture();
+            let bt_str = format!("{}", bt);
+            let mut payload_map = serde_json::json!({
                 "key": key,
                 "action": "LOCK",
                 "ttl": ttl,
                 "wait_ms": opt_wait_ms,
                 "error": err_msg,
-            })
-            .to_string();
-            crate::clog::log_dist_lock_redis(key, duration_ms, 500, payload_json);
+            });
+            if !bt_str.trim().is_empty() {
+                payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+            }
+            crate::clog::log_dist_lock_redis(key, duration_ms, 500, payload_map.to_string());
             return Err(err_msg);
         }
 
@@ -127,14 +135,18 @@ pub(super) async fn dist_unlock(key: &str, val: &str) {
             }
             Err(e) => {
                 tracing::error!("Failed to unlock redis lock for key '{}': {}", key, e);
-                let payload_json = serde_json::json!({
+                let bt = std::backtrace::Backtrace::force_capture();
+                let bt_str = format!("{}", bt);
+                let mut payload_map = serde_json::json!({
                     "key": key,
                     "action": "UNLOCK",
                     "val": val,
                     "error": e.to_string(),
-                })
-                .to_string();
-                crate::clog::log_dist_lock_redis(key, duration_ms, 500, payload_json);
+                });
+                if !bt_str.trim().is_empty() {
+                    payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+                }
+                crate::clog::log_dist_lock_redis(key, duration_ms, 500, payload_map.to_string());
             }
         }
     }

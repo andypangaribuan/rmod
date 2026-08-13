@@ -160,7 +160,7 @@ where
         > + Clone
         + Send
         + 'static,
-    S::Error: Into<tonic::codegen::StdError> + Send + Sync + 'static,
+    S::Error: Into<tonic::codegen::StdError> + std::fmt::Display + Send + Sync + 'static,
     S::Future: Send + 'static,
 {
     type Response = tonic::codegen::http::Response<tonic::body::BoxBody>;
@@ -237,14 +237,23 @@ where
                         let req_body_truncated = format_payload(&req_bytes);
                         let res_body_truncated = format_payload(&res_bytes);
 
-                        let payload_json = serde_json::json!({
+                        let mut payload_map = serde_json::json!({
                             "endpoint": path,
                             "path": path,
                             "request_body": req_body_truncated,
                             "response_body": res_body_truncated,
                             "grpc_status": grpc_status,
-                        })
-                        .to_string();
+                        });
+
+                        if status_code != 200 {
+                            let bt = std::backtrace::Backtrace::force_capture();
+                            let bt_str = format!("{}", bt);
+                            if !bt_str.trim().is_empty() {
+                                payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+                            }
+                        }
+
+                        let payload_json = payload_map.to_string();
 
                         let now_ms = crate::time::now_ms();
                         crate::clog::push_log(crate::clog::LogEntry {
@@ -266,7 +275,36 @@ where
                     let res_reconstructed = tonic::codegen::http::Response::from_parts(res_parts, res_body_box);
                     Ok(res_reconstructed)
                 }
-                Err(err) => Err(err),
+                Err(err) => {
+                    let duration_ms = start_time.elapsed().as_millis() as i32;
+                    if !is_excluded && clog_config.is_some() {
+                        let bt = std::backtrace::Backtrace::force_capture();
+                        let bt_str = format!("{}", bt);
+                        let mut payload_map = serde_json::json!({
+                            "endpoint": path,
+                            "path": path,
+                            "error": err.to_string(),
+                        });
+                        if !bt_str.trim().is_empty() {
+                            payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+                        }
+
+                        let now_ms = crate::time::now_ms();
+                        crate::clog::push_log(crate::clog::LogEntry {
+                            uid: endpoint_uid,
+                            timestamp_unix_ms: now_ms,
+                            service_name,
+                            trace_id,
+                            parent_uid: parent_uid.unwrap_or_default(),
+                            log_type: "GRPC_OUTGOING".to_string(),
+                            action_name: path.clone(),
+                            duration_ms,
+                            status_code: 500,
+                            payload_json: payload_map.to_string(),
+                        });
+                    }
+                    Err(err)
+                }
             }
         })
     }

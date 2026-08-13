@@ -78,14 +78,18 @@ pub(super) async fn dist_lock_many(
         Ok(c) => c,
         Err(err_msg) => {
             let duration_ms = start_lock_time.elapsed().as_millis() as i32;
-            let payload_json = serde_json::json!({
+            let bt = std::backtrace::Backtrace::force_capture();
+            let bt_str = format!("{}", bt);
+            let mut payload_map = serde_json::json!({
                 "keys": keys,
                 "action": "LOCK",
                 "wait_ms": opt_wait_ms,
                 "error": err_msg,
-            })
-            .to_string();
-            crate::clog::log_dist_lock_pg(&action_name, duration_ms, 500, payload_json);
+            });
+            if !bt_str.trim().is_empty() {
+                payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+            }
+            crate::clog::log_dist_lock_pg(&action_name, duration_ms, 500, payload_map.to_string());
             return Err(err_msg);
         }
     };
@@ -132,14 +136,18 @@ pub(super) async fn dist_lock_many(
             drop(conn);
             let duration_ms = start_lock_time.elapsed().as_millis() as i32;
             let err_msg = format!("Failed to acquire pg multi-lock for keys '{:?}' within {} ms", keys, timeout_ms);
-            let payload_json = serde_json::json!({
+            let bt = std::backtrace::Backtrace::force_capture();
+            let bt_str = format!("{}", bt);
+            let mut payload_map = serde_json::json!({
                 "keys": keys,
                 "action": "LOCK",
                 "wait_ms": opt_wait_ms,
                 "error": err_msg,
-            })
-            .to_string();
-            crate::clog::log_dist_lock_pg(&action_name, duration_ms, 500, payload_json);
+            });
+            if !bt_str.trim().is_empty() {
+                payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+            }
+            crate::clog::log_dist_lock_pg(&action_name, duration_ms, 500, payload_map.to_string());
             return Err(err_msg);
         }
 
