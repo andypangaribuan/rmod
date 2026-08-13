@@ -262,6 +262,36 @@ pub fn log_db_tx_execute(tx_id: &str, key: Option<&str>, sql: &str, duration_ms:
     }
 }
 
+pub fn log_grpc_outgoing(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
+    if let Some(entry) = new_log_entry("GRPC_OUTGOING", action_name, duration_ms, status_code, payload_json) {
+        push_log(entry);
+    }
+}
+
+pub fn log_http_call(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
+    if let Some(entry) = new_log_entry("HTTP_CALL", action_name, duration_ms, status_code, payload_json) {
+        push_log(entry);
+    }
+}
+
+pub fn log_dist_lock_pg(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
+    if let Some(entry) = new_log_entry("DIST_LOCK_PG", action_name, duration_ms, status_code, payload_json) {
+        push_log(entry);
+    }
+}
+
+pub fn log_dist_lock_redis(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
+    if let Some(entry) = new_log_entry("DIST_LOCK_REDIS", action_name, duration_ms, status_code, payload_json) {
+        push_log(entry);
+    }
+}
+
+pub fn log_job_execution(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
+    if let Some(entry) = new_log_entry("JOB_EXECUTION", action_name, duration_ms, status_code, payload_json) {
+        push_log(entry);
+    }
+}
+
 /// Background worker loop that buffers logs and flushes batches to central-log gRPC server.
 async fn worker_loop(mut rx: mpsc::Receiver<LogEntryRequest>, target_url: String, service_name: String) {
     let mut buffer: Vec<LogEntryRequest> = Vec::with_capacity(500);

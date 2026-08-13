@@ -33,7 +33,25 @@ pub(super) async fn dist_lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Opti
     let client = REDIS_CLIENT.get().expect("Redis lock client not initialized");
     let ttl = opt_ttl.unwrap_or_else(|| *LOCK_TTL.get().unwrap_or(&30000));
     let wait_ms = opt_wait_ms.unwrap_or(30000) as u64;
-    let mut conn: redis::aio::MultiplexedConnection = client.get_multiplexed_async_connection().await.map_err(|e| e.to_string())?;
+
+    let start_lock_time = std::time::Instant::now();
+    let mut conn: redis::aio::MultiplexedConnection = match client.get_multiplexed_async_connection().await {
+        Ok(c) => c,
+        Err(e) => {
+            let duration_ms = start_lock_time.elapsed().as_millis() as i32;
+            let err_msg = e.to_string();
+            let payload_json = serde_json::json!({
+                "key": key,
+                "action": "LOCK",
+                "ttl": ttl,
+                "wait_ms": opt_wait_ms,
+                "error": err_msg,
+            })
+            .to_string();
+            crate::clog::log_dist_lock_redis(key, duration_ms, 500, payload_json);
+            return Err(err_msg);
+        }
+    };
 
     let val = format!("{}-{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos(), std::process::id());
 
@@ -46,11 +64,32 @@ pub(super) async fn dist_lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Opti
             redis::cmd("SET").arg(key).arg(&val).arg("NX").arg("PX").arg(ttl).query_async(&mut conn).await;
 
         if let Ok(true) = result {
+            let duration_ms = start_lock_time.elapsed().as_millis() as i32;
+            let payload_json = serde_json::json!({
+                "key": key,
+                "action": "LOCK",
+                "ttl": ttl,
+                "wait_ms": opt_wait_ms,
+                "val": val,
+            })
+            .to_string();
+            crate::clog::log_dist_lock_redis(key, duration_ms, 200, payload_json);
             return Ok(val);
         }
 
         if start.elapsed().as_millis() as u64 >= wait_ms {
-            return Err(format!("Failed to acquire redis lock for key '{}' within {} ms", key, wait_ms));
+            let duration_ms = start_lock_time.elapsed().as_millis() as i32;
+            let err_msg = format!("Failed to acquire redis lock for key '{}' within {} ms", key, wait_ms);
+            let payload_json = serde_json::json!({
+                "key": key,
+                "action": "LOCK",
+                "ttl": ttl,
+                "wait_ms": opt_wait_ms,
+                "error": err_msg,
+            })
+            .to_string();
+            crate::clog::log_dist_lock_redis(key, duration_ms, 500, payload_json);
+            return Err(err_msg);
         }
 
         let sleep_ms = rand::random_range((current_backoff_ms / 2)..=current_backoff_ms);
@@ -61,6 +100,7 @@ pub(super) async fn dist_lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Opti
 }
 
 pub(super) async fn dist_unlock(key: &str, val: &str) {
+    let start_time = std::time::Instant::now();
     if let Some(client) = REDIS_CLIENT.get()
         && let Ok(mut conn) = client.get_multiplexed_async_connection().await
     {
@@ -74,8 +114,28 @@ pub(super) async fn dist_unlock(key: &str, val: &str) {
                 "#,
         );
         let res: redis::RedisResult<i32> = script.key(key).arg(val).invoke_async(&mut conn).await;
-        if let Err(e) = res {
-            tracing::error!("Failed to unlock redis lock for key '{}': {}", key, e);
+        let duration_ms = start_time.elapsed().as_millis() as i32;
+        match res {
+            Ok(_) => {
+                let payload_json = serde_json::json!({
+                    "key": key,
+                    "action": "UNLOCK",
+                    "val": val,
+                })
+                .to_string();
+                crate::clog::log_dist_lock_redis(key, duration_ms, 200, payload_json);
+            }
+            Err(e) => {
+                tracing::error!("Failed to unlock redis lock for key '{}': {}", key, e);
+                let payload_json = serde_json::json!({
+                    "key": key,
+                    "action": "UNLOCK",
+                    "val": val,
+                    "error": e.to_string(),
+                })
+                .to_string();
+                crate::clog::log_dist_lock_redis(key, duration_ms, 500, payload_json);
+            }
         }
     }
 }

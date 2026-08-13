@@ -14,6 +14,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::time::{MissedTickBehavior, interval};
 
 struct Job {
+    name: String,
     duration: Duration,
     handler: fn() -> BoxFuture<'static, ()>,
     is_every: bool,
@@ -26,10 +27,64 @@ fn get_jobs() -> &'static Mutex<Vec<Job>> {
     JOBS.get_or_init(|| Mutex::new(Vec::new()))
 }
 
-pub fn add(duration: &str, handler: fn() -> BoxFuture<'static, ()>, is_every: bool, zero_start: bool) {
+pub fn add(name: &str, duration: &str, handler: fn() -> BoxFuture<'static, ()>, is_every: bool, zero_start: bool) {
     let mut jobs = get_jobs().lock().unwrap();
     let duration = crate::time::to_duration(duration);
-    jobs.push(Job { duration, handler, is_every, zero_start });
+    jobs.push(Job { name: name.to_string(), duration, handler, is_every, zero_start });
+}
+
+async fn run_job_handler(name: String, handler: fn() -> BoxFuture<'static, ()>) {
+    let trace_id = crate::uid::new();
+    let endpoint_uid = crate::uid::new();
+
+    let clog_config = crate::clog::get_config();
+    let service_name = clog_config.map(|c| c.service_name.clone()).unwrap_or_default();
+    let is_excluded = clog_config.map(|c| c.exclusion_routes.iter().any(|r| name.contains(r))).unwrap_or(false);
+
+    let log_ctx = crate::clog::LogContext {
+        trace_id: trace_id.clone(),
+        parent_uid: None,
+        endpoint_uid: endpoint_uid.clone(),
+        service_name: service_name.clone(),
+    };
+
+    let start_time = std::time::Instant::now();
+    let join_res = crate::clog::LOG_CTX.scope(log_ctx, tokio::spawn((handler)())).await;
+    let duration_ms = start_time.elapsed().as_millis() as i32;
+
+    let (status_code, error_msg) = match join_res {
+        Ok(()) => (200, None),
+        Err(e) => {
+            if e.is_panic() {
+                tracing::error!("Background job '{}' panicked: {:?}", name, e);
+                (500, Some("Job panicked".to_string()))
+            } else {
+                (500, Some(e.to_string()))
+            }
+        }
+    };
+
+    if !is_excluded && clog_config.is_some() {
+        let payload_json = serde_json::json!({
+            "job_name": name,
+            "error": error_msg,
+        })
+        .to_string();
+
+        let now_ms = crate::time::now_ms();
+        crate::clog::push_log(crate::clog::LogEntry {
+            uid: endpoint_uid,
+            timestamp_unix_ms: now_ms,
+            service_name,
+            trace_id,
+            parent_uid: String::new(),
+            log_type: "JOB_EXECUTION".to_string(),
+            action_name: name,
+            duration_ms,
+            status_code,
+            payload_json,
+        });
+    }
 }
 
 pub fn start() {
@@ -61,19 +116,13 @@ pub fn start() {
                     tokio::select! {
                         _ = shutdown_rx.recv() => break,
                         _ = interval.tick() => {
-                            if let Err(e) = tokio::spawn((job.handler)()).await && e.is_panic() {
-                                tracing::error!("Background job panicked: {:?}", e);
-                            }
+                            run_job_handler(job.name.clone(), job.handler).await;
                         }
                     }
                 }
             } else {
                 loop {
-                    if let Err(e) = tokio::spawn((job.handler)()).await
-                        && e.is_panic()
-                    {
-                        tracing::error!("Background job panicked: {:?}", e);
-                    }
+                    run_job_handler(job.name.clone(), job.handler).await;
 
                     tokio::select! {
                         _ = shutdown_rx.recv() => break,

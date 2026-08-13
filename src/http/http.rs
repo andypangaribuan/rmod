@@ -53,15 +53,24 @@ async fn request<T: Serialize>(
 
     let mut rb = if let (Some(q), Ok(mut u)) = (query, reqwest::Url::parse(url)) {
         u.query_pairs_mut().extend_pairs(q.iter());
-        HTTP_CLIENT.request(method, u)
+        HTTP_CLIENT.request(method.clone(), u)
     } else {
-        HTTP_CLIENT.request(method, url)
+        HTTP_CLIENT.request(method.clone(), url)
     };
 
     rb = rb.timeout(timeout);
 
+    let ctx = crate::clog::get_current_ctx();
+    let trace_id = match ctx {
+        Some(ref c) => c.trace_id.clone(),
+        None => crate::uid::new(),
+    };
+    let parent_uid = ctx.as_ref().map(|c| c.endpoint_uid.clone());
+    let endpoint_uid = crate::uid::new();
+    let service_name = ctx.as_ref().map(|c| c.service_name.clone()).unwrap_or_default();
+
+    let mut head_map = HeaderMap::new();
     if let Some(h) = headers {
-        let mut head_map = HeaderMap::new();
         for (k, v) in h {
             if let (Ok(ref name), Ok(ref value)) =
                 (reqwest::header::HeaderName::from_bytes(k.as_bytes()), reqwest::header::HeaderValue::from_str(&v))
@@ -69,14 +78,119 @@ async fn request<T: Serialize>(
                 head_map.insert(name.clone(), value.clone());
             }
         }
-        rb = rb.headers(head_map);
     }
+
+    if !head_map.contains_key("x-trace-id")
+        && let Ok(v) = reqwest::header::HeaderValue::from_str(&trace_id)
+    {
+        head_map.insert("x-trace-id", v);
+    }
+    if let Some(ref p_uid) = parent_uid
+        && !head_map.contains_key("x-parent-uid")
+        && let Ok(v) = reqwest::header::HeaderValue::from_str(p_uid)
+    {
+        head_map.insert("x-parent-uid", v);
+    }
+    rb = rb.headers(head_map);
+
+    let req_body_str = if let Some(ref b) = body { serde_json::to_string(b).unwrap_or_default() } else { String::new() };
 
     if let Some(b) = body {
         rb = rb.json(&b);
     }
 
-    rb.send().await
+    let action_name = format!("{}: {}", method.as_str(), url);
+    let clog_config = crate::clog::get_config();
+    let is_excluded = clog_config.map(|c| c.exclusion_routes.iter().any(|r| url.contains(r) || action_name.contains(r))).unwrap_or(false);
+
+    let start_time = std::time::Instant::now();
+    let res_result = rb.send().await;
+    let duration_ms = start_time.elapsed().as_millis() as i32;
+
+    match res_result {
+        Ok(res) => {
+            let status_code = res.status().as_u16() as i32;
+            let http_res = http::Response::from(res);
+            let (parts, body) = http_res.into_parts();
+
+            let limit = std::env::var("RMOD_MAX_BODY_SIZE").ok().and_then(|s| s.parse::<usize>().ok()).unwrap_or(100 * 1024 * 1024);
+
+            let axum_body = axum::body::Body::new(body);
+            let res_bytes = axum::body::to_bytes(axum_body, limit).await.unwrap_or_default();
+
+            if !is_excluded && clog_config.is_some() {
+                let req_body_truncated =
+                    if req_body_str.len() > 100_000 { format!("{}... [TRUNCATED]", &req_body_str[..100_000]) } else { req_body_str };
+
+                let res_body_lossy = String::from_utf8_lossy(&res_bytes);
+                let res_body_truncated = if res_body_lossy.len() > 100_000 {
+                    format!("{}... [TRUNCATED]", &res_body_lossy[..100_000])
+                } else {
+                    res_body_lossy.to_string()
+                };
+
+                let payload_json = serde_json::json!({
+                    "endpoint": action_name,
+                    "url": url,
+                    "method": method.as_str(),
+                    "request_body": req_body_truncated,
+                    "response_body": res_body_truncated,
+                })
+                .to_string();
+
+                let now_ms = crate::time::now_ms();
+                crate::clog::push_log(crate::clog::LogEntry {
+                    uid: endpoint_uid,
+                    timestamp_unix_ms: now_ms,
+                    service_name,
+                    trace_id,
+                    parent_uid: parent_uid.unwrap_or_default(),
+                    log_type: "HTTP_CALL".to_string(),
+                    action_name: action_name.clone(),
+                    duration_ms,
+                    status_code,
+                    payload_json,
+                });
+            }
+
+            let reconstructed_http_res = http::Response::from_parts(parts, reqwest::Body::from(res_bytes));
+            let reconstructed_res = Response::from(reconstructed_http_res);
+            Ok(reconstructed_res)
+        }
+        Err(err) => {
+            let status_code = err.status().map(|s| s.as_u16() as i32).unwrap_or(500);
+
+            if !is_excluded && clog_config.is_some() {
+                let req_body_truncated =
+                    if req_body_str.len() > 100_000 { format!("{}... [TRUNCATED]", &req_body_str[..100_000]) } else { req_body_str };
+
+                let payload_json = serde_json::json!({
+                    "endpoint": action_name,
+                    "url": url,
+                    "method": method.as_str(),
+                    "request_body": req_body_truncated,
+                    "error": err.to_string(),
+                })
+                .to_string();
+
+                let now_ms = crate::time::now_ms();
+                crate::clog::push_log(crate::clog::LogEntry {
+                    uid: endpoint_uid,
+                    timestamp_unix_ms: now_ms,
+                    service_name,
+                    trace_id,
+                    parent_uid: parent_uid.unwrap_or_default(),
+                    log_type: "HTTP_CALL".to_string(),
+                    action_name: action_name.clone(),
+                    duration_ms,
+                    status_code,
+                    payload_json,
+                });
+            }
+
+            Err(err)
+        }
+    }
 }
 
 pub async fn get(

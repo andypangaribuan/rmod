@@ -70,7 +70,26 @@ pub(super) async fn dist_lock_many(
     lock_keys.sort_unstable();
     lock_keys.dedup();
 
-    let mut conn = pool.acquire().await.map_err(|e| e.to_string())?;
+    let action_name = keys.join(",");
+    let start_lock_time = std::time::Instant::now();
+
+    let conn_res = pool.acquire().await.map_err(|e| e.to_string());
+    let mut conn = match conn_res {
+        Ok(c) => c,
+        Err(err_msg) => {
+            let duration_ms = start_lock_time.elapsed().as_millis() as i32;
+            let payload_json = serde_json::json!({
+                "keys": keys,
+                "action": "LOCK",
+                "wait_ms": opt_wait_ms,
+                "error": err_msg,
+            })
+            .to_string();
+            crate::clog::log_dist_lock_pg(&action_name, duration_ms, 500, payload_json);
+            return Err(err_msg);
+        }
+    };
+
     let start = std::time::Instant::now();
     let mut current_backoff_ms = 50;
     let max_backoff_ms = 500;
@@ -95,6 +114,14 @@ pub(super) async fn dist_lock_many(
 
         if all_success {
             // Success! The active transaction holds all requested locks safely.
+            let duration_ms = start_lock_time.elapsed().as_millis() as i32;
+            let payload_json = serde_json::json!({
+                "keys": keys,
+                "action": "LOCK",
+                "wait_ms": opt_wait_ms,
+            })
+            .to_string();
+            crate::clog::log_dist_lock_pg(&action_name, duration_ms, 200, payload_json);
             return Ok((conn, lock_keys));
         }
 
@@ -103,7 +130,17 @@ pub(super) async fn dist_lock_many(
 
         if start.elapsed().as_millis() as u64 >= timeout_ms {
             drop(conn);
-            return Err(format!("Failed to acquire pg multi-lock for keys '{:?}' within {} ms", keys, timeout_ms));
+            let duration_ms = start_lock_time.elapsed().as_millis() as i32;
+            let err_msg = format!("Failed to acquire pg multi-lock for keys '{:?}' within {} ms", keys, timeout_ms);
+            let payload_json = serde_json::json!({
+                "keys": keys,
+                "action": "LOCK",
+                "wait_ms": opt_wait_ms,
+                "error": err_msg,
+            })
+            .to_string();
+            crate::clog::log_dist_lock_pg(&action_name, duration_ms, 500, payload_json);
+            return Err(err_msg);
         }
 
         let sleep_ms = rand::random_range((current_backoff_ms / 2)..=current_backoff_ms);
@@ -113,7 +150,15 @@ pub(super) async fn dist_lock_many(
     }
 }
 
-pub(super) async fn dist_unlock(mut conn: sqlx::pool::PoolConnection<Postgres>, _key: &str, _lock_keys: Vec<(i32, i32)>) {
+pub(super) async fn dist_unlock(mut conn: sqlx::pool::PoolConnection<Postgres>, key: &str, _lock_keys: Vec<(i32, i32)>) {
+    let start_time = std::time::Instant::now();
     // Simply rolling back the transaction will release all xact_locks and unpin PgBouncer.
     let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await.ok();
+    let duration_ms = start_time.elapsed().as_millis() as i32;
+    let payload_json = serde_json::json!({
+        "key": key,
+        "action": "UNLOCK",
+    })
+    .to_string();
+    crate::clog::log_dist_lock_pg(key, duration_ms, 200, payload_json);
 }

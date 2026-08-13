@@ -20,15 +20,25 @@ impl Drop for DistLock {
             let pg_lock_keys = std::mem::take(&mut self.pg_lock_keys);
             let key = self.key.clone();
 
-            handle.spawn(async move {
-                if let (Some(c), keys) = (conn, pg_lock_keys)
-                    && !keys.is_empty()
-                {
-                    super::pg_lock::dist_unlock(c, &key, keys).await;
-                }
+            let log_ctx = crate::clog::get_current_ctx();
 
-                if let Some(v) = redis_val {
-                    super::redis_lock::dist_unlock(&key, &v).await;
+            handle.spawn(async move {
+                let fut = async move {
+                    if let (Some(c), keys) = (conn, pg_lock_keys)
+                        && !keys.is_empty()
+                    {
+                        super::pg_lock::dist_unlock(c, &key, keys).await;
+                    }
+
+                    if let Some(v) = redis_val {
+                        super::redis_lock::dist_unlock(&key, &v).await;
+                    }
+                };
+
+                if let Some(ctx) = log_ctx {
+                    crate::clog::LOG_CTX.scope(ctx, fut).await;
+                } else {
+                    fut.await;
                 }
             });
         }
