@@ -27,6 +27,8 @@ pub struct LogEntryRequest {
     pub status_code: i32,
     #[prost(string, tag = "10")]
     pub payload_json: ::prost::alloc::string::String,
+    #[prost(string, tag = "11")]
+    pub user_uid: ::prost::alloc::string::String,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct LogResponse {

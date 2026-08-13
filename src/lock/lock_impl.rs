@@ -36,7 +36,7 @@ impl Drop for DistLock {
                 };
 
                 if let Some(ctx) = log_ctx {
-                    crate::clog::LOG_CTX.scope(ctx, fut).await;
+                    crate::clog::LOG_CTX.scope(std::cell::RefCell::new(ctx), fut).await;
                 } else {
                     fut.await;
                 }

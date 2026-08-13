@@ -46,10 +46,11 @@ async fn run_job_handler(name: String, handler: fn() -> BoxFuture<'static, ()>) 
         parent_uid: None,
         endpoint_uid: endpoint_uid.clone(),
         service_name: service_name.clone(),
+        user_uid: None,
     };
 
     let start_time = std::time::Instant::now();
-    let join_res = crate::clog::LOG_CTX.scope(log_ctx, tokio::spawn((handler)())).await;
+    let join_res = crate::clog::LOG_CTX.scope(std::cell::RefCell::new(log_ctx), tokio::spawn((handler)())).await;
     let duration_ms = start_time.elapsed().as_millis() as i32;
 
     let (status_code, error_msg, stacktrace) = match join_res {
@@ -78,6 +79,7 @@ async fn run_job_handler(name: String, handler: fn() -> BoxFuture<'static, ()>) 
         }
 
         let payload_json = payload_map.to_string();
+        let current_user_uid = crate::clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
 
         let now_ms = crate::time::now_ms();
         crate::clog::push_log(crate::clog::LogEntry {
@@ -91,6 +93,7 @@ async fn run_job_handler(name: String, handler: fn() -> BoxFuture<'static, ()>) 
             duration_ms,
             status_code,
             payload_json,
+            user_uid: current_user_uid,
         });
     }
 }

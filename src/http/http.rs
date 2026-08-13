@@ -146,6 +146,7 @@ async fn request<T: Serialize>(
                 }
 
                 let payload_json = payload_map.to_string();
+                let current_user_uid = crate::clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
 
                 let now_ms = crate::time::now_ms();
                 crate::clog::push_log(crate::clog::LogEntry {
@@ -159,6 +160,7 @@ async fn request<T: Serialize>(
                     duration_ms,
                     status_code,
                     payload_json,
+                    user_uid: current_user_uid,
                 });
             }
 
@@ -187,6 +189,7 @@ async fn request<T: Serialize>(
                 }
 
                 let payload_json = payload_map.to_string();
+                let current_user_uid = crate::clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
 
                 let now_ms = crate::time::now_ms();
                 crate::clog::push_log(crate::clog::LogEntry {
@@ -200,6 +203,7 @@ async fn request<T: Serialize>(
                     duration_ms,
                     status_code,
                     payload_json,
+                    user_uid: current_user_uid,
                 });
             }
 

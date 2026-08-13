@@ -25,10 +25,11 @@ pub struct LogContext {
     pub parent_uid: Option<String>,
     pub endpoint_uid: String,
     pub service_name: String,
+    pub user_uid: Option<String>,
 }
 
 tokio::task_local! {
-    pub static LOG_CTX: LogContext;
+    pub static LOG_CTX: std::cell::RefCell<LogContext>;
 }
 
 #[derive(Clone, Debug)]
@@ -36,6 +37,7 @@ pub struct CLogConfig {
     pub service_name: String,
     pub central_log_url: Option<String>,
     pub exclusion_routes: Vec<String>,
+    pub environment: Option<String>,
 }
 
 static CLOG_CONFIG: OnceLock<CLogConfig> = OnceLock::new();
@@ -61,7 +63,15 @@ pub fn get_config() -> Option<&'static CLogConfig> {
 }
 
 pub fn get_current_ctx() -> Option<LogContext> {
-    LOG_CTX.try_with(|ctx| ctx.clone()).ok()
+    LOG_CTX.try_with(|ctx| ctx.borrow().clone()).ok()
+}
+
+/// Set the user_uid for the active request context.
+pub fn set_user_uid(user_uid: impl Into<String>) {
+    let uid = user_uid.into();
+    let _ = LOG_CTX.try_with(|ctx| {
+        ctx.borrow_mut().user_uid = Some(uid);
+    });
 }
 
 /// Push a log entry asynchronously into the background buffer.
@@ -106,16 +116,35 @@ pub fn new_log_entry(
         duration_ms,
         status_code,
         payload_json,
+        user_uid: ctx.user_uid.unwrap_or_default(),
     })
 }
 
-pub fn log_db_query(
-    sql: &str,
-    duration_ms: i32,
-    status_code: i32,
-    error_msg: Option<&str>,
-    stacktrace: Option<&str>,
-) {
+/// Developer custom logging helper to log any serializable payload to central log.
+pub fn custom_log<T: serde::Serialize>(log_type: &str, action_name: &str, payload: T) {
+    let payload_json = serde_json::to_string(&payload).unwrap_or_default();
+    if let Some(entry) = new_log_entry(log_type, action_name, 0, 200, payload_json) {
+        push_log(entry);
+    }
+}
+
+pub fn log<T: serde::Serialize>(log_type: &str, action_name: &str, payload: T) {
+    custom_log(log_type, action_name, payload);
+}
+
+pub fn info<T: serde::Serialize>(action_name: &str, payload: T) {
+    custom_log("INFO", action_name, payload);
+}
+
+pub fn warn<T: serde::Serialize>(action_name: &str, payload: T) {
+    custom_log("WARN", action_name, payload);
+}
+
+pub fn error<T: serde::Serialize>(action_name: &str, payload: T) {
+    custom_log("ERROR", action_name, payload);
+}
+
+pub fn log_db_query(sql: &str, duration_ms: i32, status_code: i32, error_msg: Option<&str>, stacktrace: Option<&str>) {
     let mut payload = serde_json::json!({
         "sql": sql,
         "error": error_msg,
@@ -151,14 +180,7 @@ pub fn log_tx_db_query(
     }
 }
 
-pub fn log_tx_begin(
-    tx_id: &str,
-    key: Option<&str>,
-    duration_ms: i32,
-    status_code: i32,
-    error_msg: Option<&str>,
-    stacktrace: Option<&str>,
-) {
+pub fn log_tx_begin(tx_id: &str, key: Option<&str>, duration_ms: i32, status_code: i32, error_msg: Option<&str>, stacktrace: Option<&str>) {
     let mut payload = serde_json::json!({
         "tx_id": tx_id,
         "key": key,
@@ -214,13 +236,7 @@ pub fn log_tx_rollback(
     }
 }
 
-pub fn log_db_update(
-    sql: &str,
-    duration_ms: i32,
-    status_code: i32,
-    error_msg: Option<&str>,
-    stacktrace: Option<&str>,
-) {
+pub fn log_db_update(sql: &str, duration_ms: i32, status_code: i32, error_msg: Option<&str>, stacktrace: Option<&str>) {
     let mut payload = serde_json::json!({
         "sql": sql,
         "error": error_msg,
@@ -256,13 +272,7 @@ pub fn log_db_tx_update(
     }
 }
 
-pub fn log_db_execute(
-    sql: &str,
-    duration_ms: i32,
-    status_code: i32,
-    error_msg: Option<&str>,
-    stacktrace: Option<&str>,
-) {
+pub fn log_db_execute(sql: &str, duration_ms: i32, status_code: i32, error_msg: Option<&str>, stacktrace: Option<&str>) {
     let mut payload = serde_json::json!({
         "sql": sql,
         "error": error_msg,
@@ -336,6 +346,7 @@ async fn worker_loop(mut rx: mpsc::Receiver<LogEntryRequest>, target_url: String
     let max_batch_bytes = 2 * 1024 * 1024; // 2MB
     let flush_interval = tokio::time::Duration::from_millis(500);
 
+    let mut shutdown_rx = crate::util::lifecycle::subscribe();
     let mut client: Option<LogServiceClient<Channel>> = None;
 
     loop {
@@ -365,6 +376,17 @@ async fn worker_loop(mut rx: mpsc::Receiver<LogEntryRequest>, target_url: String
                 if !buffer.is_empty() {
                     flush_batch(&mut client, &target_url, &service_name, &mut buffer, &mut total_bytes).await;
                 }
+            }
+            _ = shutdown_rx.recv() => {
+                // Application shutdown triggered: drain remaining logs and flush batch
+                while let Ok(entry) = rx.try_recv() {
+                    total_bytes += entry.payload_json.len();
+                    buffer.push(entry);
+                }
+                if !buffer.is_empty() {
+                    flush_batch(&mut client, &target_url, &service_name, &mut buffer, &mut total_bytes).await;
+                }
+                break;
             }
         }
     }

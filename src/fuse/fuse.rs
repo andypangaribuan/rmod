@@ -171,18 +171,29 @@ impl Fuse {
                     .map(|c| c.exclusion_routes.iter().any(|r| path_clone.starts_with(r) || endpoint_key.contains(r)))
                     .unwrap_or(false);
 
+                let query_params = parts.uri.query().unwrap_or_default().to_string();
+                let user_agent = parts.headers.get("user-agent").and_then(|v| v.to_str().ok()).unwrap_or_default().to_string();
+                let client_ip = parts
+                    .headers
+                    .get("x-forwarded-for")
+                    .or_else(|| parts.headers.get("x-real-ip"))
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or_default()
+                    .to_string();
+
                 let log_ctx = crate::clog::LogContext {
                     trace_id: trace_id.clone(),
                     parent_uid: parent_uid.clone(),
                     endpoint_uid: endpoint_uid.clone(),
                     service_name: service_name.clone(),
+                    user_uid: None,
                 };
 
                 let start_time = std::time::Instant::now();
                 let mut ctx = FuseRContext::new(Request::from_parts(parts, Body::from(bytes.clone())));
                 ctx.body = Some(bytes.clone());
 
-                let response = crate::clog::LOG_CTX.scope(log_ctx, ctx.res_handle(precondition, defer, handlers, endpoint_key)).await;
+                let response = crate::clog::LOG_CTX.scope(std::cell::RefCell::new(log_ctx), ctx.res_handle(precondition, defer, handlers, endpoint_key)).await;
 
                 if !is_excluded && clog_config.is_some() {
                     let duration_ms = start_time.elapsed().as_millis() as i32;
@@ -195,10 +206,18 @@ impl Fuse {
                         req_body_str.to_string()
                     };
 
+                    let env_str = clog_config.and_then(|c| c.environment.as_deref()).unwrap_or("development");
+                    let hostname = whoami::fallible::hostname().unwrap_or_else(|_| "unknown".to_string());
+
                     let mut payload_map = serde_json::json!({
                         "endpoint": endpoint_key,
                         "path": path_clone,
                         "method": method_str,
+                        "query_params": query_params,
+                        "client_ip": client_ip,
+                        "user_agent": user_agent,
+                        "environment": env_str,
+                        "hostname": hostname,
                         "request_body": req_body_truncated,
                     });
 
@@ -214,6 +233,7 @@ impl Fuse {
                     }
 
                     let payload_json = payload_map.to_string();
+                    let current_user_uid = crate::clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
 
                     let now_ms = crate::time::now_ms();
                     crate::clog::push_log(crate::clog::LogEntry {
@@ -227,6 +247,7 @@ impl Fuse {
                         duration_ms,
                         status_code,
                         payload_json,
+                        user_uid: current_user_uid,
                     });
                 }
 
@@ -556,6 +577,10 @@ impl FuseRContext {
     pub fn get<T: Send + Sync + 'static>(&self, key: &str) -> Option<Arc<T>> {
         let data = self.data.lock().unwrap();
         data.get(key)?.clone().downcast::<T>().ok()
+    }
+
+    pub fn set_user_uid(&mut self, user_uid: impl Into<String>) {
+        crate::clog::set_user_uid(user_uid);
     }
 
     #[inline(never)]

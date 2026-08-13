@@ -69,6 +69,7 @@ where
                 parent_uid: parent_uid.clone(),
                 endpoint_uid: endpoint_uid.clone(),
                 service_name: service_name.clone(),
+                user_uid: None,
             };
 
             let start_time = std::time::Instant::now();
@@ -80,7 +81,7 @@ where
                 tonic::body::BoxBody::new(http_body_util::Full::new(req_bytes.clone()).map_err(|_| tonic::Status::internal("body error")));
             let req_reconstructed = tonic::codegen::http::Request::from_parts(parts, req_body_box);
 
-            let res_result = crate::clog::LOG_CTX.scope(log_ctx, inner.call(req_reconstructed)).await;
+            let res_result = crate::clog::LOG_CTX.scope(std::cell::RefCell::new(log_ctx), inner.call(req_reconstructed)).await;
 
             match res_result {
                 Ok(response) => {
@@ -117,6 +118,7 @@ where
                         })
                         .to_string();
 
+                        let current_user_uid = crate::clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
                         let now_ms = crate::time::now_ms();
                         crate::clog::push_log(crate::clog::LogEntry {
                             uid: endpoint_uid,
@@ -129,6 +131,7 @@ where
                             duration_ms,
                             status_code,
                             payload_json,
+                            user_uid: current_user_uid,
                         });
                     }
 
@@ -254,6 +257,7 @@ where
                         }
 
                         let payload_json = payload_map.to_string();
+                        let current_user_uid = crate::clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
 
                         let now_ms = crate::time::now_ms();
                         crate::clog::push_log(crate::clog::LogEntry {
@@ -267,6 +271,7 @@ where
                             duration_ms,
                             status_code,
                             payload_json,
+                            user_uid: current_user_uid,
                         });
                     }
 
@@ -290,6 +295,7 @@ where
                         }
 
                         let now_ms = crate::time::now_ms();
+                        let current_user_uid = crate::clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
                         crate::clog::push_log(crate::clog::LogEntry {
                             uid: endpoint_uid,
                             timestamp_unix_ms: now_ms,
@@ -301,6 +307,7 @@ where
                             duration_ms,
                             status_code: 500,
                             payload_json: payload_map.to_string(),
+                            user_uid: current_user_uid,
                         });
                     }
                     Err(err)
