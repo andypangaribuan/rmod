@@ -55,11 +55,14 @@ impl Tx {
             match res {
                 Ok(_) => {
                     self.committed.store(true, Ordering::SeqCst);
-                    crate::clog::log_tx_commit(&self.id, self.key.as_deref(), duration_ms, 200, None);
+                    crate::clog::log_tx_commit(&self.id, self.key.as_deref(), duration_ms, 200, None, None);
                     Ok(())
                 }
                 Err(e) => {
-                    crate::clog::log_tx_commit(&self.id, self.key.as_deref(), duration_ms, 500, Some(&e.to_string()));
+                    let bt = std::backtrace::Backtrace::force_capture();
+                    let bt_str = format!("{}", bt);
+                    let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
+                    crate::clog::log_tx_commit(&self.id, self.key.as_deref(), duration_ms, 500, Some(&e.to_string()), stacktrace);
                     Err(e)
                 }
             }
@@ -87,10 +90,13 @@ impl Tx {
 
                 match res {
                     Ok(_) => {
-                        crate::clog::log_tx_rollback(&id, key.as_deref(), duration_ms, 200, None);
+                        crate::clog::log_tx_rollback(&id, key.as_deref(), duration_ms, 200, None, None);
                     }
                     Err(e) => {
-                        crate::clog::log_tx_rollback(&id, key.as_deref(), duration_ms, 500, Some(&e.to_string()));
+                        let bt = std::backtrace::Backtrace::force_capture();
+                        let bt_str = format!("{}", bt);
+                        let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
+                        crate::clog::log_tx_rollback(&id, key.as_deref(), duration_ms, 500, Some(&e.to_string()), stacktrace);
                     }
                 }
             }
@@ -107,11 +113,14 @@ pub async fn tx() -> Result<Tx, sqlx::Error> {
     match res {
         Ok(tx) => {
             let tx_obj = Tx::new(tx, None);
-            crate::clog::log_tx_begin(&tx_obj.id, None, duration_ms, 200, None);
+            crate::clog::log_tx_begin(&tx_obj.id, None, duration_ms, 200, None, None);
             Ok(tx_obj)
         }
         Err(e) => {
-            crate::clog::log_tx_begin("", None, duration_ms, 500, Some(&e.to_string()));
+            let bt = std::backtrace::Backtrace::force_capture();
+            let bt_str = format!("{}", bt);
+            let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
+            crate::clog::log_tx_begin("", None, duration_ms, 500, Some(&e.to_string()), stacktrace);
             Err(e)
         }
     }
@@ -126,11 +135,14 @@ pub async fn tx_on(key: &str) -> Result<Tx, sqlx::Error> {
     match res {
         Ok(tx) => {
             let tx_obj = Tx::new(tx, Some(key.to_string()));
-            crate::clog::log_tx_begin(&tx_obj.id, Some(key), duration_ms, 200, None);
+            crate::clog::log_tx_begin(&tx_obj.id, Some(key), duration_ms, 200, None, None);
             Ok(tx_obj)
         }
         Err(e) => {
-            crate::clog::log_tx_begin("", Some(key), duration_ms, 500, Some(&e.to_string()));
+            let bt = std::backtrace::Backtrace::force_capture();
+            let bt_str = format!("{}", bt);
+            let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
+            crate::clog::log_tx_begin("", Some(key), duration_ms, 500, Some(&e.to_string()), stacktrace);
             Err(e)
         }
     }

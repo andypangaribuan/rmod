@@ -109,155 +109,191 @@ pub fn new_log_entry(
     })
 }
 
-pub fn log_db_query(sql: &str, duration_ms: i32, status_code: i32, error_msg: Option<&str>) {
-    if let Some(entry) = new_log_entry(
-        "DB_QUERY",
-        sql,
-        duration_ms,
-        status_code,
-        serde_json::json!({
-            "sql": sql,
-            "error": error_msg,
-        })
-        .to_string(),
-    ) {
+pub fn log_db_query(
+    sql: &str,
+    duration_ms: i32,
+    status_code: i32,
+    error_msg: Option<&str>,
+    stacktrace: Option<&str>,
+) {
+    let mut payload = serde_json::json!({
+        "sql": sql,
+        "error": error_msg,
+    });
+    if let Some(st) = stacktrace {
+        payload["stacktrace"] = serde_json::Value::String(st.to_string());
+    }
+    if let Some(entry) = new_log_entry("DB_QUERY", sql, duration_ms, status_code, payload.to_string()) {
         push_log(entry);
     }
 }
 
-pub fn log_tx_db_query(tx_id: &str, key: Option<&str>, sql: &str, duration_ms: i32, status_code: i32, error_msg: Option<&str>) {
-    if let Some(entry) = new_log_entry(
-        "TX_DB_QUERY",
-        sql,
-        duration_ms,
-        status_code,
-        serde_json::json!({
-            "tx_id": tx_id,
-            "key": key,
-            "sql": sql,
-            "error": error_msg,
-        })
-        .to_string(),
-    ) {
+pub fn log_tx_db_query(
+    tx_id: &str,
+    key: Option<&str>,
+    sql: &str,
+    duration_ms: i32,
+    status_code: i32,
+    error_msg: Option<&str>,
+    stacktrace: Option<&str>,
+) {
+    let mut payload = serde_json::json!({
+        "tx_id": tx_id,
+        "key": key,
+        "sql": sql,
+        "error": error_msg,
+    });
+    if let Some(st) = stacktrace {
+        payload["stacktrace"] = serde_json::Value::String(st.to_string());
+    }
+    if let Some(entry) = new_log_entry("TX_DB_QUERY", sql, duration_ms, status_code, payload.to_string()) {
         push_log(entry);
     }
 }
 
-pub fn log_tx_begin(tx_id: &str, key: Option<&str>, duration_ms: i32, status_code: i32, error_msg: Option<&str>) {
-    if let Some(entry) = new_log_entry(
-        "TX_DB_BEGIN",
-        "BEGIN",
-        duration_ms,
-        status_code,
-        serde_json::json!({
-            "tx_id": tx_id,
-            "key": key,
-            "error": error_msg,
-        })
-        .to_string(),
-    ) {
+pub fn log_tx_begin(
+    tx_id: &str,
+    key: Option<&str>,
+    duration_ms: i32,
+    status_code: i32,
+    error_msg: Option<&str>,
+    stacktrace: Option<&str>,
+) {
+    let mut payload = serde_json::json!({
+        "tx_id": tx_id,
+        "key": key,
+        "error": error_msg,
+    });
+    if let Some(st) = stacktrace {
+        payload["stacktrace"] = serde_json::Value::String(st.to_string());
+    }
+    if let Some(entry) = new_log_entry("TX_DB_BEGIN", "BEGIN", duration_ms, status_code, payload.to_string()) {
         push_log(entry);
     }
 }
 
-pub fn log_tx_commit(tx_id: &str, key: Option<&str>, duration_ms: i32, status_code: i32, error_msg: Option<&str>) {
-    if let Some(entry) = new_log_entry(
-        "TX_DB_COMMIT",
-        "COMMIT",
-        duration_ms,
-        status_code,
-        serde_json::json!({
-            "tx_id": tx_id,
-            "key": key,
-            "error": error_msg,
-        })
-        .to_string(),
-    ) {
+pub fn log_tx_commit(
+    tx_id: &str,
+    key: Option<&str>,
+    duration_ms: i32,
+    status_code: i32,
+    error_msg: Option<&str>,
+    stacktrace: Option<&str>,
+) {
+    let mut payload = serde_json::json!({
+        "tx_id": tx_id,
+        "key": key,
+        "error": error_msg,
+    });
+    if let Some(st) = stacktrace {
+        payload["stacktrace"] = serde_json::Value::String(st.to_string());
+    }
+    if let Some(entry) = new_log_entry("TX_DB_COMMIT", "COMMIT", duration_ms, status_code, payload.to_string()) {
         push_log(entry);
     }
 }
 
-pub fn log_tx_rollback(tx_id: &str, key: Option<&str>, duration_ms: i32, status_code: i32, error_msg: Option<&str>) {
-    if let Some(entry) = new_log_entry(
-        "TX_DB_ROLLBACK",
-        "ROLLBACK",
-        duration_ms,
-        status_code,
-        serde_json::json!({
-            "tx_id": tx_id,
-            "key": key,
-            "error": error_msg,
-        })
-        .to_string(),
-    ) {
+pub fn log_tx_rollback(
+    tx_id: &str,
+    key: Option<&str>,
+    duration_ms: i32,
+    status_code: i32,
+    error_msg: Option<&str>,
+    stacktrace: Option<&str>,
+) {
+    let mut payload = serde_json::json!({
+        "tx_id": tx_id,
+        "key": key,
+        "error": error_msg,
+    });
+    if let Some(st) = stacktrace {
+        payload["stacktrace"] = serde_json::Value::String(st.to_string());
+    }
+    if let Some(entry) = new_log_entry("TX_DB_ROLLBACK", "ROLLBACK", duration_ms, status_code, payload.to_string()) {
         push_log(entry);
     }
 }
 
-pub fn log_db_update(sql: &str, duration_ms: i32, status_code: i32, error_msg: Option<&str>) {
-    if let Some(entry) = new_log_entry(
-        "DB_UPDATE",
-        sql,
-        duration_ms,
-        status_code,
-        serde_json::json!({
-            "sql": sql,
-            "error": error_msg,
-        })
-        .to_string(),
-    ) {
+pub fn log_db_update(
+    sql: &str,
+    duration_ms: i32,
+    status_code: i32,
+    error_msg: Option<&str>,
+    stacktrace: Option<&str>,
+) {
+    let mut payload = serde_json::json!({
+        "sql": sql,
+        "error": error_msg,
+    });
+    if let Some(st) = stacktrace {
+        payload["stacktrace"] = serde_json::Value::String(st.to_string());
+    }
+    if let Some(entry) = new_log_entry("DB_UPDATE", sql, duration_ms, status_code, payload.to_string()) {
         push_log(entry);
     }
 }
 
-pub fn log_db_tx_update(tx_id: &str, key: Option<&str>, sql: &str, duration_ms: i32, status_code: i32, error_msg: Option<&str>) {
-    if let Some(entry) = new_log_entry(
-        "DB_TX_UPDATE",
-        sql,
-        duration_ms,
-        status_code,
-        serde_json::json!({
-            "tx_id": tx_id,
-            "key": key,
-            "sql": sql,
-            "error": error_msg,
-        })
-        .to_string(),
-    ) {
+pub fn log_db_tx_update(
+    tx_id: &str,
+    key: Option<&str>,
+    sql: &str,
+    duration_ms: i32,
+    status_code: i32,
+    error_msg: Option<&str>,
+    stacktrace: Option<&str>,
+) {
+    let mut payload = serde_json::json!({
+        "tx_id": tx_id,
+        "key": key,
+        "sql": sql,
+        "error": error_msg,
+    });
+    if let Some(st) = stacktrace {
+        payload["stacktrace"] = serde_json::Value::String(st.to_string());
+    }
+    if let Some(entry) = new_log_entry("DB_TX_UPDATE", sql, duration_ms, status_code, payload.to_string()) {
         push_log(entry);
     }
 }
 
-pub fn log_db_execute(sql: &str, duration_ms: i32, status_code: i32, error_msg: Option<&str>) {
-    if let Some(entry) = new_log_entry(
-        "DB_EXEC",
-        sql,
-        duration_ms,
-        status_code,
-        serde_json::json!({
-            "sql": sql,
-            "error": error_msg,
-        })
-        .to_string(),
-    ) {
+pub fn log_db_execute(
+    sql: &str,
+    duration_ms: i32,
+    status_code: i32,
+    error_msg: Option<&str>,
+    stacktrace: Option<&str>,
+) {
+    let mut payload = serde_json::json!({
+        "sql": sql,
+        "error": error_msg,
+    });
+    if let Some(st) = stacktrace {
+        payload["stacktrace"] = serde_json::Value::String(st.to_string());
+    }
+    if let Some(entry) = new_log_entry("DB_EXEC", sql, duration_ms, status_code, payload.to_string()) {
         push_log(entry);
     }
 }
 
-pub fn log_db_tx_execute(tx_id: &str, key: Option<&str>, sql: &str, duration_ms: i32, status_code: i32, error_msg: Option<&str>) {
-    if let Some(entry) = new_log_entry(
-        "DB_TX_EXEC",
-        sql,
-        duration_ms,
-        status_code,
-        serde_json::json!({
-            "tx_id": tx_id,
-            "key": key,
-            "sql": sql,
-            "error": error_msg,
-        })
-        .to_string(),
-    ) {
+pub fn log_db_tx_execute(
+    tx_id: &str,
+    key: Option<&str>,
+    sql: &str,
+    duration_ms: i32,
+    status_code: i32,
+    error_msg: Option<&str>,
+    stacktrace: Option<&str>,
+) {
+    let mut payload = serde_json::json!({
+        "tx_id": tx_id,
+        "key": key,
+        "sql": sql,
+        "error": error_msg,
+    });
+    if let Some(st) = stacktrace {
+        payload["stacktrace"] = serde_json::Value::String(st.to_string());
+    }
+    if let Some(entry) = new_log_entry("DB_TX_EXEC", sql, duration_ms, status_code, payload.to_string()) {
         push_log(entry);
     }
 }
