@@ -195,13 +195,25 @@ impl Fuse {
                         req_body_str.to_string()
                     };
 
-                    let payload_json = serde_json::json!({
+                    let mut payload_map = serde_json::json!({
                         "endpoint": endpoint_key,
                         "path": path_clone,
                         "method": method_str,
                         "request_body": req_body_truncated,
-                    })
-                    .to_string();
+                    });
+
+                    if let Some(loc) = ctx.res_location {
+                        payload_map["location"] = serde_json::Value::String(format!("{}:{}", loc.file(), loc.line()));
+                    }
+
+                    if let Some(ref bt) = ctx.res_backtrace {
+                        let bt_str = format!("{}", bt);
+                        if !bt_str.trim().is_empty() {
+                            payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+                        }
+                    }
+
+                    let payload_json = payload_map.to_string();
 
                     let now_ms = crate::time::now_ms();
                     crate::clog::push_log(crate::clog::LogEntry {
