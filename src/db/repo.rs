@@ -22,7 +22,7 @@ pub struct Repo<T> {
 
 impl<T> Repo<T>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + serde::Serialize + Send + Unpin + 'static,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
     pub const fn new(table_name: &'static str, columns: &'static str) -> Self {
         Self { table_name, columns, _phantom: PhantomData }

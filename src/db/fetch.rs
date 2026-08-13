@@ -76,7 +76,7 @@ where
 /// Executes a query using the first initialized database pool and returns an optional row.
 pub async fn fetch<T>(sql: &str, args: PgArgs<T>) -> Result<Option<T>, sqlx::Error>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + serde::Serialize + Send + Unpin + 'static,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
     super::log_db_exec(sql, async move {
         let force_rw = args.is_force_rw();
@@ -92,9 +92,6 @@ where
             res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(store::db()).await?;
         }
 
-        let json_res = serde_json::to_string(&res).unwrap_or_else(|_| "null".to_string());
-        println!("sql: {}\nargs: {:?}\nres: {}\n\n", sql, args, json_res);
-
         Ok(res)
     })
     .await
@@ -103,7 +100,7 @@ where
 /// Executes a query using the first initialized database pool and returns all rows.
 pub async fn fetch_all<T>(sql: &str, args: PgArgs<T>) -> Result<Vec<T>, sqlx::Error>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + serde::Serialize + Send + Unpin + 'static,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
     super::log_db_exec(sql, async move {
         let force_rw = args.is_force_rw();
@@ -119,9 +116,6 @@ where
             res = sqlx::query_as_with(sql, args.build_inner()).fetch_all(store::db()).await?;
         }
 
-        let json_res = serde_json::to_string(&res).unwrap_or_else(|_| "[]".to_string());
-        println!("sql: {}\nargs: {:?}\nres: {}\n\n", sql, args, json_res);
-
         Ok(res)
     })
     .await
@@ -130,7 +124,7 @@ where
 /// Executes a query and returns an optional row.
 pub async fn fetch_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<Option<T>, sqlx::Error>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + serde::Serialize + Send + Unpin + 'static,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
     super::log_db_exec(sql, async move {
         let force_rw = args.is_force_rw();
@@ -146,9 +140,6 @@ where
             res = sqlx::query_as_with(sql, args.build_inner()).fetch_optional(store::db_on(key)).await?;
         }
 
-        let json_res = serde_json::to_string(&res).unwrap_or_else(|_| "null".to_string());
-        println!("key: {}, sql: {}\nargs: {:?}\nres: {}\n\n", key, sql, args, json_res);
-
         Ok(res)
     })
     .await
@@ -157,7 +148,7 @@ where
 /// Executes a query and returns all rows.
 pub async fn fetch_all_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<Vec<T>, sqlx::Error>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + serde::Serialize + Send + Unpin + 'static,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
     super::log_db_exec(sql, async move {
         let force_rw = args.is_force_rw();
@@ -172,9 +163,6 @@ where
         {
             res = sqlx::query_as_with(sql, args.build_inner()).fetch_all(store::db_on(key)).await?;
         }
-
-        let json_res = serde_json::to_string(&res).unwrap_or_else(|_| "[]".to_string());
-        println!("key: {}, sql: {}\nargs: {:?}\nres: {}\n\n", key, sql, args, json_res);
 
         Ok(res)
     })
