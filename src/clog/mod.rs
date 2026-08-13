@@ -12,11 +12,8 @@ use std::sync::OnceLock;
 use tokio::sync::mpsc;
 use tonic::transport::Channel;
 
-use crate::grc::grc_clog::{
-    log_service_client::LogServiceClient,
-    LogBatchRequest, LogEntryRequest,
-};
 pub use crate::grc::grc_clog::log_service_server::{LogService, LogServiceServer};
+use crate::grc::grc_clog::{LogBatchRequest, LogEntryRequest, log_service_client::LogServiceClient};
 
 pub type LogEntry = LogEntryRequest;
 pub type LogBatch = LogBatchRequest;
@@ -87,7 +84,13 @@ pub fn push_log(entry: LogEntryRequest) {
 }
 
 /// Helper function to create a new LogEntry with context automatically populated.
-pub fn new_log_entry(log_type: &str, action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) -> Option<LogEntryRequest> {
+pub fn new_log_entry(
+    log_type: &str,
+    action_name: &str,
+    duration_ms: i32,
+    status_code: i32,
+    payload_json: String,
+) -> Option<LogEntryRequest> {
     let ctx = get_current_ctx()?;
     let now_ms = crate::time::now_ms();
     let uid = crate::uid::new();
@@ -113,6 +116,143 @@ pub fn log_db_query(sql: &str, duration_ms: i32, status_code: i32, error_msg: Op
         duration_ms,
         status_code,
         serde_json::json!({
+            "sql": sql,
+            "error": error_msg,
+        })
+        .to_string(),
+    ) {
+        push_log(entry);
+    }
+}
+
+pub fn log_tx_db_query(tx_id: &str, key: Option<&str>, sql: &str, duration_ms: i32, status_code: i32, error_msg: Option<&str>) {
+    if let Some(entry) = new_log_entry(
+        "TX_DB_QUERY",
+        sql,
+        duration_ms,
+        status_code,
+        serde_json::json!({
+            "tx_id": tx_id,
+            "key": key,
+            "sql": sql,
+            "error": error_msg,
+        })
+        .to_string(),
+    ) {
+        push_log(entry);
+    }
+}
+
+pub fn log_tx_begin(tx_id: &str, key: Option<&str>, duration_ms: i32, status_code: i32, error_msg: Option<&str>) {
+    if let Some(entry) = new_log_entry(
+        "TX_DB_BEGIN",
+        "BEGIN",
+        duration_ms,
+        status_code,
+        serde_json::json!({
+            "tx_id": tx_id,
+            "key": key,
+            "error": error_msg,
+        })
+        .to_string(),
+    ) {
+        push_log(entry);
+    }
+}
+
+pub fn log_tx_commit(tx_id: &str, key: Option<&str>, duration_ms: i32, status_code: i32, error_msg: Option<&str>) {
+    if let Some(entry) = new_log_entry(
+        "TX_DB_COMMIT",
+        "COMMIT",
+        duration_ms,
+        status_code,
+        serde_json::json!({
+            "tx_id": tx_id,
+            "key": key,
+            "error": error_msg,
+        })
+        .to_string(),
+    ) {
+        push_log(entry);
+    }
+}
+
+pub fn log_tx_rollback(tx_id: &str, key: Option<&str>, duration_ms: i32, status_code: i32, error_msg: Option<&str>) {
+    if let Some(entry) = new_log_entry(
+        "TX_DB_ROLLBACK",
+        "ROLLBACK",
+        duration_ms,
+        status_code,
+        serde_json::json!({
+            "tx_id": tx_id,
+            "key": key,
+            "error": error_msg,
+        })
+        .to_string(),
+    ) {
+        push_log(entry);
+    }
+}
+
+pub fn log_db_update(sql: &str, duration_ms: i32, status_code: i32, error_msg: Option<&str>) {
+    if let Some(entry) = new_log_entry(
+        "DB_UPDATE",
+        sql,
+        duration_ms,
+        status_code,
+        serde_json::json!({
+            "sql": sql,
+            "error": error_msg,
+        })
+        .to_string(),
+    ) {
+        push_log(entry);
+    }
+}
+
+pub fn log_db_tx_update(tx_id: &str, key: Option<&str>, sql: &str, duration_ms: i32, status_code: i32, error_msg: Option<&str>) {
+    if let Some(entry) = new_log_entry(
+        "DB_TX_UPDATE",
+        sql,
+        duration_ms,
+        status_code,
+        serde_json::json!({
+            "tx_id": tx_id,
+            "key": key,
+            "sql": sql,
+            "error": error_msg,
+        })
+        .to_string(),
+    ) {
+        push_log(entry);
+    }
+}
+
+pub fn log_db_execute(sql: &str, duration_ms: i32, status_code: i32, error_msg: Option<&str>) {
+    if let Some(entry) = new_log_entry(
+        "DB_EXEC",
+        sql,
+        duration_ms,
+        status_code,
+        serde_json::json!({
+            "sql": sql,
+            "error": error_msg,
+        })
+        .to_string(),
+    ) {
+        push_log(entry);
+    }
+}
+
+pub fn log_db_tx_execute(tx_id: &str, key: Option<&str>, sql: &str, duration_ms: i32, status_code: i32, error_msg: Option<&str>) {
+    if let Some(entry) = new_log_entry(
+        "DB_TX_EXEC",
+        sql,
+        duration_ms,
+        status_code,
+        serde_json::json!({
+            "tx_id": tx_id,
+            "key": key,
             "sql": sql,
             "error": error_msg,
         })

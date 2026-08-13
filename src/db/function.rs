@@ -154,6 +154,91 @@ where
     res
 }
 
+pub(crate) async fn log_tx_db_exec<F, T, E>(tx: &super::Tx, sql: &str, fut: F) -> Result<T, E>
+where
+    F: std::future::Future<Output = Result<T, E>>,
+    E: std::fmt::Display,
+{
+    let start = std::time::Instant::now();
+    let res = fut.await;
+    let duration_ms = start.elapsed().as_millis() as i32;
+
+    match &res {
+        Ok(_) => crate::clog::log_tx_db_query(&tx.id, tx.key.as_deref(), sql, duration_ms, 200, None),
+        Err(e) => crate::clog::log_tx_db_query(&tx.id, tx.key.as_deref(), sql, duration_ms, 500, Some(&e.to_string())),
+    }
+
+    res
+}
+
+pub(crate) async fn log_db_update<F, T, E>(sql: &str, fut: F) -> Result<T, E>
+where
+    F: std::future::Future<Output = Result<T, E>>,
+    E: std::fmt::Display,
+{
+    let start = std::time::Instant::now();
+    let res = fut.await;
+    let duration_ms = start.elapsed().as_millis() as i32;
+
+    match &res {
+        Ok(_) => crate::clog::log_db_update(sql, duration_ms, 200, None),
+        Err(e) => crate::clog::log_db_update(sql, duration_ms, 500, Some(&e.to_string())),
+    }
+
+    res
+}
+
+pub(crate) async fn log_tx_db_update<F, T, E>(tx: &super::Tx, sql: &str, fut: F) -> Result<T, E>
+where
+    F: std::future::Future<Output = Result<T, E>>,
+    E: std::fmt::Display,
+{
+    let start = std::time::Instant::now();
+    let res = fut.await;
+    let duration_ms = start.elapsed().as_millis() as i32;
+
+    match &res {
+        Ok(_) => crate::clog::log_db_tx_update(&tx.id, tx.key.as_deref(), sql, duration_ms, 200, None),
+        Err(e) => crate::clog::log_db_tx_update(&tx.id, tx.key.as_deref(), sql, duration_ms, 500, Some(&e.to_string())),
+    }
+
+    res
+}
+
+pub(crate) async fn log_db_execute<F, T, E>(sql: &str, fut: F) -> Result<T, E>
+where
+    F: std::future::Future<Output = Result<T, E>>,
+    E: std::fmt::Display,
+{
+    let start = std::time::Instant::now();
+    let res = fut.await;
+    let duration_ms = start.elapsed().as_millis() as i32;
+
+    match &res {
+        Ok(_) => crate::clog::log_db_execute(sql, duration_ms, 200, None),
+        Err(e) => crate::clog::log_db_execute(sql, duration_ms, 500, Some(&e.to_string())),
+    }
+
+    res
+}
+
+pub(crate) async fn log_tx_db_execute<F, T, E>(tx: &super::Tx, sql: &str, fut: F) -> Result<T, E>
+where
+    F: std::future::Future<Output = Result<T, E>>,
+    E: std::fmt::Display,
+{
+    let start = std::time::Instant::now();
+    let res = fut.await;
+    let duration_ms = start.elapsed().as_millis() as i32;
+
+    match &res {
+        Ok(_) => crate::clog::log_db_tx_execute(&tx.id, tx.key.as_deref(), sql, duration_ms, 200, None),
+        Err(e) => crate::clog::log_db_tx_execute(&tx.id, tx.key.as_deref(), sql, duration_ms, 500, Some(&e.to_string())),
+    }
+
+    res
+}
+
 pub(super) fn replace_table_name(query: &str, original: &str, new_table: &str) -> String {
     let mut result = String::with_capacity(query.len() + new_table.len());
     let mut last_end = 0;

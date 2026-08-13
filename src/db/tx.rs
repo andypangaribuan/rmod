@@ -19,18 +19,26 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::Mutex;
 
 pub struct Tx {
+    pub(crate) id: String,
+    pub(crate) key: Option<String>,
     pub(crate) inner: Arc<Mutex<Option<Transaction<'static, Postgres>>>>,
     pub(crate) committed: Arc<AtomicBool>,
     pub(crate) rolled_back: Arc<AtomicBool>,
 }
 
 impl Tx {
-    pub(crate) fn new(tx: Transaction<'static, Postgres>) -> Self {
+    pub(crate) fn new(tx: Transaction<'static, Postgres>, key: Option<String>) -> Self {
         Self {
+            id: crate::uid::new(),
+            key,
             inner: Arc::new(Mutex::new(Some(tx))),
             committed: Arc::new(AtomicBool::new(false)),
             rolled_back: Arc::new(AtomicBool::new(false)),
         }
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
     }
 
     pub async fn commit(&self) -> Result<(), sqlx::Error> {
@@ -40,10 +48,24 @@ impl Tx {
 
         let mut lock = self.inner.lock().await;
         if let Some(tx) = lock.take() {
-            tx.commit().await?;
-            self.committed.store(true, Ordering::SeqCst);
+            let start = std::time::Instant::now();
+            let res = tx.commit().await;
+            let duration_ms = start.elapsed().as_millis() as i32;
+
+            match res {
+                Ok(_) => {
+                    self.committed.store(true, Ordering::SeqCst);
+                    crate::clog::log_tx_commit(&self.id, self.key.as_deref(), duration_ms, 200, None);
+                    Ok(())
+                }
+                Err(e) => {
+                    crate::clog::log_tx_commit(&self.id, self.key.as_deref(), duration_ms, 500, Some(&e.to_string()));
+                    Err(e)
+                }
+            }
+        } else {
+            Ok(())
         }
-        Ok(())
     }
 
     pub fn rollback(&self) {
@@ -53,24 +75,63 @@ impl Tx {
 
         self.rolled_back.store(true, Ordering::SeqCst);
         let inner = Arc::clone(&self.inner);
+        let id = self.id.clone();
+        let key = self.key.clone();
 
         tokio::spawn(async move {
             let mut lock = inner.lock().await;
             if let Some(tx) = lock.take() {
-                let _ = tx.rollback().await;
+                let start = std::time::Instant::now();
+                let res = tx.rollback().await;
+                let duration_ms = start.elapsed().as_millis() as i32;
+
+                match res {
+                    Ok(_) => {
+                        crate::clog::log_tx_rollback(&id, key.as_deref(), duration_ms, 200, None);
+                    }
+                    Err(e) => {
+                        crate::clog::log_tx_rollback(&id, key.as_deref(), duration_ms, 500, Some(&e.to_string()));
+                    }
+                }
             }
         });
     }
 }
 
 pub async fn tx() -> Result<Tx, sqlx::Error> {
+    let start = std::time::Instant::now();
     let pool = store::db();
-    let tx = pool.begin().await?;
-    Ok(Tx::new(tx))
+    let res = pool.begin().await;
+    let duration_ms = start.elapsed().as_millis() as i32;
+
+    match res {
+        Ok(tx) => {
+            let tx_obj = Tx::new(tx, None);
+            crate::clog::log_tx_begin(&tx_obj.id, None, duration_ms, 200, None);
+            Ok(tx_obj)
+        }
+        Err(e) => {
+            crate::clog::log_tx_begin("", None, duration_ms, 500, Some(&e.to_string()));
+            Err(e)
+        }
+    }
 }
 
 pub async fn tx_on(key: &str) -> Result<Tx, sqlx::Error> {
+    let start = std::time::Instant::now();
     let pool = store::db_on(key);
-    let tx = pool.begin().await?;
-    Ok(Tx::new(tx))
+    let res = pool.begin().await;
+    let duration_ms = start.elapsed().as_millis() as i32;
+
+    match res {
+        Ok(tx) => {
+            let tx_obj = Tx::new(tx, Some(key.to_string()));
+            crate::clog::log_tx_begin(&tx_obj.id, Some(key), duration_ms, 200, None);
+            Ok(tx_obj)
+        }
+        Err(e) => {
+            crate::clog::log_tx_begin("", Some(key), duration_ms, 500, Some(&e.to_string()));
+            Err(e)
+        }
+    }
 }
