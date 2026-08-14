@@ -408,17 +408,17 @@ pub fn load_proto_registry() -> &'static ProtoFieldRegistry {
 }
 
 fn scan_dir_for_protos(dir: &std::path::Path, registry: &mut ProtoFieldRegistry) {
-    if dir.is_dir() {
-        if let Ok(entries) = std::fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                let p = entry.path();
-                if p.is_dir() {
-                    scan_dir_for_protos(&p, registry);
-                } else if p.extension().and_then(|s| s.to_str()) == Some("proto") {
-                    if let Ok(content) = std::fs::read_to_string(&p) {
-                        parse_proto_content(&content, registry);
-                    }
-                }
+    if dir.is_dir()
+        && let Ok(entries) = std::fs::read_dir(dir)
+    {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_dir() {
+                scan_dir_for_protos(&p, registry);
+            } else if p.extension().and_then(|s| s.to_str()) == Some("proto")
+                && let Ok(content) = std::fs::read_to_string(&p)
+            {
+                parse_proto_content(&content, registry);
             }
         }
     }
@@ -452,17 +452,18 @@ fn parse_proto_content(content: &str, registry: &mut ProtoFieldRegistry) {
             }
         } else if line == "}" {
             current_message = None;
-        } else if let Some(ref msg_name) = current_message {
-            if line.contains('=') && line.ends_with(';') {
-                let clean_line = line.trim_matches(';');
-                let parts: Vec<&str> = clean_line.split('=').collect();
-                if parts.len() == 2 {
-                    let left_parts: Vec<&str> = parts[0].split_whitespace().collect();
-                    let right_tag = parts[1].trim();
-                    if let (Some(field_name), Ok(tag)) = (left_parts.last(), right_tag.parse::<u32>()) {
-                        let field_map = registry.entry(msg_name.clone()).or_default();
-                        field_map.insert(tag, field_name.to_string());
-                    }
+        } else if let Some(ref msg_name) = current_message
+            && line.contains('=')
+            && line.ends_with(';')
+        {
+            let clean_line = line.trim_matches(';');
+            let parts: Vec<&str> = clean_line.split('=').collect();
+            if parts.len() == 2 {
+                let left_parts: Vec<&str> = parts[0].split_whitespace().collect();
+                let right_tag = parts[1].trim();
+                if let (Some(field_name), Ok(tag)) = (left_parts.last(), right_tag.parse::<u32>()) {
+                    let field_map = registry.entry(msg_name.clone()).or_default();
+                    field_map.insert(tag, field_name.to_string());
                 }
             }
         }
@@ -496,22 +497,14 @@ fn read_varint(buf: &[u8], pos: &mut usize) -> Option<u64> {
     None
 }
 
-pub fn decode_grpc_body_to_json(
-    raw_bytes: &[u8],
-    path: &str,
-    is_request: bool,
-) -> Value {
+pub fn decode_grpc_body_to_json(raw_bytes: &[u8], path: &str, is_request: bool) -> Value {
     if raw_bytes.is_empty() {
         return serde_json::json!({});
     }
 
     let payload = if raw_bytes.len() >= 5 {
         let msg_len = u32::from_be_bytes([raw_bytes[1], raw_bytes[2], raw_bytes[3], raw_bytes[4]]) as usize;
-        if raw_bytes.len() >= 5 + msg_len {
-            &raw_bytes[5..5 + msg_len]
-        } else {
-            &raw_bytes[5..]
-        }
+        if raw_bytes.len() >= 5 + msg_len { &raw_bytes[5..5 + msg_len] } else { &raw_bytes[5..] }
     } else {
         raw_bytes
     };
@@ -523,27 +516,16 @@ pub fn decode_grpc_body_to_json(
     let registry = load_proto_registry();
     let method_name = path.rsplit('/').next().unwrap_or(path);
 
-    let key = if is_request {
-        format!("{}:req", method_name)
-    } else {
-        format!("{}:res", method_name)
-    };
+    let key = if is_request { format!("{}:req", method_name) } else { format!("{}:res", method_name) };
 
     let field_map = registry.get(&key).or_else(|| {
-        if is_request {
-            registry.get(&format!("{}Request", method_name))
-        } else {
-            registry.get(&format!("{}Response", method_name))
-        }
+        if is_request { registry.get(&format!("{}Request", method_name)) } else { registry.get(&format!("{}Response", method_name)) }
     });
 
     decode_protobuf_wire(payload, field_map)
 }
 
-fn decode_protobuf_wire(
-    payload: &[u8],
-    field_map: Option<&HashMap<u32, String>>,
-) -> Value {
+fn decode_protobuf_wire(payload: &[u8], field_map: Option<&HashMap<u32, String>>) -> Value {
     let mut map = Map::new();
     let mut pos = 0;
 
@@ -560,17 +542,13 @@ fn decode_protobuf_wire(
             break;
         }
 
-        let field_key = field_map
-            .and_then(|m| m.get(&tag).cloned())
-            .unwrap_or_else(|| tag.to_string());
+        let field_key = field_map.and_then(|m| m.get(&tag).cloned()).unwrap_or_else(|| tag.to_string());
 
         let val = match wire_type {
-            0 => {
-                match read_varint(payload, &mut pos) {
-                    Some(v) => Value::from(v),
-                    None => break,
-                }
-            }
+            0 => match read_varint(payload, &mut pos) {
+                Some(v) => Value::from(v),
+                None => break,
+            },
             1 => {
                 if pos + 8 > payload.len() {
                     break;
@@ -578,11 +556,7 @@ fn decode_protobuf_wire(
                 let bytes: [u8; 8] = payload[pos..pos + 8].try_into().unwrap();
                 pos += 8;
                 let f_val = f64::from_le_bytes(bytes);
-                if f_val.is_finite() {
-                    Value::from(f_val)
-                } else {
-                    Value::from(u64::from_le_bytes(bytes))
-                }
+                if f_val.is_finite() { Value::from(f_val) } else { Value::from(u64::from_le_bytes(bytes)) }
             }
             2 => {
                 let len = match read_varint(payload, &mut pos) {
@@ -622,11 +596,7 @@ fn decode_protobuf_wire(
                 let bytes: [u8; 4] = payload[pos..pos + 4].try_into().unwrap();
                 pos += 4;
                 let f_val = f32::from_le_bytes(bytes);
-                if f_val.is_finite() {
-                    Value::from(f_val as f64)
-                } else {
-                    Value::from(u32::from_le_bytes(bytes))
-                }
+                if f_val.is_finite() { Value::from(f_val as f64) } else { Value::from(u32::from_le_bytes(bytes)) }
             }
             _ => break,
         };
@@ -643,11 +613,7 @@ fn decode_protobuf_wire(
         }
     }
 
-    if map.is_empty() {
-        Value::String(String::from_utf8_lossy(payload).to_string())
-    } else {
-        Value::Object(map)
-    }
+    if map.is_empty() { Value::String(String::from_utf8_lossy(payload).to_string()) } else { Value::Object(map) }
 }
 
 #[cfg(test)]
