@@ -165,6 +165,7 @@ pub fn log_db_query(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn log_tx_db_query(
     tx_id: &str,
     key: Option<&str>,
@@ -267,6 +268,7 @@ pub fn log_db_update(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn log_db_tx_update(
     tx_id: &str,
     key: Option<&str>,
@@ -313,6 +315,7 @@ pub fn log_db_execute(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn log_db_tx_execute(
     tx_id: &str,
     key: Option<&str>,
