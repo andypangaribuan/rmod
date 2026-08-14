@@ -107,11 +107,7 @@ pub(super) async fn dist_lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Opti
     }
 }
 
-pub(super) async fn dist_lock_many(
-    keys: Vec<&str>,
-    opt_ttl: Option<i64>,
-    opt_wait_ms: Option<i64>,
-) -> Result<String, String> {
+pub(super) async fn dist_lock_many(keys: Vec<&str>, opt_ttl: Option<i64>, opt_wait_ms: Option<i64>) -> Result<String, String> {
     let client = REDIS_CLIENT.get().expect("Redis lock client not initialized");
     let ttl = opt_ttl.unwrap_or_else(|| *LOCK_TTL.get().unwrap_or(&30000));
     let wait_ms = opt_wait_ms.unwrap_or(30000) as u64;

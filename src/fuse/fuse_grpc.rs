@@ -429,11 +429,7 @@ fn parse_proto_content(content: &str, registry: &mut ProtoFieldRegistry) {
     let mut service_methods: HashMap<String, (String, String)> = HashMap::new();
 
     for raw_line in content.lines() {
-        let line = if let Some((before_comment, _)) = raw_line.split_once("//") {
-            before_comment.trim()
-        } else {
-            raw_line.trim()
-        };
+        let line = if let Some((before_comment, _)) = raw_line.split_once("//") { before_comment.trim() } else { raw_line.trim() };
         if line.is_empty() {
             continue;
         }
