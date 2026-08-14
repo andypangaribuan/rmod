@@ -59,9 +59,9 @@ pub async fn dist(key: &str, opt: Option<LockOptions>) -> Result<DistLock, Strin
 
 pub async fn dist_many(keys: Vec<&str>, opt: Option<LockOptions>) -> Result<DistLock, String> {
     let t = LOCK_TYPE.get().ok_or("Distribution lock not initialized")?;
-    let wait_ms = match opt {
-        Some(o) => o.wait_ms,
-        None => None,
+    let (ttl_ms, wait_ms) = match opt {
+        Some(o) => (o.ttl_ms, o.wait_ms),
+        None => (None, None),
     };
 
     match t {
@@ -69,6 +69,9 @@ pub async fn dist_many(keys: Vec<&str>, opt: Option<LockOptions>) -> Result<Dist
             let (conn, lock_keys) = super::pg_lock::dist_lock_many(keys.clone(), wait_ms).await?;
             Ok(DistLock { key: keys.join(","), pg_conn: Some(conn), pg_lock_keys: lock_keys, redis_val: None })
         }
-        DistLockType::Redis => Err("Redis dist multi-lock not implemented".to_string()),
+        DistLockType::Redis => {
+            let val = super::redis_lock::dist_lock_many(keys.clone(), ttl_ms, wait_ms).await?;
+            Ok(DistLock { key: keys.join(","), pg_conn: None, pg_lock_keys: vec![], redis_val: Some(val) })
+        }
     }
 }

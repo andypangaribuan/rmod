@@ -54,12 +54,18 @@ impl FuseRContext {
     }
 
     fn retrieve_forwarded_ip(&self, header_val: &str) -> Option<String> {
+        let mut first_valid_ip = None;
         for address in header_val.split(',') {
-            if let Some(ip) = address.trim().parse::<IpAddr>().ok().filter(|&ip| !self.is_private_ip(ip)) {
-                return Some(ip.to_string());
+            if let Ok(ip) = address.trim().parse::<IpAddr>() {
+                if !self.is_private_ip(ip) {
+                    return Some(ip.to_string());
+                }
+                if first_valid_ip.is_none() {
+                    first_valid_ip = Some(ip.to_string());
+                }
             }
         }
-        None
+        first_valid_ip
     }
 
     fn is_private_ip(&self, ip: IpAddr) -> bool {

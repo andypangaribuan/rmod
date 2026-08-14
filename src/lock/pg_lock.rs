@@ -163,8 +163,9 @@ pub(super) async fn dist_unlock(mut conn: sqlx::pool::PoolConnection<Postgres>, 
     // Simply rolling back the transaction will release all xact_locks and unpin PgBouncer.
     let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await.ok();
     let duration_ms = start_time.elapsed().as_millis() as i32;
+    let keys: Vec<&str> = key.split(',').collect();
     let payload_json = serde_json::json!({
-        "key": key,
+        "keys": keys,
         "action": "UNLOCK",
     })
     .to_string();
