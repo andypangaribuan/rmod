@@ -481,10 +481,10 @@ pub(crate) fn parse_body_to_json_val(s: &str) -> serde_json::Value {
     if trimmed.is_empty() {
         return serde_json::Value::Null;
     }
-    if (trimmed.starts_with('{') && trimmed.ends_with('}')) || (trimmed.starts_with('[') && trimmed.ends_with(']')) {
-        if let Ok(v) = serde_json::from_str::<serde_json::Value>(trimmed) {
-            return v;
-        }
+    if ((trimmed.starts_with('{') && trimmed.ends_with('}')) || (trimmed.starts_with('[') && trimmed.ends_with(']')))
+        && let Ok(v) = serde_json::from_str::<serde_json::Value>(trimmed)
+    {
+        return v;
     }
     if s.len() > 100_000 {
         serde_json::Value::String(format!("{}... [TRUNCATED]", &s[..100_000]))
