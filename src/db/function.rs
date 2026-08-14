@@ -137,6 +137,24 @@ pub(crate) fn build_insert_sql<T>(table_name: &str, columns: &str, opt: Option<&
     format!("INSERT INTO {} ({}) VALUES ({})", table_name, columns, placeholders)
 }
 
+#[allow(dead_code)]
+pub(crate) trait FallbackDbg {
+    fn opt_fmt(&self) -> Option<String> {
+        None
+    }
+}
+
+impl<T: ?Sized> FallbackDbg for T {}
+
+pub(crate) struct TryDbg<'a, T: ?Sized>(pub &'a T);
+
+#[allow(dead_code)]
+impl<'a, T: std::fmt::Debug + ?Sized> TryDbg<'a, T> {
+    pub fn opt_fmt(&self) -> Option<String> {
+        Some(format!("{:?}", self.0))
+    }
+}
+
 pub(crate) async fn log_db_exec<F, T, E>(sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
 where
     F: std::future::Future<Output = Result<T, E>>,
@@ -147,12 +165,21 @@ where
     let duration_ms = start.elapsed().as_millis() as i32;
 
     match &res {
-        Ok(_) => crate::clog::log_db_query(sql, args, duration_ms, 200, None, None),
+        Ok(val) => {
+            let res_opt = TryDbg(val).opt_fmt().map(|s| {
+                if s.len() > 100_000 {
+                    format!("{}... [TRUNCATED]", &s[..100_000])
+                } else {
+                    s
+                }
+            });
+            crate::clog::log_db_query(sql, args, res_opt.as_deref(), duration_ms, 200, None, None);
+        }
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
             let bt_str = format!("{}", bt);
             let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
-            crate::clog::log_db_query(sql, args, duration_ms, 500, Some(&e.to_string()), stacktrace);
+            crate::clog::log_db_query(sql, args, None, duration_ms, 500, Some(&e.to_string()), stacktrace);
         }
     }
 
@@ -169,12 +196,21 @@ where
     let duration_ms = start.elapsed().as_millis() as i32;
 
     match &res {
-        Ok(_) => crate::clog::log_tx_db_query(&tx.id, tx.key.as_deref(), sql, args, duration_ms, 200, None, None),
+        Ok(val) => {
+            let res_opt = TryDbg(val).opt_fmt().map(|s| {
+                if s.len() > 100_000 {
+                    format!("{}... [TRUNCATED]", &s[..100_000])
+                } else {
+                    s
+                }
+            });
+            crate::clog::log_tx_db_query(&tx.id, tx.key.as_deref(), sql, args, res_opt.as_deref(), duration_ms, 200, None, None);
+        }
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
             let bt_str = format!("{}", bt);
             let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
-            crate::clog::log_tx_db_query(&tx.id, tx.key.as_deref(), sql, args, duration_ms, 500, Some(&e.to_string()), stacktrace);
+            crate::clog::log_tx_db_query(&tx.id, tx.key.as_deref(), sql, args, None, duration_ms, 500, Some(&e.to_string()), stacktrace);
         }
     }
 
@@ -191,12 +227,21 @@ where
     let duration_ms = start.elapsed().as_millis() as i32;
 
     match &res {
-        Ok(_) => crate::clog::log_db_update(sql, args, duration_ms, 200, None, None),
+        Ok(val) => {
+            let res_opt = TryDbg(val).opt_fmt().map(|s| {
+                if s.len() > 100_000 {
+                    format!("{}... [TRUNCATED]", &s[..100_000])
+                } else {
+                    s
+                }
+            });
+            crate::clog::log_db_update(sql, args, res_opt.as_deref(), duration_ms, 200, None, None);
+        }
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
             let bt_str = format!("{}", bt);
             let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
-            crate::clog::log_db_update(sql, args, duration_ms, 500, Some(&e.to_string()), stacktrace);
+            crate::clog::log_db_update(sql, args, None, duration_ms, 500, Some(&e.to_string()), stacktrace);
         }
     }
 
@@ -213,12 +258,21 @@ where
     let duration_ms = start.elapsed().as_millis() as i32;
 
     match &res {
-        Ok(_) => crate::clog::log_db_tx_update(&tx.id, tx.key.as_deref(), sql, args, duration_ms, 200, None, None),
+        Ok(val) => {
+            let res_opt = TryDbg(val).opt_fmt().map(|s| {
+                if s.len() > 100_000 {
+                    format!("{}... [TRUNCATED]", &s[..100_000])
+                } else {
+                    s
+                }
+            });
+            crate::clog::log_db_tx_update(&tx.id, tx.key.as_deref(), sql, args, res_opt.as_deref(), duration_ms, 200, None, None);
+        }
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
             let bt_str = format!("{}", bt);
             let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
-            crate::clog::log_db_tx_update(&tx.id, tx.key.as_deref(), sql, args, duration_ms, 500, Some(&e.to_string()), stacktrace);
+            crate::clog::log_db_tx_update(&tx.id, tx.key.as_deref(), sql, args, None, duration_ms, 500, Some(&e.to_string()), stacktrace);
         }
     }
 
@@ -235,12 +289,21 @@ where
     let duration_ms = start.elapsed().as_millis() as i32;
 
     match &res {
-        Ok(_) => crate::clog::log_db_execute(sql, args, duration_ms, 200, None, None),
+        Ok(val) => {
+            let res_opt = TryDbg(val).opt_fmt().map(|s| {
+                if s.len() > 100_000 {
+                    format!("{}... [TRUNCATED]", &s[..100_000])
+                } else {
+                    s
+                }
+            });
+            crate::clog::log_db_execute(sql, args, res_opt.as_deref(), duration_ms, 200, None, None);
+        }
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
             let bt_str = format!("{}", bt);
             let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
-            crate::clog::log_db_execute(sql, args, duration_ms, 500, Some(&e.to_string()), stacktrace);
+            crate::clog::log_db_execute(sql, args, None, duration_ms, 500, Some(&e.to_string()), stacktrace);
         }
     }
 
@@ -257,12 +320,21 @@ where
     let duration_ms = start.elapsed().as_millis() as i32;
 
     match &res {
-        Ok(_) => crate::clog::log_db_tx_execute(&tx.id, tx.key.as_deref(), sql, args, duration_ms, 200, None, None),
+        Ok(val) => {
+            let res_opt = TryDbg(val).opt_fmt().map(|s| {
+                if s.len() > 100_000 {
+                    format!("{}... [TRUNCATED]", &s[..100_000])
+                } else {
+                    s
+                }
+            });
+            crate::clog::log_db_tx_execute(&tx.id, tx.key.as_deref(), sql, args, res_opt.as_deref(), duration_ms, 200, None, None);
+        }
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
             let bt_str = format!("{}", bt);
             let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
-            crate::clog::log_db_tx_execute(&tx.id, tx.key.as_deref(), sql, args, duration_ms, 500, Some(&e.to_string()), stacktrace);
+            crate::clog::log_db_tx_execute(&tx.id, tx.key.as_deref(), sql, args, None, duration_ms, 500, Some(&e.to_string()), stacktrace);
         }
     }
 

@@ -147,6 +147,7 @@ pub fn error<T: serde::Serialize>(action_name: &str, payload: T) {
 pub fn log_db_query(
     sql: &str,
     args: Option<&[String]>,
+    response: Option<&str>,
     duration_ms: i32,
     status_code: i32,
     error_msg: Option<&str>,
@@ -155,6 +156,7 @@ pub fn log_db_query(
     let mut payload = serde_json::json!({
         "sql": sql,
         "args": args,
+        "response": response,
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
@@ -171,6 +173,7 @@ pub fn log_tx_db_query(
     key: Option<&str>,
     sql: &str,
     args: Option<&[String]>,
+    response: Option<&str>,
     duration_ms: i32,
     status_code: i32,
     error_msg: Option<&str>,
@@ -181,6 +184,7 @@ pub fn log_tx_db_query(
         "key": key,
         "sql": sql,
         "args": args,
+        "response": response,
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
@@ -250,6 +254,7 @@ pub fn log_tx_rollback(
 pub fn log_db_update(
     sql: &str,
     args: Option<&[String]>,
+    response: Option<&str>,
     duration_ms: i32,
     status_code: i32,
     error_msg: Option<&str>,
@@ -258,6 +263,7 @@ pub fn log_db_update(
     let mut payload = serde_json::json!({
         "sql": sql,
         "args": args,
+        "response": response,
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
@@ -274,6 +280,7 @@ pub fn log_db_tx_update(
     key: Option<&str>,
     sql: &str,
     args: Option<&[String]>,
+    response: Option<&str>,
     duration_ms: i32,
     status_code: i32,
     error_msg: Option<&str>,
@@ -284,6 +291,7 @@ pub fn log_db_tx_update(
         "key": key,
         "sql": sql,
         "args": args,
+        "response": response,
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
@@ -297,6 +305,7 @@ pub fn log_db_tx_update(
 pub fn log_db_execute(
     sql: &str,
     args: Option<&[String]>,
+    response: Option<&str>,
     duration_ms: i32,
     status_code: i32,
     error_msg: Option<&str>,
@@ -305,6 +314,7 @@ pub fn log_db_execute(
     let mut payload = serde_json::json!({
         "sql": sql,
         "args": args,
+        "response": response,
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
@@ -321,6 +331,7 @@ pub fn log_db_tx_execute(
     key: Option<&str>,
     sql: &str,
     args: Option<&[String]>,
+    response: Option<&str>,
     duration_ms: i32,
     status_code: i32,
     error_msg: Option<&str>,
@@ -331,6 +342,7 @@ pub fn log_db_tx_execute(
         "key": key,
         "sql": sql,
         "args": args,
+        "response": response,
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
