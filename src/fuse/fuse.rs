@@ -181,19 +181,21 @@ impl Fuse {
                     .unwrap_or_default()
                     .to_string();
 
-                let log_ctx = crate::clog::LogContext {
+                let log_ctx = crate::clog::Context {
                     trace_id: trace_id.clone(),
                     parent_uid: parent_uid.clone(),
+                    user_uid: None,
                     endpoint_uid: endpoint_uid.clone(),
                     service_name: service_name.clone(),
-                    user_uid: None,
                 };
 
                 let start_time = std::time::Instant::now();
                 let mut ctx = FuseRContext::new(Request::from_parts(parts, Body::from(bytes.clone())));
                 ctx.body = Some(bytes.clone());
 
-                let response = crate::clog::LOG_CTX.scope(std::cell::RefCell::new(log_ctx), ctx.res_handle(precondition, defer, handlers, endpoint_key)).await;
+                let response = crate::clog::LOG_CTX
+                    .scope(std::cell::RefCell::new(log_ctx), ctx.res_handle(precondition, defer, handlers, endpoint_key))
+                    .await;
 
                 if !is_excluded && clog_config.is_some() {
                     let duration_ms = start_time.elapsed().as_millis() as i32;
@@ -221,14 +223,16 @@ impl Fuse {
                         "request_body": req_body_truncated,
                     });
 
-                    if let Some(loc) = ctx.res_location {
-                        payload_map["location"] = serde_json::Value::String(format!("{}:{}", loc.file(), loc.line()));
-                    }
+                    if status_code >= 400 {
+                        if let Some(loc) = ctx.res_location {
+                            payload_map["location"] = serde_json::Value::String(format!("{}:{}", loc.file(), loc.line()));
+                        }
 
-                    if let Some(ref bt) = ctx.res_backtrace {
-                        let bt_str = format!("{}", bt);
-                        if !bt_str.trim().is_empty() {
-                            payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+                        if let Some(ref bt) = ctx.res_backtrace {
+                            let bt_str = format!("{}", bt);
+                            if !bt_str.trim().is_empty() {
+                                payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+                            }
                         }
                     }
 
