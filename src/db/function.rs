@@ -137,7 +137,7 @@ pub(crate) fn build_insert_sql<T>(table_name: &str, columns: &str, opt: Option<&
     format!("INSERT INTO {} ({}) VALUES ({})", table_name, columns, placeholders)
 }
 
-pub(crate) async fn log_db_exec<F, T, E>(sql: &str, fut: F) -> Result<T, E>
+pub(crate) async fn log_db_exec<F, T, E>(sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
 where
     F: std::future::Future<Output = Result<T, E>>,
     E: std::fmt::Display,
@@ -147,19 +147,19 @@ where
     let duration_ms = start.elapsed().as_millis() as i32;
 
     match &res {
-        Ok(_) => crate::clog::log_db_query(sql, duration_ms, 200, None, None),
+        Ok(_) => crate::clog::log_db_query(sql, args, duration_ms, 200, None, None),
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
             let bt_str = format!("{}", bt);
             let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
-            crate::clog::log_db_query(sql, duration_ms, 500, Some(&e.to_string()), stacktrace);
+            crate::clog::log_db_query(sql, args, duration_ms, 500, Some(&e.to_string()), stacktrace);
         }
     }
 
     res
 }
 
-pub(crate) async fn log_tx_db_exec<F, T, E>(tx: &super::Tx, sql: &str, fut: F) -> Result<T, E>
+pub(crate) async fn log_tx_db_exec<F, T, E>(tx: &super::Tx, sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
 where
     F: std::future::Future<Output = Result<T, E>>,
     E: std::fmt::Display,
@@ -169,19 +169,19 @@ where
     let duration_ms = start.elapsed().as_millis() as i32;
 
     match &res {
-        Ok(_) => crate::clog::log_tx_db_query(&tx.id, tx.key.as_deref(), sql, duration_ms, 200, None, None),
+        Ok(_) => crate::clog::log_tx_db_query(&tx.id, tx.key.as_deref(), sql, args, duration_ms, 200, None, None),
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
             let bt_str = format!("{}", bt);
             let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
-            crate::clog::log_tx_db_query(&tx.id, tx.key.as_deref(), sql, duration_ms, 500, Some(&e.to_string()), stacktrace);
+            crate::clog::log_tx_db_query(&tx.id, tx.key.as_deref(), sql, args, duration_ms, 500, Some(&e.to_string()), stacktrace);
         }
     }
 
     res
 }
 
-pub(crate) async fn log_db_update<F, T, E>(sql: &str, fut: F) -> Result<T, E>
+pub(crate) async fn log_db_update<F, T, E>(sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
 where
     F: std::future::Future<Output = Result<T, E>>,
     E: std::fmt::Display,
@@ -191,19 +191,19 @@ where
     let duration_ms = start.elapsed().as_millis() as i32;
 
     match &res {
-        Ok(_) => crate::clog::log_db_update(sql, duration_ms, 200, None, None),
+        Ok(_) => crate::clog::log_db_update(sql, args, duration_ms, 200, None, None),
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
             let bt_str = format!("{}", bt);
             let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
-            crate::clog::log_db_update(sql, duration_ms, 500, Some(&e.to_string()), stacktrace);
+            crate::clog::log_db_update(sql, args, duration_ms, 500, Some(&e.to_string()), stacktrace);
         }
     }
 
     res
 }
 
-pub(crate) async fn log_tx_db_update<F, T, E>(tx: &super::Tx, sql: &str, fut: F) -> Result<T, E>
+pub(crate) async fn log_tx_db_update<F, T, E>(tx: &super::Tx, sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
 where
     F: std::future::Future<Output = Result<T, E>>,
     E: std::fmt::Display,
@@ -213,19 +213,19 @@ where
     let duration_ms = start.elapsed().as_millis() as i32;
 
     match &res {
-        Ok(_) => crate::clog::log_db_tx_update(&tx.id, tx.key.as_deref(), sql, duration_ms, 200, None, None),
+        Ok(_) => crate::clog::log_db_tx_update(&tx.id, tx.key.as_deref(), sql, args, duration_ms, 200, None, None),
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
             let bt_str = format!("{}", bt);
             let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
-            crate::clog::log_db_tx_update(&tx.id, tx.key.as_deref(), sql, duration_ms, 500, Some(&e.to_string()), stacktrace);
+            crate::clog::log_db_tx_update(&tx.id, tx.key.as_deref(), sql, args, duration_ms, 500, Some(&e.to_string()), stacktrace);
         }
     }
 
     res
 }
 
-pub(crate) async fn log_db_execute<F, T, E>(sql: &str, fut: F) -> Result<T, E>
+pub(crate) async fn log_db_execute<F, T, E>(sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
 where
     F: std::future::Future<Output = Result<T, E>>,
     E: std::fmt::Display,
@@ -235,19 +235,19 @@ where
     let duration_ms = start.elapsed().as_millis() as i32;
 
     match &res {
-        Ok(_) => crate::clog::log_db_execute(sql, duration_ms, 200, None, None),
+        Ok(_) => crate::clog::log_db_execute(sql, args, duration_ms, 200, None, None),
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
             let bt_str = format!("{}", bt);
             let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
-            crate::clog::log_db_execute(sql, duration_ms, 500, Some(&e.to_string()), stacktrace);
+            crate::clog::log_db_execute(sql, args, duration_ms, 500, Some(&e.to_string()), stacktrace);
         }
     }
 
     res
 }
 
-pub(crate) async fn log_tx_db_execute<F, T, E>(tx: &super::Tx, sql: &str, fut: F) -> Result<T, E>
+pub(crate) async fn log_tx_db_execute<F, T, E>(tx: &super::Tx, sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
 where
     F: std::future::Future<Output = Result<T, E>>,
     E: std::fmt::Display,
@@ -257,12 +257,12 @@ where
     let duration_ms = start.elapsed().as_millis() as i32;
 
     match &res {
-        Ok(_) => crate::clog::log_db_tx_execute(&tx.id, tx.key.as_deref(), sql, duration_ms, 200, None, None),
+        Ok(_) => crate::clog::log_db_tx_execute(&tx.id, tx.key.as_deref(), sql, args, duration_ms, 200, None, None),
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
             let bt_str = format!("{}", bt);
             let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
-            crate::clog::log_db_tx_execute(&tx.id, tx.key.as_deref(), sql, duration_ms, 500, Some(&e.to_string()), stacktrace);
+            crate::clog::log_db_tx_execute(&tx.id, tx.key.as_deref(), sql, args, duration_ms, 500, Some(&e.to_string()), stacktrace);
         }
     }
 

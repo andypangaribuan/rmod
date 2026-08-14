@@ -18,7 +18,9 @@ pub async fn query<T>(sql: &str, args: PgArgs<T>) -> Result<T, sqlx::Error>
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    super::log_db_exec(sql, async move {
+    let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
+    let args_opt = debug_args.as_deref();
+    super::log_db_exec(sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real();
         let pool = if use_read { store::db_read() } else { store::db() };
@@ -42,7 +44,9 @@ pub async fn query_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<T, sql
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    super::log_db_exec(sql, async move {
+    let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
+    let args_opt = debug_args.as_deref();
+    super::log_db_exec(sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real_on(key);
         let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
@@ -65,7 +69,9 @@ pub async fn tx_query<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<T, sqlx:
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    super::log_tx_db_exec(tx, sql, async move {
+    let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
+    let args_opt = debug_args.as_deref();
+    super::log_tx_db_exec(tx, sql, args_opt, async move {
         let mut lock = tx.inner.lock().await;
         let inner_tx = lock.as_mut().expect("Transaction already committed or rolled back");
         sqlx::query_as_with(sql, args.build_inner()).fetch_one(&mut **inner_tx).await
@@ -78,7 +84,9 @@ pub async fn fetch<T>(sql: &str, args: PgArgs<T>) -> Result<Option<T>, sqlx::Err
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    super::log_db_exec(sql, async move {
+    let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
+    let args_opt = debug_args.as_deref();
+    super::log_db_exec(sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real();
         let pool = if use_read { store::db_read() } else { store::db() };
@@ -102,7 +110,9 @@ pub async fn fetch_all<T>(sql: &str, args: PgArgs<T>) -> Result<Vec<T>, sqlx::Er
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    super::log_db_exec(sql, async move {
+    let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
+    let args_opt = debug_args.as_deref();
+    super::log_db_exec(sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real();
         let pool = if use_read { store::db_read() } else { store::db() };
@@ -126,7 +136,9 @@ pub async fn fetch_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<Option
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    super::log_db_exec(sql, async move {
+    let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
+    let args_opt = debug_args.as_deref();
+    super::log_db_exec(sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real_on(key);
         let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
@@ -150,7 +162,9 @@ pub async fn fetch_all_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<Ve
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    super::log_db_exec(sql, async move {
+    let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
+    let args_opt = debug_args.as_deref();
+    super::log_db_exec(sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real_on(key);
         let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
@@ -173,7 +187,9 @@ pub async fn tx_fetch<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<Option<T
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    super::log_tx_db_exec(tx, sql, async move {
+    let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
+    let args_opt = debug_args.as_deref();
+    super::log_tx_db_exec(tx, sql, args_opt, async move {
         let mut lock = tx.inner.lock().await;
         let inner_tx = lock.as_mut().expect("Transaction already committed or rolled back");
         sqlx::query_as_with(sql, args.build_inner()).fetch_optional(&mut **inner_tx).await
@@ -185,7 +201,9 @@ pub async fn tx_fetch_all<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<Vec<
 where
     T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    super::log_tx_db_exec(tx, sql, async move {
+    let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
+    let args_opt = debug_args.as_deref();
+    super::log_tx_db_exec(tx, sql, args_opt, async move {
         let mut lock = tx.inner.lock().await;
         let inner_tx = lock.as_mut().expect("Transaction already committed or rolled back");
         sqlx::query_as_with(sql, args.build_inner()).fetch_all(&mut **inner_tx).await
@@ -194,7 +212,9 @@ where
 }
 
 pub async fn count<T>(sql: &str, args: PgArgs<T>) -> Result<i64, sqlx::Error> {
-    super::log_db_exec(sql, async move {
+    let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
+    let args_opt = debug_args.as_deref();
+    super::log_db_exec(sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real();
         let pool = if use_read { store::db_read() } else { store::db() };
@@ -214,7 +234,9 @@ pub async fn count<T>(sql: &str, args: PgArgs<T>) -> Result<i64, sqlx::Error> {
 }
 
 pub async fn count_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<i64, sqlx::Error> {
-    super::log_db_exec(sql, async move {
+    let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
+    let args_opt = debug_args.as_deref();
+    super::log_db_exec(sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real_on(key);
         let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
@@ -234,7 +256,9 @@ pub async fn count_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<i64, s
 }
 
 pub async fn tx_count<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<i64, sqlx::Error> {
-    super::log_tx_db_exec(tx, sql, async move {
+    let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
+    let args_opt = debug_args.as_deref();
+    super::log_tx_db_exec(tx, sql, args_opt, async move {
         let mut lock = tx.inner.lock().await;
         let inner_tx = lock.as_mut().expect("Transaction already committed or rolled back");
         sqlx::query_scalar_with(sql, args.build_inner()).fetch_one(&mut **inner_tx).await
@@ -246,7 +270,9 @@ pub async fn select<T, A>(sql: &str, args: PgArgs<T>) -> Result<A, sqlx::Error>
 where
     A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    super::log_db_exec(sql, async move {
+    let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
+    let args_opt = debug_args.as_deref();
+    super::log_db_exec(sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real();
         let pool = if use_read { store::db_read() } else { store::db() };
@@ -269,7 +295,9 @@ pub async fn select_on<T, A>(key: &str, sql: &str, args: PgArgs<T>) -> Result<A,
 where
     A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    super::log_db_exec(sql, async move {
+    let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
+    let args_opt = debug_args.as_deref();
+    super::log_db_exec(sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real_on(key);
         let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
@@ -289,7 +317,9 @@ pub async fn select_all<T, A>(sql: &str, args: PgArgs<T>) -> Result<Vec<A>, sqlx
 where
     A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    super::log_db_exec(sql, async move {
+    let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
+    let args_opt = debug_args.as_deref();
+    super::log_db_exec(sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real();
         let pool = if use_read { store::db_read() } else { store::db() };
@@ -309,7 +339,9 @@ pub async fn select_all_on<T, A>(key: &str, sql: &str, args: PgArgs<T>) -> Resul
 where
     A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    super::log_db_exec(sql, async move {
+    let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
+    let args_opt = debug_args.as_deref();
+    super::log_db_exec(sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real_on(key);
         let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
@@ -329,7 +361,9 @@ pub async fn tx_select<T, A>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<A, s
 where
     A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
 {
-    super::log_tx_db_exec(tx, sql, async move {
+    let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
+    let args_opt = debug_args.as_deref();
+    super::log_tx_db_exec(tx, sql, args_opt, async move {
         let mut lock = tx.inner.lock().await;
         let inner_tx = lock.as_mut().expect("Transaction already committed or rolled back");
         sqlx::query_as_with(sql, args.build_inner()).fetch_one(&mut **inner_tx).await

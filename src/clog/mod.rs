@@ -20,31 +20,31 @@ pub type LogBatch = LogBatchRequest;
 pub use crate::grc::grc_clog::LogResponse as CLogResponse;
 
 #[derive(Clone, Debug)]
-pub struct LogContext {
+pub struct Context {
     pub trace_id: String,
     pub parent_uid: Option<String>,
+    pub user_uid: Option<String>,
     pub endpoint_uid: String,
     pub service_name: String,
-    pub user_uid: Option<String>,
 }
 
 tokio::task_local! {
-    pub static LOG_CTX: std::cell::RefCell<LogContext>;
+    pub static LOG_CTX: std::cell::RefCell<Context>;
 }
 
 #[derive(Clone, Debug)]
-pub struct CLogConfig {
+pub struct Config {
     pub service_name: String,
     pub central_log_url: Option<String>,
     pub exclusion_routes: Vec<String>,
     pub environment: Option<String>,
 }
 
-static CLOG_CONFIG: OnceLock<CLogConfig> = OnceLock::new();
+static CLOG_CONFIG: OnceLock<Config> = OnceLock::new();
 static LOG_SENDER: OnceLock<mpsc::Sender<LogEntryRequest>> = OnceLock::new();
 
 /// Initialize central logging system in rmod.
-pub fn init(config: CLogConfig) {
+pub fn init(config: Config) {
     let service_name = config.service_name.clone();
     let url = config.central_log_url.clone();
     let _ = CLOG_CONFIG.set(config);
@@ -58,11 +58,11 @@ pub fn init(config: CLogConfig) {
     }
 }
 
-pub fn get_config() -> Option<&'static CLogConfig> {
+pub fn get_config() -> Option<&'static Config> {
     CLOG_CONFIG.get()
 }
 
-pub fn get_current_ctx() -> Option<LogContext> {
+pub fn get_current_ctx() -> Option<Context> {
     LOG_CTX.try_with(|ctx| ctx.borrow().clone()).ok()
 }
 
@@ -144,9 +144,17 @@ pub fn error<T: serde::Serialize>(action_name: &str, payload: T) {
     custom_log("ERROR", action_name, payload);
 }
 
-pub fn log_db_query(sql: &str, duration_ms: i32, status_code: i32, error_msg: Option<&str>, stacktrace: Option<&str>) {
+pub fn log_db_query(
+    sql: &str,
+    args: Option<&[String]>,
+    duration_ms: i32,
+    status_code: i32,
+    error_msg: Option<&str>,
+    stacktrace: Option<&str>,
+) {
     let mut payload = serde_json::json!({
         "sql": sql,
+        "args": args,
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
@@ -161,6 +169,7 @@ pub fn log_tx_db_query(
     tx_id: &str,
     key: Option<&str>,
     sql: &str,
+    args: Option<&[String]>,
     duration_ms: i32,
     status_code: i32,
     error_msg: Option<&str>,
@@ -170,6 +179,7 @@ pub fn log_tx_db_query(
         "tx_id": tx_id,
         "key": key,
         "sql": sql,
+        "args": args,
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
@@ -236,9 +246,17 @@ pub fn log_tx_rollback(
     }
 }
 
-pub fn log_db_update(sql: &str, duration_ms: i32, status_code: i32, error_msg: Option<&str>, stacktrace: Option<&str>) {
+pub fn log_db_update(
+    sql: &str,
+    args: Option<&[String]>,
+    duration_ms: i32,
+    status_code: i32,
+    error_msg: Option<&str>,
+    stacktrace: Option<&str>,
+) {
     let mut payload = serde_json::json!({
         "sql": sql,
+        "args": args,
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
@@ -253,6 +271,7 @@ pub fn log_db_tx_update(
     tx_id: &str,
     key: Option<&str>,
     sql: &str,
+    args: Option<&[String]>,
     duration_ms: i32,
     status_code: i32,
     error_msg: Option<&str>,
@@ -262,6 +281,7 @@ pub fn log_db_tx_update(
         "tx_id": tx_id,
         "key": key,
         "sql": sql,
+        "args": args,
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
@@ -272,9 +292,17 @@ pub fn log_db_tx_update(
     }
 }
 
-pub fn log_db_execute(sql: &str, duration_ms: i32, status_code: i32, error_msg: Option<&str>, stacktrace: Option<&str>) {
+pub fn log_db_execute(
+    sql: &str,
+    args: Option<&[String]>,
+    duration_ms: i32,
+    status_code: i32,
+    error_msg: Option<&str>,
+    stacktrace: Option<&str>,
+) {
     let mut payload = serde_json::json!({
         "sql": sql,
+        "args": args,
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
@@ -289,6 +317,7 @@ pub fn log_db_tx_execute(
     tx_id: &str,
     key: Option<&str>,
     sql: &str,
+    args: Option<&[String]>,
     duration_ms: i32,
     status_code: i32,
     error_msg: Option<&str>,
@@ -298,12 +327,13 @@ pub fn log_db_tx_execute(
         "tx_id": tx_id,
         "key": key,
         "sql": sql,
+        "args": args,
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
         payload["stacktrace"] = serde_json::Value::String(st.to_string());
     }
-    if let Some(entry) = new_log_entry("DB_TX_EXEC", sql, duration_ms, status_code, payload.to_string()) {
+    if let Some(entry) = new_log_entry("TX_DB_EXEC", sql, duration_ms, status_code, payload.to_string()) {
         push_log(entry);
     }
 }
