@@ -44,15 +44,16 @@ pub async fn dist(key: &str, opt: Option<LockOptions>) -> Result<DistLock, Strin
         Some(o) => (o.ttl_ms, o.wait_ms),
         None => (None, None),
     };
+    let log_ctx = crate::clog::get_current_ctx();
 
     match t {
         DistLockType::Pg => {
             let (conn, lock_keys) = super::pg_lock::dist_lock(key, wait_ms).await?;
-            Ok(DistLock { key: key.to_string(), pg_conn: Some(conn), pg_lock_keys: lock_keys, redis_val: None })
+            Ok(DistLock { key: key.to_string(), pg_conn: Some(conn), pg_lock_keys: lock_keys, redis_val: None, log_ctx })
         }
         DistLockType::Redis => {
             let val = super::redis_lock::dist_lock(key, ttl_ms, wait_ms).await?;
-            Ok(DistLock { key: key.to_string(), pg_conn: None, pg_lock_keys: vec![], redis_val: Some(val) })
+            Ok(DistLock { key: key.to_string(), pg_conn: None, pg_lock_keys: vec![], redis_val: Some(val), log_ctx })
         }
     }
 }
@@ -63,15 +64,16 @@ pub async fn dist_many(keys: Vec<&str>, opt: Option<LockOptions>) -> Result<Dist
         Some(o) => (o.ttl_ms, o.wait_ms),
         None => (None, None),
     };
+    let log_ctx = crate::clog::get_current_ctx();
 
     match t {
         DistLockType::Pg => {
             let (conn, lock_keys) = super::pg_lock::dist_lock_many(keys.clone(), wait_ms).await?;
-            Ok(DistLock { key: keys.join(","), pg_conn: Some(conn), pg_lock_keys: lock_keys, redis_val: None })
+            Ok(DistLock { key: keys.join(","), pg_conn: Some(conn), pg_lock_keys: lock_keys, redis_val: None, log_ctx })
         }
         DistLockType::Redis => {
             let val = super::redis_lock::dist_lock_many(keys.clone(), ttl_ms, wait_ms).await?;
-            Ok(DistLock { key: keys.join(","), pg_conn: None, pg_lock_keys: vec![], redis_val: Some(val) })
+            Ok(DistLock { key: keys.join(","), pg_conn: None, pg_lock_keys: vec![], redis_val: Some(val), log_ctx })
         }
     }
 }

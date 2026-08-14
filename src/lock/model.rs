@@ -13,6 +13,7 @@ pub struct DistLock {
     pub(super) pg_conn: Option<sqlx::pool::PoolConnection<sqlx::Postgres>>,
     pub(super) pg_lock_keys: Vec<(i32, i32)>,
     pub(super) redis_val: Option<String>,
+    pub(super) log_ctx: Option<crate::clog::Context>,
 }
 
 pub struct LockOptions {

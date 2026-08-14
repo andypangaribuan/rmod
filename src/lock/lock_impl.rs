@@ -19,8 +19,7 @@ impl Drop for DistLock {
             let redis_val = self.redis_val.take();
             let pg_lock_keys = std::mem::take(&mut self.pg_lock_keys);
             let key = self.key.clone();
-
-            let log_ctx = crate::clog::get_current_ctx();
+            let log_ctx = self.log_ctx.take().or_else(crate::clog::get_current_ctx);
 
             handle.spawn(async move {
                 let fut = async move {
@@ -49,15 +48,24 @@ impl DistLock {
     }
 
     pub(super) async fn perform_unlock(&mut self) {
-        if let Some(conn) = self.pg_conn.take() {
-            let key = self.key.clone();
-            let pg_lock_keys = std::mem::take(&mut self.pg_lock_keys);
-            super::pg_lock::dist_unlock(conn, &key, pg_lock_keys).await;
-        }
+        let log_ctx = self.log_ctx.take().or_else(crate::clog::get_current_ctx);
+        let fut = async {
+            if let Some(conn) = self.pg_conn.take() {
+                let key = self.key.clone();
+                let pg_lock_keys = std::mem::take(&mut self.pg_lock_keys);
+                super::pg_lock::dist_unlock(conn, &key, pg_lock_keys).await;
+            }
 
-        if let Some(val) = self.redis_val.take() {
-            let key = self.key.clone();
-            super::redis_lock::dist_unlock(&key, &val).await;
+            if let Some(val) = self.redis_val.take() {
+                let key = self.key.clone();
+                super::redis_lock::dist_unlock(&key, &val).await;
+            }
+        };
+
+        if let Some(ctx) = log_ctx {
+            crate::clog::LOG_CTX.scope(std::cell::RefCell::new(ctx), fut).await;
+        } else {
+            fut.await;
         }
     }
 }
