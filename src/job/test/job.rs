@@ -27,7 +27,7 @@ async fn test_job_execution() {
     COUNTER.store(0, Ordering::SeqCst);
 
     // Add a job that runs every 100ms
-    job::add("100ms", test_handler, true, false);
+    job::add("job_test", "100ms", test_handler, true, false);
 
     // Start jobs
     job::start();
@@ -56,7 +56,7 @@ async fn test_job_non_every_execution() {
     COUNTER_NON_EVERY.store(0, Ordering::SeqCst);
 
     // Add a job that runs after 100ms (is_every = false)
-    job::add("100ms", test_handler_non_every, false, false);
+    job::add("job_test_non_every", "100ms", test_handler_non_every, false, false);
 
     job::start();
 

@@ -138,20 +138,26 @@ pub(crate) fn build_insert_sql<T>(table_name: &str, columns: &str, opt: Option<&
 }
 
 #[allow(dead_code)]
-pub(crate) trait FallbackDbg {
+pub trait DbgDisplay {
+    fn opt_fmt(&self) -> Option<String>;
+}
+
+pub struct DbgAlso<T>(pub T);
+
+impl<T: std::fmt::Debug> DbgDisplay for DbgAlso<&T> {
     fn opt_fmt(&self) -> Option<String> {
-        None
+        Some(format!("{:?}", self.0))
     }
 }
 
-impl<T: ?Sized> FallbackDbg for T {}
-
-pub(crate) struct TryDbg<'a, T: ?Sized>(pub &'a T);
-
 #[allow(dead_code)]
-impl<'a, T: std::fmt::Debug + ?Sized> TryDbg<'a, T> {
-    pub fn opt_fmt(&self) -> Option<String> {
-        Some(format!("{:?}", self.0))
+pub trait DbgFallback {
+    fn opt_fmt(&self) -> Option<String>;
+}
+
+impl<T> DbgFallback for &DbgAlso<T> {
+    fn opt_fmt(&self) -> Option<String> {
+        None
     }
 }
 
@@ -166,13 +172,7 @@ where
 
     match &res {
         Ok(val) => {
-            let res_opt = TryDbg(val).opt_fmt().map(|s| {
-                if s.len() > 100_000 {
-                    format!("{}... [TRUNCATED]", &s[..100_000])
-                } else {
-                    s
-                }
-            });
+            let res_opt = (&DbgAlso(val)).opt_fmt().map(|s| if s.len() > 100_000 { format!("{}... [TRUNCATED]", &s[..100_000]) } else { s });
             crate::clog::log_db_query(sql, args, res_opt.as_deref(), duration_ms, 200, None, None);
         }
         Err(e) => {
@@ -197,13 +197,7 @@ where
 
     match &res {
         Ok(val) => {
-            let res_opt = TryDbg(val).opt_fmt().map(|s| {
-                if s.len() > 100_000 {
-                    format!("{}... [TRUNCATED]", &s[..100_000])
-                } else {
-                    s
-                }
-            });
+            let res_opt = (&DbgAlso(val)).opt_fmt().map(|s| if s.len() > 100_000 { format!("{}... [TRUNCATED]", &s[..100_000]) } else { s });
             crate::clog::log_tx_db_query(&tx.id, tx.key.as_deref(), sql, args, res_opt.as_deref(), duration_ms, 200, None, None);
         }
         Err(e) => {
@@ -228,13 +222,7 @@ where
 
     match &res {
         Ok(val) => {
-            let res_opt = TryDbg(val).opt_fmt().map(|s| {
-                if s.len() > 100_000 {
-                    format!("{}... [TRUNCATED]", &s[..100_000])
-                } else {
-                    s
-                }
-            });
+            let res_opt = (&DbgAlso(val)).opt_fmt().map(|s| if s.len() > 100_000 { format!("{}... [TRUNCATED]", &s[..100_000]) } else { s });
             crate::clog::log_db_update(sql, args, res_opt.as_deref(), duration_ms, 200, None, None);
         }
         Err(e) => {
@@ -259,13 +247,7 @@ where
 
     match &res {
         Ok(val) => {
-            let res_opt = TryDbg(val).opt_fmt().map(|s| {
-                if s.len() > 100_000 {
-                    format!("{}... [TRUNCATED]", &s[..100_000])
-                } else {
-                    s
-                }
-            });
+            let res_opt = (&DbgAlso(val)).opt_fmt().map(|s| if s.len() > 100_000 { format!("{}... [TRUNCATED]", &s[..100_000]) } else { s });
             crate::clog::log_db_tx_update(&tx.id, tx.key.as_deref(), sql, args, res_opt.as_deref(), duration_ms, 200, None, None);
         }
         Err(e) => {
@@ -290,13 +272,7 @@ where
 
     match &res {
         Ok(val) => {
-            let res_opt = TryDbg(val).opt_fmt().map(|s| {
-                if s.len() > 100_000 {
-                    format!("{}... [TRUNCATED]", &s[..100_000])
-                } else {
-                    s
-                }
-            });
+            let res_opt = (&DbgAlso(val)).opt_fmt().map(|s| if s.len() > 100_000 { format!("{}... [TRUNCATED]", &s[..100_000]) } else { s });
             crate::clog::log_db_execute(sql, args, res_opt.as_deref(), duration_ms, 200, None, None);
         }
         Err(e) => {
@@ -321,13 +297,7 @@ where
 
     match &res {
         Ok(val) => {
-            let res_opt = TryDbg(val).opt_fmt().map(|s| {
-                if s.len() > 100_000 {
-                    format!("{}... [TRUNCATED]", &s[..100_000])
-                } else {
-                    s
-                }
-            });
+            let res_opt = (&DbgAlso(val)).opt_fmt().map(|s| if s.len() > 100_000 { format!("{}... [TRUNCATED]", &s[..100_000]) } else { s });
             crate::clog::log_db_tx_execute(&tx.id, tx.key.as_deref(), sql, args, res_opt.as_deref(), duration_ms, 200, None, None);
         }
         Err(e) => {
@@ -370,4 +340,31 @@ pub(super) fn replace_table_name(query: &str, original: &str, new_table: &str) -
     }
     result.push_str(&query[last_end..]);
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug)]
+    #[allow(dead_code)]
+    struct WithDebug {
+        a: i32,
+    }
+
+    struct WithoutDebug {
+        _a: i32,
+    }
+
+    #[test]
+    fn test_dbg_specialization() {
+        let wd = WithDebug { a: 42 };
+        let wod = WithoutDebug { _a: 100 };
+
+        let res_wd = (&DbgAlso(&wd)).opt_fmt();
+        let res_wod = (&DbgAlso(&wod)).opt_fmt();
+
+        assert_eq!(res_wd, Some("WithDebug { a: 42 }".to_string()));
+        assert_eq!(res_wod, None);
+    }
 }
