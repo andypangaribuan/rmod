@@ -24,10 +24,8 @@ impl Drop for DistLock {
 
             handle.spawn(async move {
                 let fut = async move {
-                    if let (Some(c), keys) = (conn, pg_lock_keys)
-                        && !keys.is_empty()
-                    {
-                        super::pg_lock::dist_unlock(c, &key, keys).await;
+                    if let Some(c) = conn {
+                        super::pg_lock::dist_unlock(c, &key, pg_lock_keys).await;
                     }
 
                     if let Some(v) = redis_val {

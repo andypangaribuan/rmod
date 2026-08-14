@@ -101,22 +101,33 @@ pub fn new_log_entry(
     status_code: i32,
     payload_json: String,
 ) -> Option<LogEntryRequest> {
-    let ctx = get_current_ctx()?;
+    let clog_config = get_config()?;
+    let is_excluded = clog_config.exclusion_routes.iter().any(|r| action_name.contains(r));
+    if is_excluded {
+        return None;
+    }
+
+    let ctx = get_current_ctx();
+    let service_name = ctx.as_ref().map(|c| c.service_name.clone()).unwrap_or_else(|| clog_config.service_name.clone());
+    let trace_id = ctx.as_ref().map(|c| c.trace_id.clone()).unwrap_or_default();
+    let parent_uid = ctx.as_ref().map(|c| c.endpoint_uid.clone()).unwrap_or_default();
+    let user_uid = ctx.as_ref().and_then(|c| c.user_uid.clone()).unwrap_or_default();
+
     let now_ms = crate::time::now_ms();
     let uid = crate::uid::new();
 
     Some(LogEntryRequest {
         uid,
         timestamp_unix_ms: now_ms,
-        service_name: ctx.service_name,
-        trace_id: ctx.trace_id,
-        parent_uid: ctx.endpoint_uid,
+        service_name,
+        trace_id,
+        parent_uid,
         log_type: log_type.to_string(),
         action_name: action_name.to_string(),
         duration_ms,
         status_code,
         payload_json,
-        user_uid: ctx.user_uid.unwrap_or_default(),
+        user_uid,
     })
 }
 
@@ -481,11 +492,13 @@ pub(crate) fn parse_body_to_json_val(s: &str) -> serde_json::Value {
     if trimmed.is_empty() {
         return serde_json::Value::Null;
     }
+
     if ((trimmed.starts_with('{') && trimmed.ends_with('}')) || (trimmed.starts_with('[') && trimmed.ends_with(']')))
         && let Ok(v) = serde_json::from_str::<serde_json::Value>(trimmed)
     {
         return v;
     }
+
     if s.len() > 100_000 {
         serde_json::Value::String(format!("{}... [TRUNCATED]", &s[..100_000]))
     } else {
