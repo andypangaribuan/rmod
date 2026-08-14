@@ -57,7 +57,7 @@ pub(super) async fn dist_lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Opti
         }
     };
 
-    let val = format!("{}-{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos(), std::process::id());
+    let val = crate::uid::new();
 
     let start = std::time::Instant::now();
     let mut current_backoff_ms = 10;

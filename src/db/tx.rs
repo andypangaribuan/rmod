@@ -104,6 +104,14 @@ impl Tx {
     }
 }
 
+impl Drop for Tx {
+    fn drop(&mut self) {
+        if !self.committed.load(Ordering::SeqCst) && !self.rolled_back.load(Ordering::SeqCst) {
+            self.rollback();
+        }
+    }
+}
+
 pub async fn tx() -> Result<Tx, sqlx::Error> {
     let start = std::time::Instant::now();
     let pool = store::db();
