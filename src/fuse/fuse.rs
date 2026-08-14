@@ -197,15 +197,26 @@ impl Fuse {
                     .scope(std::cell::RefCell::new(log_ctx), ctx.res_handle(precondition, defer, handlers, endpoint_key))
                     .await;
 
+                let (res_parts, res_body) = response.into_parts();
+                let limit = std::env::var("RMOD_MAX_BODY_SIZE").ok().and_then(|s| s.parse::<usize>().ok()).unwrap_or(100 * 1024 * 1024);
+                let res_bytes = axum::body::to_bytes(res_body, limit).await.unwrap_or_default();
+
                 if !is_excluded && clog_config.is_some() {
                     let duration_ms = start_time.elapsed().as_millis() as i32;
-                    let status_code = response.status().as_u16() as i32;
+                    let status_code = res_parts.status.as_u16() as i32;
 
                     let req_body_str = String::from_utf8_lossy(&bytes);
                     let req_body_truncated = if req_body_str.len() > 100_000 {
                         format!("{}... [TRUNCATED]", &req_body_str[..100_000])
                     } else {
                         req_body_str.to_string()
+                    };
+
+                    let res_body_str = String::from_utf8_lossy(&res_bytes);
+                    let res_body_truncated = if res_body_str.len() > 100_000 {
+                        format!("{}... [TRUNCATED]", &res_body_str[..100_000])
+                    } else {
+                        res_body_str.to_string()
                     };
 
                     let env_str = clog_config.and_then(|c| c.environment.as_deref()).unwrap_or("development");
@@ -221,6 +232,7 @@ impl Fuse {
                         "environment": env_str,
                         "hostname": hostname,
                         "request_body": req_body_truncated,
+                        "response_body": res_body_truncated,
                     });
 
                     if status_code >= 400 {
@@ -255,7 +267,7 @@ impl Fuse {
                     });
                 }
 
-                response
+                axum::response::Response::from_parts(res_parts, Body::from(res_bytes))
             };
 
             let router = std::mem::take(&mut self.router);
