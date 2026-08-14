@@ -119,22 +119,16 @@ async fn request<T: Serialize>(
             let res_bytes = axum::body::to_bytes(axum_body, limit).await.unwrap_or_default();
 
             if !is_excluded && clog_config.is_some() {
-                let req_body_truncated =
-                    if req_body_str.len() > 100_000 { format!("{}... [TRUNCATED]", &req_body_str[..100_000]) } else { req_body_str };
-
+                let req_body_val = crate::clog::parse_body_to_json_val(&req_body_str);
                 let res_body_lossy = String::from_utf8_lossy(&res_bytes);
-                let res_body_truncated = if res_body_lossy.len() > 100_000 {
-                    format!("{}... [TRUNCATED]", &res_body_lossy[..100_000])
-                } else {
-                    res_body_lossy.to_string()
-                };
+                let res_body_val = crate::clog::parse_body_to_json_val(&res_body_lossy);
 
                 let mut payload_map = serde_json::json!({
                     "endpoint": action_name,
                     "url": url,
                     "method": method.as_str(),
-                    "request_body": req_body_truncated,
-                    "response_body": res_body_truncated,
+                    "request_body": req_body_val,
+                    "response_body": res_body_val,
                 });
 
                 if status_code >= 400 {
@@ -172,8 +166,7 @@ async fn request<T: Serialize>(
             let status_code = err.status().map(|s| s.as_u16() as i32).unwrap_or(500);
 
             if !is_excluded && clog_config.is_some() {
-                let req_body_truncated =
-                    if req_body_str.len() > 100_000 { format!("{}... [TRUNCATED]", &req_body_str[..100_000]) } else { req_body_str };
+                let req_body_val = crate::clog::parse_body_to_json_val(&req_body_str);
 
                 let bt = std::backtrace::Backtrace::force_capture();
                 let bt_str = format!("{}", bt);
@@ -181,7 +174,7 @@ async fn request<T: Serialize>(
                     "endpoint": action_name,
                     "url": url,
                     "method": method.as_str(),
-                    "request_body": req_body_truncated,
+                    "request_body": req_body_val,
                     "error": err.to_string(),
                 });
                 if !bt_str.trim().is_empty() {

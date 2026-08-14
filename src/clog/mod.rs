@@ -475,3 +475,20 @@ async fn flush_batch(
         }
     }
 }
+
+pub(crate) fn parse_body_to_json_val(s: &str) -> serde_json::Value {
+    let trimmed = s.trim();
+    if trimmed.is_empty() {
+        return serde_json::Value::Null;
+    }
+    if (trimmed.starts_with('{') && trimmed.ends_with('}')) || (trimmed.starts_with('[') && trimmed.ends_with(']')) {
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(trimmed) {
+            return v;
+        }
+    }
+    if s.len() > 100_000 {
+        serde_json::Value::String(format!("{}... [TRUNCATED]", &s[..100_000]))
+    } else {
+        serde_json::Value::String(s.to_string())
+    }
+}

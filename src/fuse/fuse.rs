@@ -206,18 +206,10 @@ impl Fuse {
                     let status_code = res_parts.status.as_u16() as i32;
 
                     let req_body_str = String::from_utf8_lossy(&bytes);
-                    let req_body_truncated = if req_body_str.len() > 100_000 {
-                        format!("{}... [TRUNCATED]", &req_body_str[..100_000])
-                    } else {
-                        req_body_str.to_string()
-                    };
+                    let req_body_val = crate::clog::parse_body_to_json_val(&req_body_str);
 
                     let res_body_str = String::from_utf8_lossy(&res_bytes);
-                    let res_body_truncated = if res_body_str.len() > 100_000 {
-                        format!("{}... [TRUNCATED]", &res_body_str[..100_000])
-                    } else {
-                        res_body_str.to_string()
-                    };
+                    let res_body_val = crate::clog::parse_body_to_json_val(&res_body_str);
 
                     let env_str = clog_config.and_then(|c| c.environment.as_deref()).unwrap_or("development");
                     let hostname = whoami::fallible::hostname().unwrap_or_else(|_| "unknown".to_string());
@@ -231,8 +223,8 @@ impl Fuse {
                         "user_agent": user_agent,
                         "environment": env_str,
                         "hostname": hostname,
-                        "request_body": req_body_truncated,
-                        "response_body": res_body_truncated,
+                        "request_body": req_body_val,
+                        "response_body": res_body_val,
                     });
 
                     if status_code >= 400 {
