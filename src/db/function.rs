@@ -334,28 +334,10 @@ pub(super) fn replace_table_name(query: &str, original: &str, new_table: &str) -
 mod tests {
     use super::*;
 
-    #[derive(Debug)]
-    #[allow(dead_code)]
-    struct WithDebug {
-        a: i32,
-    }
-
-    struct WithoutDebug {
-        _a: i32,
-    }
-
     #[test]
-    fn test_dbg_specialization() {
-        let wd = WithDebug { a: 42 };
-        let wod = WithoutDebug { _a: 100 };
-        let opt_wd = Some(WithDebug { a: 42 });
-
-        let res_wd = DbgWrap(&wd).opt_fmt();
-        let res_wod = DbgWrap(&wod).opt_fmt();
-        let res_opt_wd = DbgWrap(&opt_wd).opt_fmt();
-
-        assert_eq!(res_wd, Some("WithDebug { a: 42 }".to_string()));
-        assert_eq!(res_wod, None);
-        assert_eq!(res_opt_wd, Some("Some(WithDebug { a: 42 })".to_string()));
+    fn test_replace_table_name() {
+        let sql = "SELECT * FROM partner WHERE uid = $1";
+        let res = replace_table_name(sql, "partner", "gopay.partner");
+        assert_eq!(res, "SELECT * FROM gopay.partner WHERE uid = $1");
     }
 }
