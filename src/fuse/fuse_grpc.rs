@@ -82,7 +82,11 @@ where
                 tonic::body::BoxBody::new(http_body_util::Full::new(req_bytes.clone()).map_err(|_| tonic::Status::internal("body error")));
             let req_reconstructed = tonic::codegen::http::Request::from_parts(parts, req_body_box);
 
-            let res_result = crate::clog::LOG_CTX.scope(std::cell::RefCell::new(log_ctx), inner.call(req_reconstructed)).await;
+            use tower::ServiceExt;
+            let res_result = match inner.ready().await {
+                Ok(ready_svc) => crate::clog::LOG_CTX.scope(std::cell::RefCell::new(log_ctx), ready_svc.call(req_reconstructed)).await,
+                Err(err) => Err(err),
+            };
 
             match res_result {
                 Ok(response) => {
@@ -218,7 +222,42 @@ where
                 tonic::body::BoxBody::new(http_body_util::Full::new(req_bytes.clone()).map_err(|_| tonic::Status::internal("body error")));
             let req_reconstructed = tonic::codegen::http::Request::from_parts(parts, req_body_box);
 
-            let res_result = inner.call(req_reconstructed).await;
+            use tower::ServiceExt;
+            let res_result = match inner.ready().await {
+                Ok(ready_svc) => ready_svc.call(req_reconstructed).await,
+                Err(err) => {
+                    let duration_ms = start_time.elapsed().as_millis() as i32;
+                    if !is_excluded && clog_config.is_some() {
+                        let bt = std::backtrace::Backtrace::force_capture();
+                        let bt_str = format!("{}", bt);
+                        let mut payload_map = serde_json::json!({
+                            "endpoint": path,
+                            "path": path,
+                            "error": err.to_string(),
+                        });
+                        if !bt_str.trim().is_empty() {
+                            payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+                        }
+
+                        let now_ms = crate::time::now_ms();
+                        let current_user_uid = crate::clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
+                        crate::clog::push_log(crate::clog::LogEntry {
+                            uid: endpoint_uid,
+                            timestamp_unix_ms: now_ms,
+                            service_name,
+                            trace_id,
+                            parent_uid: parent_uid.unwrap_or_default(),
+                            log_type: "GRPC_OUTGOING".to_string(),
+                            action_name: path.clone(),
+                            duration_ms,
+                            status_code: 500,
+                            payload_json: payload_map.to_string(),
+                            user_uid: current_user_uid,
+                        });
+                    }
+                    return Err(err);
+                }
+            };
 
             match res_result {
                 Ok(response) => {

@@ -150,11 +150,7 @@ where
     match &res {
         Ok(val) => {
             let res_str = format!("{:?}", val);
-            let res_truncated = if res_str.len() > 100_000 {
-                format!("{}... [TRUNCATED]", &res_str[..100_000])
-            } else {
-                res_str
-            };
+            let res_truncated = if res_str.len() > 100_000 { format!("{}... [TRUNCATED]", &res_str[..100_000]) } else { res_str };
             crate::clog::log_db_query(sql, args, Some(&res_truncated), duration_ms, 200, None, None);
         }
         Err(e) => {
@@ -181,11 +177,7 @@ where
     match &res {
         Ok(val) => {
             let res_str = format!("{:?}", val);
-            let res_truncated = if res_str.len() > 100_000 {
-                format!("{}... [TRUNCATED]", &res_str[..100_000])
-            } else {
-                res_str
-            };
+            let res_truncated = if res_str.len() > 100_000 { format!("{}... [TRUNCATED]", &res_str[..100_000]) } else { res_str };
             crate::clog::log_tx_db_query(&tx.id, tx.key.as_deref(), sql, args, Some(&res_truncated), duration_ms, 200, None, None);
         }
         Err(e) => {
@@ -212,11 +204,7 @@ where
     match &res {
         Ok(val) => {
             let res_str = format!("{:?}", val);
-            let res_truncated = if res_str.len() > 100_000 {
-                format!("{}... [TRUNCATED]", &res_str[..100_000])
-            } else {
-                res_str
-            };
+            let res_truncated = if res_str.len() > 100_000 { format!("{}... [TRUNCATED]", &res_str[..100_000]) } else { res_str };
             crate::clog::log_db_update(sql, args, Some(&res_truncated), duration_ms, 200, None, None);
         }
         Err(e) => {
@@ -243,11 +231,7 @@ where
     match &res {
         Ok(val) => {
             let res_str = format!("{:?}", val);
-            let res_truncated = if res_str.len() > 100_000 {
-                format!("{}... [TRUNCATED]", &res_str[..100_000])
-            } else {
-                res_str
-            };
+            let res_truncated = if res_str.len() > 100_000 { format!("{}... [TRUNCATED]", &res_str[..100_000]) } else { res_str };
             crate::clog::log_db_tx_update(&tx.id, tx.key.as_deref(), sql, args, Some(&res_truncated), duration_ms, 200, None, None);
         }
         Err(e) => {
@@ -274,11 +258,7 @@ where
     match &res {
         Ok(val) => {
             let res_str = format!("{:?}", val);
-            let res_truncated = if res_str.len() > 100_000 {
-                format!("{}... [TRUNCATED]", &res_str[..100_000])
-            } else {
-                res_str
-            };
+            let res_truncated = if res_str.len() > 100_000 { format!("{}... [TRUNCATED]", &res_str[..100_000]) } else { res_str };
             crate::clog::log_db_execute(sql, args, Some(&res_truncated), duration_ms, 200, None, None);
         }
         Err(e) => {
@@ -305,11 +285,7 @@ where
     match &res {
         Ok(val) => {
             let res_str = format!("{:?}", val);
-            let res_truncated = if res_str.len() > 100_000 {
-                format!("{}... [TRUNCATED]", &res_str[..100_000])
-            } else {
-                res_str
-            };
+            let res_truncated = if res_str.len() > 100_000 { format!("{}... [TRUNCATED]", &res_str[..100_000]) } else { res_str };
             crate::clog::log_db_tx_execute(&tx.id, tx.key.as_deref(), sql, args, Some(&res_truncated), duration_ms, 200, None, None);
         }
         Err(e) => {

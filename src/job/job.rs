@@ -41,12 +41,12 @@ async fn run_job_handler(name: String, handler: fn() -> BoxFuture<'static, ()>) 
     let service_name = clog_config.map(|c| c.service_name.clone()).unwrap_or_default();
     let is_excluded = clog_config.map(|c| c.exclusion_routes.iter().any(|r| name.contains(r))).unwrap_or(false);
 
-    let log_ctx = crate::clog::LogContext {
+    let log_ctx = crate::clog::Context {
         trace_id: trace_id.clone(),
         parent_uid: None,
+        user_uid: None,
         endpoint_uid: endpoint_uid.clone(),
         service_name: service_name.clone(),
-        user_uid: None,
     };
 
     let start_time = std::time::Instant::now();
