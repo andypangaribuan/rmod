@@ -195,7 +195,7 @@ where
             {
                 req.headers_mut().insert("x-parent-uid", v);
             }
-            if let Some(ref u_uid) = ctx.as_ref().and_then(|c| c.user_uid.as_ref())
+            if let Some(u_uid) = ctx.as_ref().and_then(|c| c.user_uid.as_ref())
                 && let Ok(v) = tonic::codegen::http::HeaderValue::from_str(u_uid)
             {
                 req.headers_mut().insert("x-user-uid", v);
