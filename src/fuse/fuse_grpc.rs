@@ -55,6 +55,7 @@ where
                 parts.headers.get("x-trace-id").and_then(|v| v.to_str().ok()).map(|s| s.to_string()).unwrap_or_else(crate::uid::new);
 
             let parent_uid = parts.headers.get("x-parent-uid").and_then(|v| v.to_str().ok()).map(|s| s.to_string());
+            let user_uid = parts.headers.get("x-user-uid").and_then(|v| v.to_str().ok()).map(|s| s.to_string());
 
             let endpoint_uid = crate::uid::new();
 
@@ -64,12 +65,12 @@ where
             let is_excluded =
                 is_health_check || clog_config.map(|c| c.exclusion_routes.iter().any(|r| path.starts_with(r))).unwrap_or(false);
 
-            let log_ctx = crate::clog::LogContext {
+            let log_ctx = crate::clog::Context {
                 trace_id: trace_id.clone(),
                 parent_uid: parent_uid.clone(),
+                user_uid: user_uid.clone(),
                 endpoint_uid: endpoint_uid.clone(),
                 service_name: service_name.clone(),
-                user_uid: None,
             };
 
             let start_time = std::time::Instant::now();
@@ -193,6 +194,11 @@ where
                 && let Ok(v) = tonic::codegen::http::HeaderValue::from_str(p_uid)
             {
                 req.headers_mut().insert("x-parent-uid", v);
+            }
+            if let Some(ref u_uid) = ctx.as_ref().and_then(|c| c.user_uid.as_ref())
+                && let Ok(v) = tonic::codegen::http::HeaderValue::from_str(u_uid)
+            {
+                req.headers_mut().insert("x-user-uid", v);
             }
 
             let (parts, body) = req.into_parts();
