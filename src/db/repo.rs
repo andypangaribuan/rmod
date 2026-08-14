@@ -22,7 +22,7 @@ pub struct Repo<T> {
 
 impl<T> Repo<T>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
 {
     pub const fn new(table_name: &'static str, columns: &'static str) -> Self {
         Self { table_name, columns, _phantom: PhantomData }
@@ -153,7 +153,7 @@ where
 
     pub async fn select<A>(&self, select_clause: &str, where_clause: &str, args: PgArgs<T>) -> Result<A, sqlx::Error>
     where
-        A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+        A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
     {
         let sql = super::build_custom_select_sql(self.table_name, select_clause, where_clause, args.opt.as_ref());
         crate::db::select::<T, A>(&sql, args).await
@@ -161,7 +161,7 @@ where
 
     pub async fn select_on<A>(&self, key: &str, select_clause: &str, where_clause: &str, args: PgArgs<T>) -> Result<A, sqlx::Error>
     where
-        A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+        A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
     {
         let sql = super::build_custom_select_sql(self.table_name, select_clause, where_clause, args.opt.as_ref());
         crate::db::select_on::<T, A>(key, &sql, args).await
@@ -169,7 +169,7 @@ where
 
     pub async fn select_all<A>(&self, select_clause: &str, where_clause: &str, args: PgArgs<T>) -> Result<Vec<A>, sqlx::Error>
     where
-        A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+        A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
     {
         let sql = super::build_custom_select_sql(self.table_name, select_clause, where_clause, args.opt.as_ref());
         crate::db::select_all::<T, A>(&sql, args).await
@@ -177,7 +177,7 @@ where
 
     pub async fn select_all_on<A>(&self, key: &str, select_clause: &str, where_clause: &str, args: PgArgs<T>) -> Result<Vec<A>, sqlx::Error>
     where
-        A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+        A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
     {
         let sql = super::build_custom_select_sql(self.table_name, select_clause, where_clause, args.opt.as_ref());
         crate::db::select_all_on::<T, A>(key, &sql, args).await
@@ -185,7 +185,7 @@ where
 
     pub async fn tx_select<A>(&self, tx: &Tx, select_clause: &str, where_clause: &str, args: PgArgs<T>) -> Result<A, sqlx::Error>
     where
-        A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+        A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
     {
         let sql = super::build_custom_select_sql(self.table_name, select_clause, where_clause, args.opt.as_ref());
         crate::db::tx_select::<T, A>(tx, &sql, args).await

@@ -16,7 +16,7 @@ pub use sqlx::FromRow;
 /// Executes a query using the first initialized database pool and returns exactly one row.
 pub async fn query<T>(sql: &str, args: PgArgs<T>) -> Result<T, sqlx::Error>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
@@ -42,7 +42,7 @@ where
 /// Executes a query on a specific database and returns exactly one row.
 pub async fn query_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<T, sqlx::Error>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
@@ -67,7 +67,7 @@ where
 
 pub async fn tx_query<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<T, sqlx::Error>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
@@ -82,7 +82,7 @@ where
 /// Executes a query using the first initialized database pool and returns an optional row.
 pub async fn fetch<T>(sql: &str, args: PgArgs<T>) -> Result<Option<T>, sqlx::Error>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
@@ -108,7 +108,7 @@ where
 /// Executes a query using the first initialized database pool and returns all rows.
 pub async fn fetch_all<T>(sql: &str, args: PgArgs<T>) -> Result<Vec<T>, sqlx::Error>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
@@ -134,7 +134,7 @@ where
 /// Executes a query and returns an optional row.
 pub async fn fetch_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<Option<T>, sqlx::Error>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
@@ -160,7 +160,7 @@ where
 /// Executes a query and returns all rows.
 pub async fn fetch_all_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<Vec<T>, sqlx::Error>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
@@ -185,7 +185,7 @@ where
 
 pub async fn tx_fetch<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<Option<T>, sqlx::Error>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
@@ -199,7 +199,7 @@ where
 
 pub async fn tx_fetch_all<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<Vec<T>, sqlx::Error>
 where
-    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
@@ -268,7 +268,7 @@ pub async fn tx_count<T>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<i64, sql
 
 pub async fn select<T, A>(sql: &str, args: PgArgs<T>) -> Result<A, sqlx::Error>
 where
-    A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+    A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
@@ -293,7 +293,7 @@ where
 
 pub async fn select_on<T, A>(key: &str, sql: &str, args: PgArgs<T>) -> Result<A, sqlx::Error>
 where
-    A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+    A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
@@ -315,7 +315,7 @@ where
 
 pub async fn select_all<T, A>(sql: &str, args: PgArgs<T>) -> Result<Vec<A>, sqlx::Error>
 where
-    A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+    A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
@@ -337,7 +337,7 @@ where
 
 pub async fn select_all_on<T, A>(key: &str, sql: &str, args: PgArgs<T>) -> Result<Vec<A>, sqlx::Error>
 where
-    A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+    A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
@@ -359,7 +359,7 @@ where
 
 pub async fn tx_select<T, A>(tx: &Tx, sql: &str, args: PgArgs<T>) -> Result<A, sqlx::Error>
 where
-    A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + 'static,
+    A: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Send + Unpin + std::fmt::Debug + 'static,
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();

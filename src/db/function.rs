@@ -137,33 +137,10 @@ pub(crate) fn build_insert_sql<T>(table_name: &str, columns: &str, opt: Option<&
     format!("INSERT INTO {} ({}) VALUES ({})", table_name, columns, placeholders)
 }
 
-#[allow(dead_code)]
-pub trait DbgDisplay {
-    fn opt_fmt(&self) -> Option<String>;
-}
-
-pub struct DbgAlso<T>(pub T);
-
-impl<T: std::fmt::Debug> DbgDisplay for DbgAlso<&T> {
-    fn opt_fmt(&self) -> Option<String> {
-        Some(format!("{:?}", self.0))
-    }
-}
-
-#[allow(dead_code)]
-pub trait DbgFallback {
-    fn opt_fmt(&self) -> Option<String>;
-}
-
-impl<T> DbgFallback for &DbgAlso<T> {
-    fn opt_fmt(&self) -> Option<String> {
-        None
-    }
-}
-
 pub(crate) async fn log_db_exec<F, T, E>(sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
 where
     F: std::future::Future<Output = Result<T, E>>,
+    T: std::fmt::Debug,
     E: std::fmt::Display,
 {
     let start = std::time::Instant::now();
@@ -172,8 +149,13 @@ where
 
     match &res {
         Ok(val) => {
-            let res_opt = (&DbgAlso(val)).opt_fmt().map(|s| if s.len() > 100_000 { format!("{}... [TRUNCATED]", &s[..100_000]) } else { s });
-            crate::clog::log_db_query(sql, args, res_opt.as_deref(), duration_ms, 200, None, None);
+            let res_str = format!("{:?}", val);
+            let res_truncated = if res_str.len() > 100_000 {
+                format!("{}... [TRUNCATED]", &res_str[..100_000])
+            } else {
+                res_str
+            };
+            crate::clog::log_db_query(sql, args, Some(&res_truncated), duration_ms, 200, None, None);
         }
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
@@ -189,6 +171,7 @@ where
 pub(crate) async fn log_tx_db_exec<F, T, E>(tx: &super::Tx, sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
 where
     F: std::future::Future<Output = Result<T, E>>,
+    T: std::fmt::Debug,
     E: std::fmt::Display,
 {
     let start = std::time::Instant::now();
@@ -197,8 +180,13 @@ where
 
     match &res {
         Ok(val) => {
-            let res_opt = (&DbgAlso(val)).opt_fmt().map(|s| if s.len() > 100_000 { format!("{}... [TRUNCATED]", &s[..100_000]) } else { s });
-            crate::clog::log_tx_db_query(&tx.id, tx.key.as_deref(), sql, args, res_opt.as_deref(), duration_ms, 200, None, None);
+            let res_str = format!("{:?}", val);
+            let res_truncated = if res_str.len() > 100_000 {
+                format!("{}... [TRUNCATED]", &res_str[..100_000])
+            } else {
+                res_str
+            };
+            crate::clog::log_tx_db_query(&tx.id, tx.key.as_deref(), sql, args, Some(&res_truncated), duration_ms, 200, None, None);
         }
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
@@ -214,6 +202,7 @@ where
 pub(crate) async fn log_db_update<F, T, E>(sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
 where
     F: std::future::Future<Output = Result<T, E>>,
+    T: std::fmt::Debug,
     E: std::fmt::Display,
 {
     let start = std::time::Instant::now();
@@ -222,8 +211,13 @@ where
 
     match &res {
         Ok(val) => {
-            let res_opt = (&DbgAlso(val)).opt_fmt().map(|s| if s.len() > 100_000 { format!("{}... [TRUNCATED]", &s[..100_000]) } else { s });
-            crate::clog::log_db_update(sql, args, res_opt.as_deref(), duration_ms, 200, None, None);
+            let res_str = format!("{:?}", val);
+            let res_truncated = if res_str.len() > 100_000 {
+                format!("{}... [TRUNCATED]", &res_str[..100_000])
+            } else {
+                res_str
+            };
+            crate::clog::log_db_update(sql, args, Some(&res_truncated), duration_ms, 200, None, None);
         }
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
@@ -239,6 +233,7 @@ where
 pub(crate) async fn log_tx_db_update<F, T, E>(tx: &super::Tx, sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
 where
     F: std::future::Future<Output = Result<T, E>>,
+    T: std::fmt::Debug,
     E: std::fmt::Display,
 {
     let start = std::time::Instant::now();
@@ -247,8 +242,13 @@ where
 
     match &res {
         Ok(val) => {
-            let res_opt = (&DbgAlso(val)).opt_fmt().map(|s| if s.len() > 100_000 { format!("{}... [TRUNCATED]", &s[..100_000]) } else { s });
-            crate::clog::log_db_tx_update(&tx.id, tx.key.as_deref(), sql, args, res_opt.as_deref(), duration_ms, 200, None, None);
+            let res_str = format!("{:?}", val);
+            let res_truncated = if res_str.len() > 100_000 {
+                format!("{}... [TRUNCATED]", &res_str[..100_000])
+            } else {
+                res_str
+            };
+            crate::clog::log_db_tx_update(&tx.id, tx.key.as_deref(), sql, args, Some(&res_truncated), duration_ms, 200, None, None);
         }
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
@@ -264,6 +264,7 @@ where
 pub(crate) async fn log_db_execute<F, T, E>(sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
 where
     F: std::future::Future<Output = Result<T, E>>,
+    T: std::fmt::Debug,
     E: std::fmt::Display,
 {
     let start = std::time::Instant::now();
@@ -272,8 +273,13 @@ where
 
     match &res {
         Ok(val) => {
-            let res_opt = (&DbgAlso(val)).opt_fmt().map(|s| if s.len() > 100_000 { format!("{}... [TRUNCATED]", &s[..100_000]) } else { s });
-            crate::clog::log_db_execute(sql, args, res_opt.as_deref(), duration_ms, 200, None, None);
+            let res_str = format!("{:?}", val);
+            let res_truncated = if res_str.len() > 100_000 {
+                format!("{}... [TRUNCATED]", &res_str[..100_000])
+            } else {
+                res_str
+            };
+            crate::clog::log_db_execute(sql, args, Some(&res_truncated), duration_ms, 200, None, None);
         }
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
@@ -289,6 +295,7 @@ where
 pub(crate) async fn log_tx_db_execute<F, T, E>(tx: &super::Tx, sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
 where
     F: std::future::Future<Output = Result<T, E>>,
+    T: std::fmt::Debug,
     E: std::fmt::Display,
 {
     let start = std::time::Instant::now();
@@ -297,8 +304,13 @@ where
 
     match &res {
         Ok(val) => {
-            let res_opt = (&DbgAlso(val)).opt_fmt().map(|s| if s.len() > 100_000 { format!("{}... [TRUNCATED]", &s[..100_000]) } else { s });
-            crate::clog::log_db_tx_execute(&tx.id, tx.key.as_deref(), sql, args, res_opt.as_deref(), duration_ms, 200, None, None);
+            let res_str = format!("{:?}", val);
+            let res_truncated = if res_str.len() > 100_000 {
+                format!("{}... [TRUNCATED]", &res_str[..100_000])
+            } else {
+                res_str
+            };
+            crate::clog::log_db_tx_execute(&tx.id, tx.key.as_deref(), sql, args, Some(&res_truncated), duration_ms, 200, None, None);
         }
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
@@ -360,11 +372,14 @@ mod tests {
     fn test_dbg_specialization() {
         let wd = WithDebug { a: 42 };
         let wod = WithoutDebug { _a: 100 };
+        let opt_wd = Some(WithDebug { a: 42 });
 
-        let res_wd = (&DbgAlso(&wd)).opt_fmt();
-        let res_wod = (&DbgAlso(&wod)).opt_fmt();
+        let res_wd = DbgWrap(&wd).opt_fmt();
+        let res_wod = DbgWrap(&wod).opt_fmt();
+        let res_opt_wd = DbgWrap(&opt_wd).opt_fmt();
 
         assert_eq!(res_wd, Some("WithDebug { a: 42 }".to_string()));
         assert_eq!(res_wod, None);
+        assert_eq!(res_opt_wd, Some("Some(WithDebug { a: 42 })".to_string()));
     }
 }
