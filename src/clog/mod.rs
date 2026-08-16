@@ -394,11 +394,6 @@ pub fn log_grpc_call(action_name: &str, duration_ms: i32, status_code: i32, payl
     }
 }
 
-pub fn log_grpc_outgoing(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
-    if let Some(entry) = new_log_entry("GRPC_OUTGOING", action_name, duration_ms, status_code, payload_json) {
-        push_log(entry);
-    }
-}
 
 pub fn log_http_call(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
     if let Some(entry) = new_log_entry("HTTP_CALL", action_name, duration_ms, status_code, payload_json) {
