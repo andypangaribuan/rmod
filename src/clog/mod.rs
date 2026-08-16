@@ -364,42 +364,7 @@ pub fn log_db_tx_execute(
     }
 }
 
-pub fn log_api_incoming(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
-    if let Some(entry) = new_log_entry("API_INCOMING", action_name, duration_ms, status_code, payload_json) {
-        push_log(entry);
-    }
-}
 
-pub fn log_api_response(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
-    if let Some(entry) = new_log_entry("API_RESPONSE", action_name, duration_ms, status_code, payload_json) {
-        push_log(entry);
-    }
-}
-
-pub fn log_grpc_incoming(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
-    if let Some(entry) = new_log_entry("GRPC_INCOMING", action_name, duration_ms, status_code, payload_json) {
-        push_log(entry);
-    }
-}
-
-pub fn log_grpc_response(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
-    if let Some(entry) = new_log_entry("GRPC_RESPONSE", action_name, duration_ms, status_code, payload_json) {
-        push_log(entry);
-    }
-}
-
-pub fn log_grpc_call(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
-    if let Some(entry) = new_log_entry("GRPC_CALL", action_name, duration_ms, status_code, payload_json) {
-        push_log(entry);
-    }
-}
-
-
-pub fn log_http_call(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
-    if let Some(entry) = new_log_entry("HTTP_CALL", action_name, duration_ms, status_code, payload_json) {
-        push_log(entry);
-    }
-}
 
 pub fn log_dist_lock_pg(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
     if let Some(entry) = new_log_entry("DIST_LOCK_PG", action_name, duration_ms, status_code, payload_json) {
@@ -409,12 +374,6 @@ pub fn log_dist_lock_pg(action_name: &str, duration_ms: i32, status_code: i32, p
 
 pub fn log_dist_lock_redis(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
     if let Some(entry) = new_log_entry("DIST_LOCK_REDIS", action_name, duration_ms, status_code, payload_json) {
-        push_log(entry);
-    }
-}
-
-pub fn log_job_execution(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
-    if let Some(entry) = new_log_entry("JOB_EXECUTION", action_name, duration_ms, status_code, payload_json) {
         push_log(entry);
     }
 }
