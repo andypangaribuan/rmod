@@ -52,7 +52,7 @@ pub(super) async fn dist_lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Opti
             if !bt_str.trim().is_empty() {
                 payload_map["stacktrace"] = serde_json::Value::String(bt_str);
             }
-            crate::clog::log_dist_lock_redis(key, duration_ms, 500, payload_map.to_string());
+            crate::clog::log_dist_lock_redis_lock(key, duration_ms, 500, payload_map.to_string());
             return Err(err_msg);
         }
     };
@@ -77,7 +77,7 @@ pub(super) async fn dist_lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Opti
                 "val": val,
             })
             .to_string();
-            crate::clog::log_dist_lock_redis(key, duration_ms, 200, payload_json);
+            crate::clog::log_dist_lock_redis_lock(key, duration_ms, 200, payload_json);
             return Ok(val);
         }
 
@@ -96,7 +96,7 @@ pub(super) async fn dist_lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Opti
             if !bt_str.trim().is_empty() {
                 payload_map["stacktrace"] = serde_json::Value::String(bt_str);
             }
-            crate::clog::log_dist_lock_redis(key, duration_ms, 500, payload_map.to_string());
+            crate::clog::log_dist_lock_redis_lock(key, duration_ms, 500, payload_map.to_string());
             return Err(err_msg);
         }
 
@@ -136,7 +136,7 @@ pub(super) async fn dist_lock_many(keys: Vec<&str>, opt_ttl: Option<i64>, opt_wa
             if !bt_str.trim().is_empty() {
                 payload_map["stacktrace"] = serde_json::Value::String(bt_str);
             }
-            crate::clog::log_dist_lock_redis(&action_name, duration_ms, 500, payload_map.to_string());
+            crate::clog::log_dist_lock_redis_lock(&action_name, duration_ms, 500, payload_map.to_string());
             return Err(err_msg);
         }
     };
@@ -172,7 +172,7 @@ pub(super) async fn dist_lock_many(keys: Vec<&str>, opt_ttl: Option<i64>, opt_wa
                 "val": val,
             })
             .to_string();
-            crate::clog::log_dist_lock_redis(&action_name, duration_ms, 200, payload_json);
+            crate::clog::log_dist_lock_redis_lock(&action_name, duration_ms, 200, payload_json);
             return Ok(val);
         }
 
@@ -204,7 +204,7 @@ pub(super) async fn dist_lock_many(keys: Vec<&str>, opt_ttl: Option<i64>, opt_wa
             if !bt_str.trim().is_empty() {
                 payload_map["stacktrace"] = serde_json::Value::String(bt_str);
             }
-            crate::clog::log_dist_lock_redis(&action_name, duration_ms, 500, payload_map.to_string());
+            crate::clog::log_dist_lock_redis_lock(&action_name, duration_ms, 500, payload_map.to_string());
             return Err(err_msg);
         }
 
@@ -248,7 +248,7 @@ pub(super) async fn dist_unlock(key: &str, val: &str) {
                     "val": val,
                 })
                 .to_string();
-                crate::clog::log_dist_lock_redis(key, duration_ms, 200, payload_json);
+                crate::clog::log_dist_lock_redis_unlock(key, duration_ms, 200, payload_json);
             } else {
                 tracing::error!("Failed to unlock redis lock for key '{}'", key);
                 let bt = std::backtrace::Backtrace::force_capture();
@@ -262,7 +262,7 @@ pub(super) async fn dist_unlock(key: &str, val: &str) {
                 if !bt_str.trim().is_empty() {
                     payload_map["stacktrace"] = serde_json::Value::String(bt_str);
                 }
-                crate::clog::log_dist_lock_redis(key, duration_ms, 500, payload_map.to_string());
+                crate::clog::log_dist_lock_redis_unlock(key, duration_ms, 500, payload_map.to_string());
             }
         }
         Err(e) => {
@@ -278,7 +278,7 @@ pub(super) async fn dist_unlock(key: &str, val: &str) {
             if !bt_str.trim().is_empty() {
                 payload_map["stacktrace"] = serde_json::Value::String(bt_str);
             }
-            crate::clog::log_dist_lock_redis(key, duration_ms, 500, payload_map.to_string());
+            crate::clog::log_dist_lock_redis_unlock(key, duration_ms, 500, payload_map.to_string());
         }
     }
 }

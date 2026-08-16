@@ -89,7 +89,7 @@ pub(super) async fn dist_lock_many(
             if !bt_str.trim().is_empty() {
                 payload_map["stacktrace"] = serde_json::Value::String(bt_str);
             }
-            crate::clog::log_dist_lock_pg(&action_name, duration_ms, 500, payload_map.to_string());
+            crate::clog::log_dist_lock_pg_lock(&action_name, duration_ms, 500, payload_map.to_string());
             return Err(err_msg);
         }
     };
@@ -125,7 +125,7 @@ pub(super) async fn dist_lock_many(
                 "wait_ms": opt_wait_ms,
             })
             .to_string();
-            crate::clog::log_dist_lock_pg(&action_name, duration_ms, 200, payload_json);
+            crate::clog::log_dist_lock_pg_lock(&action_name, duration_ms, 200, payload_json);
             return Ok((conn, lock_keys));
         }
 
@@ -147,7 +147,7 @@ pub(super) async fn dist_lock_many(
             if !bt_str.trim().is_empty() {
                 payload_map["stacktrace"] = serde_json::Value::String(bt_str);
             }
-            crate::clog::log_dist_lock_pg(&action_name, duration_ms, 500, payload_map.to_string());
+            crate::clog::log_dist_lock_pg_lock(&action_name, duration_ms, 500, payload_map.to_string());
             return Err(err_msg);
         }
 
@@ -169,5 +169,5 @@ pub(super) async fn dist_unlock(mut conn: sqlx::pool::PoolConnection<Postgres>, 
         "action": "UNLOCK",
     })
     .to_string();
-    crate::clog::log_dist_lock_pg(key, duration_ms, 200, payload_json);
+    crate::clog::log_dist_lock_pg_unlock(key, duration_ms, 200, payload_json);
 }

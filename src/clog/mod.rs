@@ -370,14 +370,26 @@ pub fn log_grpc_call(action_name: &str, duration_ms: i32, status_code: i32, payl
     }
 }
 
-pub fn log_dist_lock_pg(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
-    if let Some(entry) = new_log_entry("DIST_LOCK_PG", action_name, duration_ms, status_code, payload_json) {
+pub fn log_dist_lock_pg_lock(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
+    if let Some(entry) = new_log_entry("DIST_LOCK_PG_LOCK", action_name, duration_ms, status_code, payload_json) {
         push_log(entry);
     }
 }
 
-pub fn log_dist_lock_redis(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
-    if let Some(entry) = new_log_entry("DIST_LOCK_REDIS", action_name, duration_ms, status_code, payload_json) {
+pub fn log_dist_lock_pg_unlock(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
+    if let Some(entry) = new_log_entry("DIST_LOCK_PG_UNLOCK", action_name, duration_ms, status_code, payload_json) {
+        push_log(entry);
+    }
+}
+
+pub fn log_dist_lock_redis_lock(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
+    if let Some(entry) = new_log_entry("DIST_LOCK_REDIS_LOCK", action_name, duration_ms, status_code, payload_json) {
+        push_log(entry);
+    }
+}
+
+pub fn log_dist_lock_redis_unlock(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
+    if let Some(entry) = new_log_entry("DIST_LOCK_REDIS_UNLOCK", action_name, duration_ms, status_code, payload_json) {
         push_log(entry);
     }
 }
