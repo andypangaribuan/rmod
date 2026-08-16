@@ -189,6 +189,40 @@ impl Fuse {
                     service_name: service_name.clone(),
                 };
 
+                if !is_excluded && clog_config.is_some() {
+                    let req_body_str = String::from_utf8_lossy(&bytes);
+                    let req_body_val = crate::clog::parse_body_to_json_val(&req_body_str);
+                    let env_str = clog_config.and_then(|c| c.environment.as_deref()).unwrap_or("development");
+                    let hostname = whoami::fallible::hostname().unwrap_or_else(|_| "unknown".to_string());
+
+                    let payload_map = serde_json::json!({
+                        "endpoint": endpoint_key,
+                        "path": path_clone,
+                        "method": method_str,
+                        "query_params": query_params,
+                        "client_ip": client_ip,
+                        "user_agent": user_agent,
+                        "environment": env_str,
+                        "hostname": hostname,
+                        "request_body": req_body_val,
+                    });
+
+                    let start_now_ms = crate::time::now_ms();
+                    crate::clog::push_log(crate::clog::LogEntry {
+                        uid: endpoint_uid.clone(),
+                        timestamp_unix_ms: start_now_ms,
+                        service_name: service_name.clone(),
+                        trace_id: trace_id.clone(),
+                        parent_uid: parent_uid.clone().unwrap_or_default(),
+                        log_type: "API_INCOMING".to_string(),
+                        action_name: endpoint_key.to_string(),
+                        duration_ms: 0,
+                        status_code: 0,
+                        payload_json: payload_map.to_string(),
+                        user_uid: String::new(),
+                    });
+                }
+
                 let start_time = std::time::Instant::now();
                 let mut ctx = FuseRContext::new(Request::from_parts(parts, Body::from(bytes.clone())));
                 ctx.body = Some(bytes.clone());
@@ -205,25 +239,12 @@ impl Fuse {
                     let duration_ms = start_time.elapsed().as_millis() as i32;
                     let status_code = res_parts.status.as_u16() as i32;
 
-                    let req_body_str = String::from_utf8_lossy(&bytes);
-                    let req_body_val = crate::clog::parse_body_to_json_val(&req_body_str);
-
                     let res_body_str = String::from_utf8_lossy(&res_bytes);
                     let res_body_val = crate::clog::parse_body_to_json_val(&res_body_str);
-
-                    let env_str = clog_config.and_then(|c| c.environment.as_deref()).unwrap_or("development");
-                    let hostname = whoami::fallible::hostname().unwrap_or_else(|_| "unknown".to_string());
 
                     let mut payload_map = serde_json::json!({
                         "endpoint": endpoint_key,
                         "path": path_clone,
-                        "method": method_str,
-                        "query_params": query_params,
-                        "client_ip": client_ip,
-                        "user_agent": user_agent,
-                        "environment": env_str,
-                        "hostname": hostname,
-                        "request_body": req_body_val,
                         "response_body": res_body_val,
                     });
 
@@ -243,14 +264,14 @@ impl Fuse {
                     let payload_json = payload_map.to_string();
                     let current_user_uid = crate::clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
 
-                    let now_ms = crate::time::now_ms();
+                    let finish_now_ms = crate::time::now_ms();
                     crate::clog::push_log(crate::clog::LogEntry {
-                        uid: endpoint_uid,
-                        timestamp_unix_ms: now_ms,
+                        uid: crate::uid::new(),
+                        timestamp_unix_ms: finish_now_ms,
                         service_name,
                         trace_id,
-                        parent_uid: parent_uid.unwrap_or_default(),
-                        log_type: "API_INCOMING".to_string(),
+                        parent_uid: endpoint_uid,
+                        log_type: "API_RESPONSE".to_string(),
                         action_name: endpoint_key.to_string(),
                         duration_ms,
                         status_code,
