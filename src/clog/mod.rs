@@ -364,7 +364,11 @@ pub fn log_db_tx_execute(
     }
 }
 
-
+pub fn log_grpc_call(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
+    if let Some(entry) = new_log_entry("GRPC_CALL", action_name, duration_ms, status_code, payload_json) {
+        push_log(entry);
+    }
+}
 
 pub fn log_dist_lock_pg(action_name: &str, duration_ms: i32, status_code: i32, payload_json: String) {
     if let Some(entry) = new_log_entry("DIST_LOCK_PG", action_name, duration_ms, status_code, payload_json) {
