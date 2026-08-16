@@ -82,6 +82,30 @@ where
                 tonic::body::BoxBody::new(http_body_util::Full::new(req_bytes.clone()).map_err(|_| tonic::Status::internal("body error")));
             let req_reconstructed = tonic::codegen::http::Request::from_parts(parts, req_body_box);
 
+            if !is_excluded && clog_config.is_some() {
+                let req_json = decode_grpc_body_to_json(&req_bytes, &path, true);
+                let payload_map = serde_json::json!({
+                    "endpoint": path,
+                    "path": path,
+                    "request_body": req_json,
+                });
+
+                let start_now_ms = crate::time::now_ms();
+                crate::clog::push_log(crate::clog::LogEntry {
+                    uid: endpoint_uid.clone(),
+                    timestamp_unix_ms: start_now_ms,
+                    service_name: service_name.clone(),
+                    trace_id: trace_id.clone(),
+                    parent_uid: parent_uid.clone().unwrap_or_default(),
+                    log_type: "GRPC_INCOMING".to_string(),
+                    action_name: path.clone(),
+                    duration_ms: 0,
+                    status_code: 0,
+                    payload_json: payload_map.to_string(),
+                    user_uid: user_uid.clone().unwrap_or_default(),
+                });
+            }
+
             use tower::ServiceExt;
             let res_result = match inner.ready().await {
                 Ok(ready_svc) => crate::clog::LOG_CTX.scope(std::cell::RefCell::new(log_ctx), ready_svc.call(req_reconstructed)).await,
@@ -101,31 +125,36 @@ where
                     let res_bytes = axum::body::to_bytes(res_axum_body, limit).await.unwrap_or_default();
 
                     if !is_excluded && clog_config.is_some() {
-                        let req_json = decode_grpc_body_to_json(&req_bytes, &path, true);
                         let res_json = decode_grpc_body_to_json(&res_bytes, &path, false);
 
-                        let payload_json = serde_json::json!({
+                        let mut payload_map = serde_json::json!({
                             "endpoint": path,
                             "path": path,
-                            "request_body": req_json,
                             "response_body": res_json,
                             "grpc_status": grpc_status,
-                        })
-                        .to_string();
+                        });
+
+                        if status_code != 200 {
+                            let bt = std::backtrace::Backtrace::force_capture();
+                            let bt_str = format!("{}", bt);
+                            if !bt_str.trim().is_empty() {
+                                payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+                            }
+                        }
 
                         let current_user_uid = crate::clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
-                        let now_ms = crate::time::now_ms();
+                        let finish_now_ms = crate::time::now_ms();
                         crate::clog::push_log(crate::clog::LogEntry {
-                            uid: endpoint_uid,
-                            timestamp_unix_ms: now_ms,
+                            uid: crate::uid::new(),
+                            timestamp_unix_ms: finish_now_ms,
                             service_name,
                             trace_id,
-                            parent_uid: parent_uid.unwrap_or_default(),
-                            log_type: "GRPC_INCOMING".to_string(),
+                            parent_uid: endpoint_uid,
+                            log_type: "GRPC_RESPONSE".to_string(),
                             action_name: path.clone(),
                             duration_ms,
                             status_code,
-                            payload_json,
+                            payload_json: payload_map.to_string(),
                             user_uid: current_user_uid,
                         });
                     }
