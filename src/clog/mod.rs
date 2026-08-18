@@ -8,12 +8,15 @@
  * All Rights Reserved.
  */
 
+mod info;
+
 use std::sync::OnceLock;
 use tokio::sync::mpsc;
 use tonic::transport::Channel;
 
 pub use crate::grc::grc_clog::log_service_server::{LogService, LogServiceServer};
 use crate::grc::grc_clog::{LogBatchRequest, LogEntryRequest, log_service_client::LogServiceClient};
+pub use info::*;
 
 pub type LogEntry = LogEntryRequest;
 pub type LogBatch = LogBatchRequest;
@@ -116,18 +119,26 @@ pub fn new_log_entry(
     let now_ms = crate::time::now_ms();
     let uid = crate::uid::new();
 
+    let (pod_ip, node_name) = pod_info();
+    let info_map = serde_json::json!({
+        "pod_ip": pod_ip,
+        "node_name": node_name,
+    });
+
     Some(LogEntryRequest {
         uid,
         timestamp_unix_ms: now_ms,
         service_name,
         trace_id,
         parent_uid,
+        user_uid,
         log_type: log_type.to_string(),
         action_name: action_name.to_string(),
         duration_ms,
         status_code,
         payload_json,
-        user_uid,
+        pod_name: pod_name(),
+        info_json: info_map.to_string(),
     })
 }
 

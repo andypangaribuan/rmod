@@ -8,6 +8,7 @@
  * All Rights Reserved.
  */
 
+use crate::clog;
 use futures_util::future::BoxFuture;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -37,11 +38,11 @@ async fn run_job_handler(name: String, handler: fn() -> BoxFuture<'static, ()>) 
     let trace_id = crate::uid::new();
     let endpoint_uid = crate::uid::new();
 
-    let clog_config = crate::clog::get_config();
+    let clog_config = clog::get_config();
     let service_name = clog_config.map(|c| c.service_name.clone()).unwrap_or_default();
     let is_excluded = clog_config.map(|c| c.exclusion_routes.iter().any(|r| name.contains(r))).unwrap_or(false);
 
-    let log_ctx = crate::clog::Context {
+    let log_ctx = clog::Context {
         trace_id: trace_id.clone(),
         parent_uid: None,
         user_uid: None,
@@ -50,7 +51,7 @@ async fn run_job_handler(name: String, handler: fn() -> BoxFuture<'static, ()>) 
     };
 
     let start_time = std::time::Instant::now();
-    let join_res = crate::clog::LOG_CTX.scope(std::cell::RefCell::new(log_ctx), tokio::spawn((handler)())).await;
+    let join_res = clog::LOG_CTX.scope(std::cell::RefCell::new(log_ctx), tokio::spawn((handler)())).await;
     let duration_ms = start_time.elapsed().as_millis() as i32;
 
     let (status_code, error_msg, stacktrace) = match join_res {
@@ -78,22 +79,30 @@ async fn run_job_handler(name: String, handler: fn() -> BoxFuture<'static, ()>) 
             payload_map["stacktrace"] = serde_json::Value::String(st);
         }
 
-        let payload_json = payload_map.to_string();
-        let current_user_uid = crate::clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
+        let (pod_ip, node_name) = clog::pod_info();
+        let info_map = serde_json::json!({
+            "pod_ip": pod_ip,
+            "node_name": node_name,
+        });
 
+        let payload_json = payload_map.to_string();
+        let current_user_uid = clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
         let now_ms = crate::time::now_ms();
-        crate::clog::push_log(crate::clog::LogEntry {
+
+        clog::push_log(clog::LogEntry {
             uid: endpoint_uid,
             timestamp_unix_ms: now_ms,
             service_name,
             trace_id,
             parent_uid: String::new(),
             log_type: "JOB_EXECUTION".to_string(),
+            user_uid: current_user_uid,
             action_name: name,
             duration_ms,
             status_code,
             payload_json,
-            user_uid: current_user_uid,
+            pod_name: clog::pod_name(),
+            info_json: info_map.to_string(),
         });
     }
 }

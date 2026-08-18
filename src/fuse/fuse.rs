@@ -8,6 +8,7 @@
  * All Rights Reserved.
  */
 
+use crate::clog;
 pub use axum;
 use axum::{
     body::Body,
@@ -164,7 +165,7 @@ impl Fuse {
 
                 let endpoint_uid = crate::uid::new();
 
-                let clog_config = crate::clog::get_config();
+                let clog_config = clog::get_config();
                 let service_name = clog_config.map(|c| c.service_name.clone()).unwrap_or_default();
                 let path_clone = path_for_closure.clone();
                 let is_excluded = clog_config
@@ -181,7 +182,7 @@ impl Fuse {
                     .unwrap_or_default()
                     .to_string();
 
-                let log_ctx = crate::clog::Context {
+                let log_ctx = clog::Context {
                     trace_id: trace_id.clone(),
                     parent_uid: parent_uid.clone(),
                     user_uid: None,
@@ -191,7 +192,7 @@ impl Fuse {
 
                 if !is_excluded && clog_config.is_some() {
                     let req_body_str = String::from_utf8_lossy(&bytes);
-                    let req_body_val = crate::clog::parse_body_to_json_val(&req_body_str);
+                    let req_body_val = clog::parse_body_to_json_val(&req_body_str);
                     let env_str = clog_config.and_then(|c| c.environment.as_deref()).unwrap_or("development");
                     let hostname = whoami::fallible::hostname().unwrap_or_else(|_| "unknown".to_string());
 
@@ -207,19 +208,27 @@ impl Fuse {
                         "request_body": req_body_val,
                     });
 
+                    let (pod_ip, node_name) = clog::pod_info();
+                    let info_map = serde_json::json!({
+                        "pod_ip": pod_ip,
+                        "node_name": node_name,
+                    });
+
                     let start_now_ms = crate::time::now_ms();
-                    crate::clog::push_log(crate::clog::LogEntry {
+                    clog::push_log(clog::LogEntry {
                         uid: endpoint_uid.clone(),
                         timestamp_unix_ms: start_now_ms,
                         service_name: service_name.clone(),
                         trace_id: trace_id.clone(),
                         parent_uid: parent_uid.clone().unwrap_or_default(),
+                        user_uid: String::new(),
                         log_type: "API_INCOMING".to_string(),
                         action_name: endpoint_key.to_string(),
                         duration_ms: 0,
                         status_code: 0,
                         payload_json: payload_map.to_string(),
-                        user_uid: String::new(),
+                        pod_name: clog::pod_name(),
+                        info_json: info_map.to_string(),
                     });
                 }
 
@@ -263,20 +272,28 @@ impl Fuse {
 
                     let payload_json = payload_map.to_string();
                     let current_user_uid = crate::clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
-
                     let finish_now_ms = crate::time::now_ms();
+
+                    let (pod_ip, node_name) = clog::pod_info();
+                    let info_map = serde_json::json!({
+                        "pod_ip": pod_ip,
+                        "node_name": node_name,
+                    });
+
                     crate::clog::push_log(crate::clog::LogEntry {
                         uid: crate::uid::new(),
                         timestamp_unix_ms: finish_now_ms,
                         service_name,
                         trace_id,
                         parent_uid: endpoint_uid,
+                        user_uid: current_user_uid,
                         log_type: "API_RESPONSE".to_string(),
                         action_name: endpoint_key.to_string(),
                         duration_ms,
                         status_code,
                         payload_json,
-                        user_uid: current_user_uid,
+                        pod_name: clog::pod_name(),
+                        info_json: info_map.to_string(),
                     });
                 }
 

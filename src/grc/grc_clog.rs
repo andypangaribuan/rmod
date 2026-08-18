@@ -18,7 +18,6 @@ pub struct LogEntryRequest {
     pub parent_uid: ::prost::alloc::string::String,
     #[prost(string, tag = "6")]
     pub user_uid: ::prost::alloc::string::String,
-    /// 'API_INCOMING', 'DB_QUERY', 'GRPC_OUTGOING', 'GRPC_INCOMING'
     #[prost(string, tag = "7")]
     pub log_type: ::prost::alloc::string::String,
     #[prost(string, tag = "8")]
@@ -29,6 +28,10 @@ pub struct LogEntryRequest {
     pub status_code: i32,
     #[prost(string, tag = "11")]
     pub payload_json: ::prost::alloc::string::String,
+    #[prost(string, tag = "12")]
+    pub pod_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "13")]
+    pub info_json: ::prost::alloc::string::String,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct LogResponse {

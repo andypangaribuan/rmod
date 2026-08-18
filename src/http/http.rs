@@ -8,13 +8,13 @@
  * All Rights Reserved.
  */
 
+use crate::clog;
 use dashmap::DashMap;
 use reqwest::{Client, Method, Response, header::HeaderMap};
 use serde::Serialize;
 use std::collections::HashMap;
-use std::time::Duration;
-
 use std::sync::LazyLock;
+use std::time::Duration;
 
 static DOMAIN_TIMEOUTS: LazyLock<DashMap<String, Duration>> = LazyLock::new(DashMap::new);
 
@@ -60,7 +60,7 @@ async fn request<T: Serialize>(
 
     rb = rb.timeout(timeout);
 
-    let ctx = crate::clog::get_current_ctx();
+    let ctx = clog::get_current_ctx();
     let trace_id = match ctx {
         Some(ref c) => c.trace_id.clone(),
         None => crate::uid::new(),
@@ -100,7 +100,7 @@ async fn request<T: Serialize>(
     }
 
     let action_name = format!("{}: {}", method.as_str(), url);
-    let clog_config = crate::clog::get_config();
+    let clog_config = clog::get_config();
     let is_excluded = clog_config.map(|c| c.exclusion_routes.iter().any(|r| url.contains(r) || action_name.contains(r))).unwrap_or(false);
 
     let start_time = std::time::Instant::now();
@@ -119,9 +119,9 @@ async fn request<T: Serialize>(
             let res_bytes = axum::body::to_bytes(axum_body, limit).await.unwrap_or_default();
 
             if !is_excluded && clog_config.is_some() {
-                let req_body_val = crate::clog::parse_body_to_json_val(&req_body_str);
+                let req_body_val = clog::parse_body_to_json_val(&req_body_str);
                 let res_body_lossy = String::from_utf8_lossy(&res_bytes);
-                let res_body_val = crate::clog::parse_body_to_json_val(&res_body_lossy);
+                let res_body_val = clog::parse_body_to_json_val(&res_body_lossy);
 
                 let mut payload_map = serde_json::json!({
                     "endpoint": action_name,
@@ -139,22 +139,30 @@ async fn request<T: Serialize>(
                     }
                 }
 
-                let payload_json = payload_map.to_string();
-                let current_user_uid = crate::clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
+                let (pod_ip, node_name) = clog::pod_info();
+                let info_map = serde_json::json!({
+                    "pod_ip": pod_ip,
+                    "node_name": node_name,
+                });
 
+                let payload_json = payload_map.to_string();
+                let current_user_uid = clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
                 let now_ms = crate::time::now_ms();
-                crate::clog::push_log(crate::clog::LogEntry {
+
+                clog::push_log(clog::LogEntry {
                     uid: endpoint_uid,
                     timestamp_unix_ms: now_ms,
                     service_name,
                     trace_id,
                     parent_uid: parent_uid.unwrap_or_default(),
+                    user_uid: current_user_uid,
                     log_type: "HTTP_CALL".to_string(),
                     action_name: action_name.clone(),
                     duration_ms,
                     status_code,
                     payload_json,
-                    user_uid: current_user_uid,
+                    pod_name: clog::pod_name(),
+                    info_json: info_map.to_string(),
                 });
             }
 
@@ -166,7 +174,7 @@ async fn request<T: Serialize>(
             let status_code = err.status().map(|s| s.as_u16() as i32).unwrap_or(500);
 
             if !is_excluded && clog_config.is_some() {
-                let req_body_val = crate::clog::parse_body_to_json_val(&req_body_str);
+                let req_body_val = clog::parse_body_to_json_val(&req_body_str);
 
                 let bt = std::backtrace::Backtrace::force_capture();
                 let bt_str = format!("{}", bt);
@@ -177,26 +185,35 @@ async fn request<T: Serialize>(
                     "request_body": req_body_val,
                     "error": err.to_string(),
                 });
+
                 if !bt_str.trim().is_empty() {
                     payload_map["stacktrace"] = serde_json::Value::String(bt_str);
                 }
 
-                let payload_json = payload_map.to_string();
-                let current_user_uid = crate::clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
+                let (pod_ip, node_name) = clog::pod_info();
+                let info_map = serde_json::json!({
+                    "pod_ip": pod_ip,
+                    "node_name": node_name,
+                });
 
+                let payload_json = payload_map.to_string();
+                let current_user_uid = clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
                 let now_ms = crate::time::now_ms();
-                crate::clog::push_log(crate::clog::LogEntry {
+
+                clog::push_log(clog::LogEntry {
                     uid: endpoint_uid,
                     timestamp_unix_ms: now_ms,
                     service_name,
                     trace_id,
                     parent_uid: parent_uid.unwrap_or_default(),
+                    user_uid: current_user_uid,
                     log_type: "HTTP_CALL".to_string(),
                     action_name: action_name.clone(),
                     duration_ms,
                     status_code,
                     payload_json,
-                    user_uid: current_user_uid,
+                    pod_name: clog::pod_name(),
+                    info_json: info_map.to_string(),
                 });
             }
 
