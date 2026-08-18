@@ -182,18 +182,20 @@ impl Fuse {
                     .unwrap_or_default()
                     .to_string();
 
+                let env_str = clog_config.and_then(|c| c.environment.as_deref()).unwrap_or("dev").to_string();
+
                 let log_ctx = clog::Context {
                     trace_id: trace_id.clone(),
                     parent_uid: parent_uid.clone(),
                     user_uid: None,
                     endpoint_uid: endpoint_uid.clone(),
                     service_name: service_name.clone(),
+                    env_name: env_str.clone(),
                 };
 
                 if !is_excluded && clog_config.is_some() {
                     let req_body_str = String::from_utf8_lossy(&bytes);
                     let req_body_val = clog::parse_body_to_json_val(&req_body_str);
-                    let env_str = clog_config.and_then(|c| c.environment.as_deref()).unwrap_or("development");
                     let hostname = whoami::fallible::hostname().unwrap_or_else(|_| "unknown".to_string());
 
                     let payload_map = serde_json::json!({
@@ -218,6 +220,7 @@ impl Fuse {
                     clog::push_log(clog::LogEntry {
                         uid: endpoint_uid.clone(),
                         timestamp_unix_ms: start_now_ms,
+                        env_name: env_str.clone(),
                         service_name: service_name.clone(),
                         trace_id: trace_id.clone(),
                         parent_uid: parent_uid.clone().unwrap_or_default(),
@@ -283,6 +286,7 @@ impl Fuse {
                     crate::clog::push_log(crate::clog::LogEntry {
                         uid: crate::uid::new(),
                         timestamp_unix_ms: finish_now_ms,
+                        env_name: env_str,
                         service_name,
                         trace_id,
                         parent_uid: endpoint_uid,

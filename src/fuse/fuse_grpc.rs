@@ -62,6 +62,7 @@ where
 
             let clog_config = clog::get_config();
             let service_name = clog_config.map(|c| c.service_name.clone()).unwrap_or_default();
+            let env_name = clog_config.and_then(|c| c.environment.clone()).unwrap_or_default();
 
             let is_excluded =
                 is_health_check || clog_config.map(|c| c.exclusion_routes.iter().any(|r| path.starts_with(r))).unwrap_or(false);
@@ -72,6 +73,7 @@ where
                 user_uid: user_uid.clone(),
                 endpoint_uid: endpoint_uid.clone(),
                 service_name: service_name.clone(),
+                env_name: env_name.clone(),
             };
 
             let start_time = std::time::Instant::now();
@@ -101,6 +103,7 @@ where
                 clog::push_log(clog::LogEntry {
                     uid: endpoint_uid.clone(),
                     timestamp_unix_ms: start_now_ms,
+                    env_name: env_name.clone(),
                     service_name: service_name.clone(),
                     trace_id: trace_id.clone(),
                     parent_uid: parent_uid.clone().unwrap_or_default(),
@@ -162,6 +165,7 @@ where
                         clog::push_log(clog::LogEntry {
                             uid: crate::uid::new(),
                             timestamp_unix_ms: finish_now_ms,
+                            env_name,
                             service_name,
                             trace_id,
                             parent_uid: endpoint_uid,
@@ -225,7 +229,9 @@ where
             };
             let parent_uid = ctx.as_ref().map(|c| c.endpoint_uid.clone());
             let endpoint_uid = crate::uid::new();
+            let clog_config = clog::get_config();
             let service_name = ctx.as_ref().map(|c| c.service_name.clone()).unwrap_or_default();
+            let env_name = ctx.as_ref().map(|c| c.env_name.clone()).unwrap_or_else(|| clog_config.and_then(|c| c.environment.clone()).unwrap_or_default());
 
             if let Ok(v) = tonic::codegen::http::HeaderValue::from_str(&trace_id) {
                 req.headers_mut().insert("x-trace-id", v);
@@ -288,6 +294,7 @@ where
                         clog::push_log(clog::LogEntry {
                             uid: endpoint_uid,
                             timestamp_unix_ms: finish_now_ms,
+                            env_name: env_name.clone(),
                             service_name,
                             trace_id,
                             parent_uid: parent_uid.unwrap_or_default(),
@@ -350,6 +357,7 @@ where
                         clog::push_log(clog::LogEntry {
                             uid: endpoint_uid,
                             timestamp_unix_ms: finish_now_ms,
+                            env_name: env_name.clone(),
                             service_name,
                             trace_id,
                             parent_uid: parent_uid.unwrap_or_default(),
@@ -396,6 +404,7 @@ where
                         clog::push_log(clog::LogEntry {
                             uid: endpoint_uid,
                             timestamp_unix_ms: finish_now_ms,
+                            env_name,
                             service_name,
                             trace_id,
                             parent_uid: parent_uid.unwrap_or_default(),
