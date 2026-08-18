@@ -9,6 +9,7 @@
  */
 
 use crate::util::env;
+use local_ip_address;
 
 pub fn pod_name() -> String {
     let pod_name = env::string_or("POD_NAME", "");
@@ -27,7 +28,12 @@ pub fn pod_name() -> String {
 }
 
 pub fn pod_info() -> (String, String) {
-    let pod_ip = env::string_or("POD_IP", "");
+    let mut pod_ip = env::string_or("POD_IP", "");
     let node_name = env::string_or("NODE_NAME", "");
+
+    if pod_ip.is_empty() {
+        pod_ip = local_ip_address::local_ip().expect("").to_string();
+    }
+
     (pod_ip, node_name)
 }
