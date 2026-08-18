@@ -52,6 +52,38 @@ async fn run_job_handler(name: String, handler: fn() -> BoxFuture<'static, ()>) 
         env_name: env_name.clone(),
     };
 
+    if !is_excluded && clog_config.is_some() {
+        let (pod_ip, node_name) = clog::pod_info();
+        let info_map = serde_json::json!({
+            "pod_ip": pod_ip,
+            "node_name": node_name,
+        });
+
+        let start_payload = serde_json::json!({
+            "job_name": name,
+        })
+        .to_string();
+
+        let start_now_ms = crate::time::now_ms();
+
+        clog::push_log(clog::LogEntry {
+            uid: endpoint_uid.clone(),
+            timestamp_unix_ms: start_now_ms,
+            env_name: env_name.clone(),
+            service_name: service_name.clone(),
+            trace_id: trace_id.clone(),
+            parent_uid: String::new(),
+            log_type: "JOB_EXECUTION_START".to_string(),
+            user_uid: String::new(),
+            action_name: name.clone(),
+            duration_ms: 0,
+            status_code: 200,
+            payload_json: start_payload,
+            pod_name: clog::pod_name(),
+            info_json: info_map.to_string(),
+        });
+    }
+
     let start_time = std::time::Instant::now();
     let join_res = tokio::spawn(clog::LOG_CTX.scope(std::cell::RefCell::new(log_ctx), (handler)())).await;
     let duration_ms = start_time.elapsed().as_millis() as i32;
@@ -89,18 +121,17 @@ async fn run_job_handler(name: String, handler: fn() -> BoxFuture<'static, ()>) 
         });
 
         let payload_json = payload_map.to_string();
-        let current_user_uid = clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
         let now_ms = crate::time::now_ms();
 
         clog::push_log(clog::LogEntry {
-            uid: endpoint_uid,
+            uid: crate::uid::new(),
             timestamp_unix_ms: now_ms,
             env_name,
             service_name,
             trace_id,
-            parent_uid: String::new(),
-            log_type: "JOB_EXECUTION".to_string(),
-            user_uid: current_user_uid,
+            parent_uid: endpoint_uid,
+            log_type: "JOB_EXECUTION_FINISH".to_string(),
+            user_uid: String::new(),
             action_name: name,
             duration_ms,
             status_code,
