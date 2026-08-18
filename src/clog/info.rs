@@ -44,25 +44,24 @@ pub fn clean_stacktrace(bt_str: &str) -> String {
         return String::new();
     }
 
-    let service_name_sub = crate::clog::get_config()
-        .map(|c| c.service_name.replace('-', "_"))
-        .unwrap_or_default();
+    let service_name_sub = crate::clog::get_config().map(|c| c.service_name.replace('-', "_")).unwrap_or_default();
 
     let mut frames: Vec<Vec<&str>> = Vec::new();
     let mut current_frame: Vec<&str> = Vec::new();
 
     for line in raw_text.lines() {
         let trimmed = line.trim_start();
-        let is_frame_start = trimmed.find(':').map(|idx| {
-            let prefix = trimmed[..idx].trim();
-            !prefix.is_empty() && prefix.chars().all(|c| c.is_ascii_digit())
-        }).unwrap_or(false);
+        let is_frame_start = trimmed
+            .find(':')
+            .map(|idx| {
+                let prefix = trimmed[..idx].trim();
+                !prefix.is_empty() && prefix.chars().all(|c| c.is_ascii_digit())
+            })
+            .unwrap_or(false);
 
-        if is_frame_start {
-            if !current_frame.is_empty() {
-                frames.push(current_frame);
-                current_frame = Vec::new();
-            }
+        if is_frame_start && !current_frame.is_empty() {
+            frames.push(current_frame);
+            current_frame = Vec::new();
         }
         current_frame.push(line);
     }
