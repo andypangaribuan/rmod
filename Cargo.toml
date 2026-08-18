@@ -1,6 +1,6 @@
 [package]
 name = "rmod"
-version = "1.0.26"
+version = "1.0.28"
 edition = "2024"
 
 [dependencies]
