@@ -37,3 +37,88 @@ pub fn pod_info() -> (String, String) {
 
     (pod_ip, node_name)
 }
+
+pub fn clean_stacktrace(bt_str: &str) -> String {
+    let raw_text = bt_str.trim();
+    if raw_text.is_empty() {
+        return String::new();
+    }
+
+    let service_name_sub = crate::clog::get_config()
+        .map(|c| c.service_name.replace('-', "_"))
+        .unwrap_or_default();
+
+    let mut frames: Vec<Vec<&str>> = Vec::new();
+    let mut current_frame: Vec<&str> = Vec::new();
+
+    for line in raw_text.lines() {
+        let trimmed = line.trim_start();
+        let is_frame_start = trimmed.find(':').map(|idx| {
+            let prefix = trimmed[..idx].trim();
+            !prefix.is_empty() && prefix.chars().all(|c| c.is_ascii_digit())
+        }).unwrap_or(false);
+
+        if is_frame_start {
+            if !current_frame.is_empty() {
+                frames.push(current_frame);
+                current_frame = Vec::new();
+            }
+        }
+        current_frame.push(line);
+    }
+    if !current_frame.is_empty() {
+        frames.push(current_frame);
+    }
+
+    let mut filtered_frames: Vec<String> = Vec::new();
+    let mut frame_index = 0;
+
+    for frame in frames {
+        let full_frame_text = frame.join("\n");
+        let lower = full_frame_text.to_lowercase();
+
+        let is_system_or_dep = lower.contains("/.cargo/registry/")
+            || lower.contains("/.rustup/")
+            || lower.contains("/rustc/")
+            || lower.contains("std::")
+            || lower.contains("core::")
+            || lower.contains("alloc::")
+            || lower.contains("backtrace_rs")
+            || lower.contains("backtrace::")
+            || lower.contains("tokio::")
+            || lower.contains("axum::")
+            || lower.contains("tower::")
+            || lower.contains("hyper::")
+            || lower.contains("hyper_util::")
+            || lower.contains("futures_util::")
+            || lower.contains("sqlx::")
+            || lower.contains("___rust_try")
+            || lower.contains("__pthread");
+
+        let is_rmod = lower.contains("rmod") || lower.contains("/rmod/");
+        let is_service = !service_name_sub.is_empty() && lower.contains(&service_name_sub);
+        let is_app_src = (lower.contains("./src/") || lower.contains("/src/"))
+            && !lower.contains("/.cargo/")
+            && !lower.contains("/.rustup/")
+            && !lower.contains("/rustc/");
+
+        if is_rmod || is_service || is_app_src || !is_system_or_dep {
+            let mut frame_lines: Vec<String> = frame.iter().map(|s| s.to_string()).collect();
+            if let Some(first_line) = frame_lines.first_mut() {
+                let trimmed = first_line.trim_start();
+                if let Some(colon_pos) = trimmed.find(':') {
+                    let rest = &trimmed[colon_pos + 1..];
+                    *first_line = format!("{:4}:{}", frame_index, rest);
+                }
+            }
+            filtered_frames.push(frame_lines.join("\n"));
+            frame_index += 1;
+        }
+    }
+
+    if filtered_frames.is_empty() {
+        return raw_text.to_string();
+    }
+
+    filtered_frames.join("\n")
+}

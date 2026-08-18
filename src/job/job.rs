@@ -61,7 +61,8 @@ async fn run_job_handler(name: String, handler: fn() -> BoxFuture<'static, ()>) 
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
             let bt_str = format!("{}", bt);
-            let st = if !bt_str.trim().is_empty() { Some(bt_str) } else { None };
+            let clean_st = clog::clean_stacktrace(&bt_str);
+            let st = if !clean_st.trim().is_empty() { Some(clean_st) } else { None };
             if e.is_panic() {
                 tracing::error!("Background job '{}' panicked: {:?}", name, e);
                 (500, Some("Job panicked".to_string()), st)

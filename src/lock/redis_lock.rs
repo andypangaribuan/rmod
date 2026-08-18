@@ -49,8 +49,9 @@ pub(super) async fn dist_lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Opti
                 "wait_ms": opt_wait_ms,
                 "error": err_msg,
             });
-            if !bt_str.trim().is_empty() {
-                payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+            let clean_st = crate::clog::clean_stacktrace(&bt_str);
+            if !clean_st.trim().is_empty() {
+                payload_map["stacktrace"] = serde_json::Value::String(clean_st);
             }
             crate::clog::log_dist_lock_redis_lock(key, duration_ms, 500, payload_map.to_string());
             return Err(err_msg);
@@ -93,8 +94,9 @@ pub(super) async fn dist_lock(key: &str, opt_ttl: Option<i64>, opt_wait_ms: Opti
                 "wait_ms": opt_wait_ms,
                 "error": err_msg,
             });
-            if !bt_str.trim().is_empty() {
-                payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+            let clean_st = crate::clog::clean_stacktrace(&bt_str);
+            if !clean_st.trim().is_empty() {
+                payload_map["stacktrace"] = serde_json::Value::String(clean_st);
             }
             crate::clog::log_dist_lock_redis_lock(key, duration_ms, 500, payload_map.to_string());
             return Err(err_msg);
@@ -133,8 +135,9 @@ pub(super) async fn dist_lock_many(keys: Vec<&str>, opt_ttl: Option<i64>, opt_wa
                 "wait_ms": opt_wait_ms,
                 "error": err_msg,
             });
-            if !bt_str.trim().is_empty() {
-                payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+            let clean_st = crate::clog::clean_stacktrace(&bt_str);
+            if !clean_st.trim().is_empty() {
+                payload_map["stacktrace"] = serde_json::Value::String(clean_st);
             }
             crate::clog::log_dist_lock_redis_lock(&action_name, duration_ms, 500, payload_map.to_string());
             return Err(err_msg);
@@ -201,8 +204,9 @@ pub(super) async fn dist_lock_many(keys: Vec<&str>, opt_ttl: Option<i64>, opt_wa
                 "wait_ms": opt_wait_ms,
                 "error": err_msg,
             });
-            if !bt_str.trim().is_empty() {
-                payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+            let clean_st = crate::clog::clean_stacktrace(&bt_str);
+            if !clean_st.trim().is_empty() {
+                payload_map["stacktrace"] = serde_json::Value::String(clean_st);
             }
             crate::clog::log_dist_lock_redis_lock(&action_name, duration_ms, 500, payload_map.to_string());
             return Err(err_msg);
@@ -259,8 +263,9 @@ pub(super) async fn dist_unlock(key: &str, val: &str) {
                     "val": val,
                     "error": "Failed to unlock one or more redis keys",
                 });
-                if !bt_str.trim().is_empty() {
-                    payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+                let clean_st = crate::clog::clean_stacktrace(&bt_str);
+                if !clean_st.trim().is_empty() {
+                    payload_map["stacktrace"] = serde_json::Value::String(clean_st);
                 }
                 crate::clog::log_dist_lock_redis_unlock(key, duration_ms, 500, payload_map.to_string());
             }
@@ -275,8 +280,9 @@ pub(super) async fn dist_unlock(key: &str, val: &str) {
                 "val": val,
                 "error": e.to_string(),
             });
-            if !bt_str.trim().is_empty() {
-                payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+            let clean_st = crate::clog::clean_stacktrace(&bt_str);
+            if !clean_st.trim().is_empty() {
+                payload_map["stacktrace"] = serde_json::Value::String(clean_st);
             }
             crate::clog::log_dist_lock_redis_unlock(key, duration_ms, 500, payload_map.to_string());
         }

@@ -265,8 +265,9 @@ impl Fuse {
 
                         if let Some(ref bt) = ctx.res_backtrace {
                             let bt_str = format!("{}", bt);
-                            if !bt_str.trim().is_empty() {
-                                payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+                            let clean_st = clog::clean_stacktrace(&bt_str);
+                            if !clean_st.trim().is_empty() {
+                                payload_map["stacktrace"] = serde_json::Value::String(clean_st);
                             }
                         }
                     }
@@ -476,7 +477,8 @@ impl FuseRContext {
 
     pub fn backtrace_text(&self) -> String {
         if let Some(bt) = &self.res_backtrace {
-            return format!("{:?}", bt);
+            let bt_str = format!("{}", bt);
+            return clog::clean_stacktrace(&bt_str);
         }
         "".to_string()
     }

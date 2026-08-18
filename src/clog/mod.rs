@@ -189,7 +189,10 @@ pub fn log_db_query(
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
-        payload["stacktrace"] = serde_json::Value::String(st.to_string());
+        let clean_st = clean_stacktrace(st);
+        if !clean_st.trim().is_empty() {
+            payload["stacktrace"] = serde_json::Value::String(clean_st);
+        }
     }
     if let Some(entry) = new_log_entry("DB_QUERY", sql, duration_ms, status_code, payload.to_string()) {
         push_log(entry);
@@ -218,7 +221,10 @@ pub fn log_db_tx_query(
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
-        payload["stacktrace"] = serde_json::Value::String(st.to_string());
+        let clean_st = clean_stacktrace(st);
+        if !clean_st.trim().is_empty() {
+            payload["stacktrace"] = serde_json::Value::String(clean_st);
+        }
     }
     if let Some(entry) = new_log_entry("DB_TX_QUERY", sql, duration_ms, status_code, payload.to_string()) {
         push_log(entry);
@@ -233,7 +239,10 @@ pub fn log_tx_begin(tx_id: &str, key: Option<&str>, duration_ms: i32, status_cod
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
-        payload["stacktrace"] = serde_json::Value::String(st.to_string());
+        let clean_st = clean_stacktrace(st);
+        if !clean_st.trim().is_empty() {
+            payload["stacktrace"] = serde_json::Value::String(clean_st);
+        }
     }
     if let Some(entry) = new_log_entry("DB_TX_BEGIN", "BEGIN", duration_ms, status_code, payload.to_string()) {
         push_log(entry);
@@ -255,7 +264,10 @@ pub fn log_tx_commit(
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
-        payload["stacktrace"] = serde_json::Value::String(st.to_string());
+        let clean_st = clean_stacktrace(st);
+        if !clean_st.trim().is_empty() {
+            payload["stacktrace"] = serde_json::Value::String(clean_st);
+        }
     }
     if let Some(entry) = new_log_entry("DB_TX_COMMIT", "COMMIT", duration_ms, status_code, payload.to_string()) {
         push_log(entry);
@@ -277,7 +289,10 @@ pub fn log_tx_rollback(
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
-        payload["stacktrace"] = serde_json::Value::String(st.to_string());
+        let clean_st = clean_stacktrace(st);
+        if !clean_st.trim().is_empty() {
+            payload["stacktrace"] = serde_json::Value::String(clean_st);
+        }
     }
     if let Some(entry) = new_log_entry("DB_TX_ROLLBACK", "ROLLBACK", duration_ms, status_code, payload.to_string()) {
         push_log(entry);
@@ -304,7 +319,10 @@ pub fn log_db_update(
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
-        payload["stacktrace"] = serde_json::Value::String(st.to_string());
+        let clean_st = clean_stacktrace(st);
+        if !clean_st.trim().is_empty() {
+            payload["stacktrace"] = serde_json::Value::String(clean_st);
+        }
     }
     if let Some(entry) = new_log_entry("DB_UPDATE", sql, duration_ms, status_code, payload.to_string()) {
         push_log(entry);
@@ -333,7 +351,10 @@ pub fn log_db_tx_update(
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
-        payload["stacktrace"] = serde_json::Value::String(st.to_string());
+        let clean_st = clean_stacktrace(st);
+        if !clean_st.trim().is_empty() {
+            payload["stacktrace"] = serde_json::Value::String(clean_st);
+        }
     }
     if let Some(entry) = new_log_entry("DB_TX_UPDATE", sql, duration_ms, status_code, payload.to_string()) {
         push_log(entry);
@@ -360,7 +381,10 @@ pub fn log_db_execute(
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
-        payload["stacktrace"] = serde_json::Value::String(st.to_string());
+        let clean_st = clean_stacktrace(st);
+        if !clean_st.trim().is_empty() {
+            payload["stacktrace"] = serde_json::Value::String(clean_st);
+        }
     }
     if let Some(entry) = new_log_entry("DB_EXEC", sql, duration_ms, status_code, payload.to_string()) {
         push_log(entry);
@@ -389,7 +413,10 @@ pub fn log_db_tx_execute(
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
-        payload["stacktrace"] = serde_json::Value::String(st.to_string());
+        let clean_st = clean_stacktrace(st);
+        if !clean_st.trim().is_empty() {
+            payload["stacktrace"] = serde_json::Value::String(clean_st);
+        }
     }
     if let Some(entry) = new_log_entry("DB_TX_EXEC", sql, duration_ms, status_code, payload.to_string()) {
         push_log(entry);

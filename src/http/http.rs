@@ -135,8 +135,9 @@ async fn request<T: Serialize>(
                 if status_code >= 400 {
                     let bt = std::backtrace::Backtrace::force_capture();
                     let bt_str = format!("{}", bt);
-                    if !bt_str.trim().is_empty() {
-                        payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+                    let clean_st = clog::clean_stacktrace(&bt_str);
+                    if !clean_st.trim().is_empty() {
+                        payload_map["stacktrace"] = serde_json::Value::String(clean_st);
                     }
                 }
 
@@ -188,8 +189,9 @@ async fn request<T: Serialize>(
                     "error": err.to_string(),
                 });
 
-                if !bt_str.trim().is_empty() {
-                    payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+                let clean_st = clog::clean_stacktrace(&bt_str);
+                if !clean_st.trim().is_empty() {
+                    payload_map["stacktrace"] = serde_json::Value::String(clean_st);
                 }
 
                 let (pod_ip, node_name) = clog::pod_info();

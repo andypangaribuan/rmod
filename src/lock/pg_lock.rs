@@ -86,8 +86,9 @@ pub(super) async fn dist_lock_many(
                 "wait_ms": opt_wait_ms,
                 "error": err_msg,
             });
-            if !bt_str.trim().is_empty() {
-                payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+            let clean_st = crate::clog::clean_stacktrace(&bt_str);
+            if !clean_st.trim().is_empty() {
+                payload_map["stacktrace"] = serde_json::Value::String(clean_st);
             }
             crate::clog::log_dist_lock_pg_lock(&action_name, duration_ms, 500, payload_map.to_string());
             return Err(err_msg);
@@ -144,8 +145,9 @@ pub(super) async fn dist_lock_many(
                 "wait_ms": opt_wait_ms,
                 "error": err_msg,
             });
-            if !bt_str.trim().is_empty() {
-                payload_map["stacktrace"] = serde_json::Value::String(bt_str);
+            let clean_st = crate::clog::clean_stacktrace(&bt_str);
+            if !clean_st.trim().is_empty() {
+                payload_map["stacktrace"] = serde_json::Value::String(clean_st);
             }
             crate::clog::log_dist_lock_pg_lock(&action_name, duration_ms, 500, payload_map.to_string());
             return Err(err_msg);
