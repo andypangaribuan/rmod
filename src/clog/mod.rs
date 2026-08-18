@@ -169,7 +169,9 @@ pub fn error<T: serde::Serialize>(action_name: &str, payload: T) {
     custom_log("ERROR", action_name, payload);
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn log_db_query(
+    key: Option<&str>,
     sql: &str,
     args: Option<&[String]>,
     response: Option<&str>,
@@ -178,7 +180,9 @@ pub fn log_db_query(
     error_msg: Option<&str>,
     stacktrace: Option<&str>,
 ) {
+    let db_conn = crate::store::get_db_conn_info(key);
     let mut payload = serde_json::json!({
+        "db_conn": db_conn,
         "sql": sql,
         "args": args,
         "response": response,
@@ -193,7 +197,7 @@ pub fn log_db_query(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn log_tx_db_query(
+pub fn log_db_tx_query(
     tx_id: &str,
     key: Option<&str>,
     sql: &str,
@@ -204,9 +208,10 @@ pub fn log_tx_db_query(
     error_msg: Option<&str>,
     stacktrace: Option<&str>,
 ) {
+    let db_conn = crate::store::get_db_conn_info(key);
     let mut payload = serde_json::json!({
         "tx_id": tx_id,
-        "key": key,
+        "db_conn": db_conn,
         "sql": sql,
         "args": args,
         "response": response,
@@ -215,21 +220,22 @@ pub fn log_tx_db_query(
     if let Some(st) = stacktrace {
         payload["stacktrace"] = serde_json::Value::String(st.to_string());
     }
-    if let Some(entry) = new_log_entry("TX_DB_QUERY", sql, duration_ms, status_code, payload.to_string()) {
+    if let Some(entry) = new_log_entry("DB_TX_QUERY", sql, duration_ms, status_code, payload.to_string()) {
         push_log(entry);
     }
 }
 
 pub fn log_tx_begin(tx_id: &str, key: Option<&str>, duration_ms: i32, status_code: i32, error_msg: Option<&str>, stacktrace: Option<&str>) {
+    let db_conn = crate::store::get_db_conn_info(key);
     let mut payload = serde_json::json!({
         "tx_id": tx_id,
-        "key": key,
+        "db_conn": db_conn,
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
         payload["stacktrace"] = serde_json::Value::String(st.to_string());
     }
-    if let Some(entry) = new_log_entry("TX_DB_BEGIN", "BEGIN", duration_ms, status_code, payload.to_string()) {
+    if let Some(entry) = new_log_entry("DB_TX_BEGIN", "BEGIN", duration_ms, status_code, payload.to_string()) {
         push_log(entry);
     }
 }
@@ -242,15 +248,16 @@ pub fn log_tx_commit(
     error_msg: Option<&str>,
     stacktrace: Option<&str>,
 ) {
+    let db_conn = crate::store::get_db_conn_info(key);
     let mut payload = serde_json::json!({
         "tx_id": tx_id,
-        "key": key,
+        "db_conn": db_conn,
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
         payload["stacktrace"] = serde_json::Value::String(st.to_string());
     }
-    if let Some(entry) = new_log_entry("TX_DB_COMMIT", "COMMIT", duration_ms, status_code, payload.to_string()) {
+    if let Some(entry) = new_log_entry("DB_TX_COMMIT", "COMMIT", duration_ms, status_code, payload.to_string()) {
         push_log(entry);
     }
 }
@@ -263,20 +270,23 @@ pub fn log_tx_rollback(
     error_msg: Option<&str>,
     stacktrace: Option<&str>,
 ) {
+    let db_conn = crate::store::get_db_conn_info(key);
     let mut payload = serde_json::json!({
         "tx_id": tx_id,
-        "key": key,
+        "db_conn": db_conn,
         "error": error_msg,
     });
     if let Some(st) = stacktrace {
         payload["stacktrace"] = serde_json::Value::String(st.to_string());
     }
-    if let Some(entry) = new_log_entry("TX_DB_ROLLBACK", "ROLLBACK", duration_ms, status_code, payload.to_string()) {
+    if let Some(entry) = new_log_entry("DB_TX_ROLLBACK", "ROLLBACK", duration_ms, status_code, payload.to_string()) {
         push_log(entry);
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn log_db_update(
+    key: Option<&str>,
     sql: &str,
     args: Option<&[String]>,
     response: Option<&str>,
@@ -285,7 +295,9 @@ pub fn log_db_update(
     error_msg: Option<&str>,
     stacktrace: Option<&str>,
 ) {
+    let db_conn = crate::store::get_db_conn_info(key);
     let mut payload = serde_json::json!({
+        "db_conn": db_conn,
         "sql": sql,
         "args": args,
         "response": response,
@@ -311,9 +323,10 @@ pub fn log_db_tx_update(
     error_msg: Option<&str>,
     stacktrace: Option<&str>,
 ) {
+    let db_conn = crate::store::get_db_conn_info(key);
     let mut payload = serde_json::json!({
         "tx_id": tx_id,
-        "key": key,
+        "db_conn": db_conn,
         "sql": sql,
         "args": args,
         "response": response,
@@ -327,7 +340,9 @@ pub fn log_db_tx_update(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn log_db_execute(
+    key: Option<&str>,
     sql: &str,
     args: Option<&[String]>,
     response: Option<&str>,
@@ -336,7 +351,9 @@ pub fn log_db_execute(
     error_msg: Option<&str>,
     stacktrace: Option<&str>,
 ) {
+    let db_conn = crate::store::get_db_conn_info(key);
     let mut payload = serde_json::json!({
+        "db_conn": db_conn,
         "sql": sql,
         "args": args,
         "response": response,
@@ -362,9 +379,10 @@ pub fn log_db_tx_execute(
     error_msg: Option<&str>,
     stacktrace: Option<&str>,
 ) {
+    let db_conn = crate::store::get_db_conn_info(key);
     let mut payload = serde_json::json!({
         "tx_id": tx_id,
-        "key": key,
+        "db_conn": db_conn,
         "sql": sql,
         "args": args,
         "response": response,
@@ -373,7 +391,7 @@ pub fn log_db_tx_execute(
     if let Some(st) = stacktrace {
         payload["stacktrace"] = serde_json::Value::String(st.to_string());
     }
-    if let Some(entry) = new_log_entry("TX_DB_EXEC", sql, duration_ms, status_code, payload.to_string()) {
+    if let Some(entry) = new_log_entry("DB_TX_EXEC", sql, duration_ms, status_code, payload.to_string()) {
         push_log(entry);
     }
 }

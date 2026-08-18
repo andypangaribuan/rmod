@@ -29,7 +29,7 @@ pub async fn db_setup(
 ) -> Result<(), sqlx::Error> {
     let write_pool = create_db_pool(&write).await?;
     let read_pool = if let Some(config) = read { Some(create_db_pool(&config).await?) } else { None };
-    crate::store::set_db(key, write_pool, read_pool, updated_at, state, conn_str);
+    crate::store::set_db(key, write_pool, read_pool, updated_at, state, conn_str, &write);
     Ok(())
 }
 

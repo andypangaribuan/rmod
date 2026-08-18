@@ -34,7 +34,7 @@ pub async fn update<T>(table: &str, set: &str, condition: &str, args: PgArgs<T>)
     let sql_log = sql.clone();
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
-    super::function::log_db_update(&sql_log, args_opt, async move { sqlx::query_with(&sql, args.build_inner()).execute(store::db()).await })
+    super::function::log_db_update(None, &sql_log, args_opt, async move { sqlx::query_with(&sql, args.build_inner()).execute(store::db()).await })
         .await
 }
 
@@ -67,7 +67,7 @@ pub async fn update_on<T>(
     let sql_log = sql.clone();
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
-    super::function::log_db_update(&sql_log, args_opt, async move {
+    super::function::log_db_update(Some(key), &sql_log, args_opt, async move {
         sqlx::query_with(&sql, args.build_inner()).execute(store::db_on(key)).await
     })
     .await
@@ -116,7 +116,7 @@ pub async fn execute<T>(sql: &str, args: PgArgs<T>) -> Result<sqlx::postgres::Pg
     let sql_log = sql_query.clone();
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
-    super::function::log_db_execute(&sql_log, args_opt, async move {
+    super::function::log_db_execute(None, &sql_log, args_opt, async move {
         sqlx::query_with(&sql_query, args.build_inner()).execute(store::db()).await
     })
     .await
@@ -128,7 +128,7 @@ pub async fn execute_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<sqlx
     let sql_log = sql_query.clone();
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
-    super::function::log_db_execute(&sql_log, args_opt, async move {
+    super::function::log_db_execute(Some(key), &sql_log, args_opt, async move {
         sqlx::query_with(&sql_query, args.build_inner()).execute(store::db_on(key)).await
     })
     .await

@@ -21,12 +21,23 @@ struct DbPools {
     read: Option<Pool<Postgres>>,
 }
 
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct DbConnInfo {
+    pub key: Option<String>,
+    pub host: String,
+    pub port: u16,
+    pub database: String,
+    pub schema: Option<String>,
+    pub username: String,
+}
+
 struct DbContainer {
     keys: Vec<String>,
     map: HashMap<String, &'static DbPools>,
     updated_at: HashMap<String, i64>,
     state: HashMap<String, String>,
     conn_str: HashMap<String, String>,
+    conn_info: HashMap<String, DbConnInfo>,
 }
 
 pub fn update_db_with_deleted_at(val: bool) {
@@ -45,6 +56,7 @@ fn get_db_store() -> &'static RwLock<DbContainer> {
             updated_at: HashMap::new(),
             state: HashMap::new(),
             conn_str: HashMap::new(),
+            conn_info: HashMap::new(),
         })
     })
 }
@@ -57,8 +69,17 @@ pub(crate) fn set_db(
     updated_at: i64,
     state: &str,
     conn_str: &str,
+    write_config: &crate::config::DbConfig,
 ) {
     let pools = Box::leak(Box::new(DbPools { write: write_pool, read: read_pool }));
+    let conn_info = DbConnInfo {
+        key: Some(key.to_string()),
+        host: write_config.host.clone(),
+        port: write_config.port,
+        database: write_config.database.clone(),
+        schema: write_config.schema.clone(),
+        username: write_config.username.clone(),
+    };
 
     let mut store = get_db_store().write().unwrap_or_else(|poisoned| poisoned.into_inner());
     if !store.keys.contains(&key.to_string()) {
@@ -68,6 +89,18 @@ pub(crate) fn set_db(
     store.updated_at.insert(key.to_string(), updated_at);
     store.state.insert(key.to_string(), state.to_string());
     store.conn_str.insert(key.to_string(), conn_str.to_string());
+    store.conn_info.insert(key.to_string(), conn_info);
+}
+
+pub fn get_db_conn_info(key: Option<&str>) -> Option<DbConnInfo> {
+    let store = get_db_store().read().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let target_key = match key {
+        Some(k) => k,
+        None => store.keys.first().map(|s| s.as_str())?,
+    };
+    let mut info = store.conn_info.get(target_key)?.clone();
+    info.key = key.map(|k| k.to_string()).or_else(|| store.keys.first().cloned());
+    Some(info)
 }
 
 fn get_pools(key: &str) -> &'static DbPools {

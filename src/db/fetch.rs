@@ -20,7 +20,7 @@ where
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
-    super::log_db_exec(sql, args_opt, async move {
+    super::log_db_exec(None, sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real();
         let pool = if use_read { store::db_read() } else { store::db() };
@@ -46,7 +46,7 @@ where
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
-    super::log_db_exec(sql, args_opt, async move {
+    super::log_db_exec(Some(key), sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real_on(key);
         let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
@@ -86,7 +86,7 @@ where
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
-    super::log_db_exec(sql, args_opt, async move {
+    super::log_db_exec(None, sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real();
         let pool = if use_read { store::db_read() } else { store::db() };
@@ -112,7 +112,7 @@ where
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
-    super::log_db_exec(sql, args_opt, async move {
+    super::log_db_exec(None, sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real();
         let pool = if use_read { store::db_read() } else { store::db() };
@@ -138,7 +138,7 @@ where
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
-    super::log_db_exec(sql, args_opt, async move {
+    super::log_db_exec(Some(key), sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real_on(key);
         let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
@@ -164,7 +164,7 @@ where
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
-    super::log_db_exec(sql, args_opt, async move {
+    super::log_db_exec(Some(key), sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real_on(key);
         let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
@@ -214,7 +214,7 @@ where
 pub async fn count<T>(sql: &str, args: PgArgs<T>) -> Result<i64, sqlx::Error> {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
-    super::log_db_exec(sql, args_opt, async move {
+    super::log_db_exec(None, sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real();
         let pool = if use_read { store::db_read() } else { store::db() };
@@ -236,7 +236,7 @@ pub async fn count<T>(sql: &str, args: PgArgs<T>) -> Result<i64, sqlx::Error> {
 pub async fn count_on<T>(key: &str, sql: &str, args: PgArgs<T>) -> Result<i64, sqlx::Error> {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
-    super::log_db_exec(sql, args_opt, async move {
+    super::log_db_exec(Some(key), sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real_on(key);
         let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
@@ -272,7 +272,7 @@ where
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
-    super::log_db_exec(sql, args_opt, async move {
+    super::log_db_exec(None, sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real();
         let pool = if use_read { store::db_read() } else { store::db() };
@@ -297,7 +297,7 @@ where
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
-    super::log_db_exec(sql, args_opt, async move {
+    super::log_db_exec(Some(key), sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real_on(key);
         let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };
@@ -319,7 +319,7 @@ where
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
-    super::log_db_exec(sql, args_opt, async move {
+    super::log_db_exec(None, sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real();
         let pool = if use_read { store::db_read() } else { store::db() };
@@ -341,7 +341,7 @@ where
 {
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
-    super::log_db_exec(sql, args_opt, async move {
+    super::log_db_exec(Some(key), sql, args_opt, async move {
         let force_rw = args.is_force_rw();
         let use_read = !force_rw && store::db_is_read_real_on(key);
         let pool = if use_read { store::db_read_on(key) } else { store::db_on(key) };

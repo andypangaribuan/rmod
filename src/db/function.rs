@@ -137,7 +137,7 @@ pub(crate) fn build_insert_sql<T>(table_name: &str, columns: &str, opt: Option<&
     format!("INSERT INTO {} ({}) VALUES ({})", table_name, columns, placeholders)
 }
 
-pub(crate) async fn log_db_exec<F, T, E>(sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
+pub(crate) async fn log_db_exec<F, T, E>(key: Option<&str>, sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
 where
     F: std::future::Future<Output = Result<T, E>>,
     T: std::fmt::Debug,
@@ -151,13 +151,13 @@ where
         Ok(val) => {
             let res_str = format!("{:?}", val);
             let res_truncated = if res_str.len() > 100_000 { format!("{}... [TRUNCATED]", &res_str[..100_000]) } else { res_str };
-            crate::clog::log_db_query(sql, args, Some(&res_truncated), duration_ms, 200, None, None);
+            crate::clog::log_db_query(key, sql, args, Some(&res_truncated), duration_ms, 200, None, None);
         }
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
             let bt_str = format!("{}", bt);
             let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
-            crate::clog::log_db_query(sql, args, None, duration_ms, 500, Some(&e.to_string()), stacktrace);
+            crate::clog::log_db_query(key, sql, args, None, duration_ms, 500, Some(&e.to_string()), stacktrace);
         }
     }
 
@@ -178,20 +178,20 @@ where
         Ok(val) => {
             let res_str = format!("{:?}", val);
             let res_truncated = if res_str.len() > 100_000 { format!("{}... [TRUNCATED]", &res_str[..100_000]) } else { res_str };
-            crate::clog::log_tx_db_query(&tx.id, tx.key.as_deref(), sql, args, Some(&res_truncated), duration_ms, 200, None, None);
+            crate::clog::log_db_tx_query(&tx.id, tx.key.as_deref(), sql, args, Some(&res_truncated), duration_ms, 200, None, None);
         }
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
             let bt_str = format!("{}", bt);
             let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
-            crate::clog::log_tx_db_query(&tx.id, tx.key.as_deref(), sql, args, None, duration_ms, 500, Some(&e.to_string()), stacktrace);
+            crate::clog::log_db_tx_query(&tx.id, tx.key.as_deref(), sql, args, None, duration_ms, 500, Some(&e.to_string()), stacktrace);
         }
     }
 
     res
 }
 
-pub(crate) async fn log_db_update<F, T, E>(sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
+pub(crate) async fn log_db_update<F, T, E>(key: Option<&str>, sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
 where
     F: std::future::Future<Output = Result<T, E>>,
     T: std::fmt::Debug,
@@ -205,13 +205,13 @@ where
         Ok(val) => {
             let res_str = format!("{:?}", val);
             let res_truncated = if res_str.len() > 100_000 { format!("{}... [TRUNCATED]", &res_str[..100_000]) } else { res_str };
-            crate::clog::log_db_update(sql, args, Some(&res_truncated), duration_ms, 200, None, None);
+            crate::clog::log_db_update(key, sql, args, Some(&res_truncated), duration_ms, 200, None, None);
         }
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
             let bt_str = format!("{}", bt);
             let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
-            crate::clog::log_db_update(sql, args, None, duration_ms, 500, Some(&e.to_string()), stacktrace);
+            crate::clog::log_db_update(key, sql, args, None, duration_ms, 500, Some(&e.to_string()), stacktrace);
         }
     }
 
@@ -245,7 +245,7 @@ where
     res
 }
 
-pub(crate) async fn log_db_execute<F, T, E>(sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
+pub(crate) async fn log_db_execute<F, T, E>(key: Option<&str>, sql: &str, args: Option<&[String]>, fut: F) -> Result<T, E>
 where
     F: std::future::Future<Output = Result<T, E>>,
     T: std::fmt::Debug,
@@ -259,13 +259,13 @@ where
         Ok(val) => {
             let res_str = format!("{:?}", val);
             let res_truncated = if res_str.len() > 100_000 { format!("{}... [TRUNCATED]", &res_str[..100_000]) } else { res_str };
-            crate::clog::log_db_execute(sql, args, Some(&res_truncated), duration_ms, 200, None, None);
+            crate::clog::log_db_execute(key, sql, args, Some(&res_truncated), duration_ms, 200, None, None);
         }
         Err(e) => {
             let bt = std::backtrace::Backtrace::force_capture();
             let bt_str = format!("{}", bt);
             let stacktrace = if !bt_str.trim().is_empty() { Some(bt_str.as_str()) } else { None };
-            crate::clog::log_db_execute(sql, args, None, duration_ms, 500, Some(&e.to_string()), stacktrace);
+            crate::clog::log_db_execute(key, sql, args, None, duration_ms, 500, Some(&e.to_string()), stacktrace);
         }
     }
 
