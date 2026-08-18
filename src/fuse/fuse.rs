@@ -633,35 +633,46 @@ impl FuseRContext {
         crate::clog::set_user_uid(user_uid);
     }
 
+    fn update_location_and_backtrace(&mut self, status: StatusCode, location: &'static std::panic::Location<'static>) {
+        let is_new_err = status.is_client_error() || status.is_server_error();
+        let was_prev_err = self.res_status.map(|s| s.is_client_error() || s.is_server_error()).unwrap_or(false);
+
+        if self.res_location.is_none() || (is_new_err && !was_prev_err) {
+            self.res_location = Some(location);
+            self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+        }
+        self.res_status = Some(status);
+    }
+
     #[inline(never)]
     #[track_caller]
     pub fn ok<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) -> FuseResult {
-        self.res_location = Some(std::panic::Location::caller());
-        self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+        let loc = std::panic::Location::caller();
+        self.update_location_and_backtrace(status, loc);
         Ok((status, Arc::new(body)))
     }
 
     #[inline(never)]
     #[track_caller]
     pub fn err<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) -> FuseResult {
-        self.res_location = Some(std::panic::Location::caller());
-        self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+        let loc = std::panic::Location::caller();
+        self.update_location_and_backtrace(status, loc);
         Err((status, Arc::new(body)))
     }
 
     #[inline(never)]
     #[track_caller]
     pub fn ok_val<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) -> (StatusCode, Arc<dyn Any + Send + Sync>) {
-        self.res_location = Some(std::panic::Location::caller());
-        self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+        let loc = std::panic::Location::caller();
+        self.update_location_and_backtrace(status, loc);
         (status, Arc::new(body))
     }
 
     #[inline(never)]
     #[track_caller]
     pub fn err_val<T: Send + Sync + 'static>(&mut self, status: StatusCode, body: T) -> (StatusCode, Arc<dyn Any + Send + Sync>) {
-        self.res_location = Some(std::panic::Location::caller());
-        self.res_backtrace = Some(Arc::new(Backtrace::force_capture()));
+        let loc = std::panic::Location::caller();
+        self.update_location_and_backtrace(status, loc);
         (status, Arc::new(body))
     }
 }

@@ -34,8 +34,10 @@ pub async fn update<T>(table: &str, set: &str, condition: &str, args: PgArgs<T>)
     let sql_log = sql.clone();
     let debug_args = if args.is_empty() { None } else { Some(args.values().to_vec()) };
     let args_opt = debug_args.as_deref();
-    super::function::log_db_update(None, &sql_log, args_opt, async move { sqlx::query_with(&sql, args.build_inner()).execute(store::db()).await })
-        .await
+    super::function::log_db_update(None, &sql_log, args_opt, async move {
+        sqlx::query_with(&sql, args.build_inner()).execute(store::db()).await
+    })
+    .await
 }
 
 /// Executes an UPDATE query on a specific database.
