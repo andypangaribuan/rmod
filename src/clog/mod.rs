@@ -41,7 +41,7 @@ pub struct Config {
     pub service_name: String,
     pub central_log_url: Option<String>,
     pub exclusion_routes: Vec<String>,
-    pub environment: Option<String>,
+    pub environment: String,
 }
 
 static CLOG_CONFIG: OnceLock<Config> = OnceLock::new();
