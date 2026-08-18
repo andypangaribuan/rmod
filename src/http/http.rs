@@ -104,6 +104,42 @@ async fn request<T: Serialize>(
     let clog_config = clog::get_config();
     let is_excluded = clog_config.map(|c| c.exclusion_routes.iter().any(|r| url.contains(r) || action_name.contains(r))).unwrap_or(false);
 
+    if !is_excluded && clog_config.is_some() {
+        let req_body_val = clog::parse_body_to_json_val(&req_body_str);
+        let start_payload_map = serde_json::json!({
+            "endpoint": action_name,
+            "url": url,
+            "method": method.as_str(),
+            "request_body": req_body_val,
+        });
+
+        let (pod_ip, node_name) = clog::pod_info();
+        let info_map = serde_json::json!({
+            "pod_ip": pod_ip,
+            "node_name": node_name,
+        });
+
+        let current_user_uid = clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
+        let start_now_ms = crate::time::now_ms();
+
+        clog::push_log(clog::LogEntry {
+            uid: endpoint_uid.clone(),
+            timestamp_unix_ms: start_now_ms,
+            env_name: env_name.clone(),
+            service_name: service_name.clone(),
+            trace_id: trace_id.clone(),
+            parent_uid: parent_uid.clone().unwrap_or_default(),
+            user_uid: current_user_uid,
+            log_type: "HTTP_CALL_START".to_string(),
+            action_name: action_name.clone(),
+            duration_ms: 0,
+            status_code: 200,
+            payload_json: start_payload_map.to_string(),
+            pod_name: clog::pod_name(),
+            info_json: info_map.to_string(),
+        });
+    }
+
     let start_time = std::time::Instant::now();
     let res_result = rb.send().await;
     let duration_ms = start_time.elapsed().as_millis() as i32;
@@ -152,14 +188,14 @@ async fn request<T: Serialize>(
                 let now_ms = crate::time::now_ms();
 
                 clog::push_log(clog::LogEntry {
-                    uid: endpoint_uid,
+                    uid: crate::uid::new(),
                     timestamp_unix_ms: now_ms,
                     env_name,
                     service_name,
                     trace_id,
-                    parent_uid: parent_uid.unwrap_or_default(),
+                    parent_uid: endpoint_uid,
                     user_uid: current_user_uid,
-                    log_type: "HTTP_CALL".to_string(),
+                    log_type: "HTTP_CALL_FINISH".to_string(),
                     action_name: action_name.clone(),
                     duration_ms,
                     status_code,
@@ -205,14 +241,14 @@ async fn request<T: Serialize>(
                 let now_ms = crate::time::now_ms();
 
                 clog::push_log(clog::LogEntry {
-                    uid: endpoint_uid,
+                    uid: crate::uid::new(),
                     timestamp_unix_ms: now_ms,
                     env_name,
                     service_name,
                     trace_id,
-                    parent_uid: parent_uid.unwrap_or_default(),
+                    parent_uid: endpoint_uid,
                     user_uid: current_user_uid,
-                    log_type: "HTTP_CALL".to_string(),
+                    log_type: "HTTP_CALL_FINISH".to_string(),
                     action_name: action_name.clone(),
                     duration_ms,
                     status_code,
