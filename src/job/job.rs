@@ -53,7 +53,7 @@ async fn run_job_handler(name: String, handler: fn() -> BoxFuture<'static, ()>) 
     };
 
     let start_time = std::time::Instant::now();
-    let join_res = clog::LOG_CTX.scope(std::cell::RefCell::new(log_ctx), tokio::spawn((handler)())).await;
+    let join_res = tokio::spawn(clog::LOG_CTX.scope(std::cell::RefCell::new(log_ctx), (handler)())).await;
     let duration_ms = start_time.elapsed().as_millis() as i32;
 
     let (status_code, error_msg, stacktrace) = match join_res {
