@@ -113,7 +113,7 @@ pub fn new_log_entry(
 
     let ctx = get_current_ctx();
     let service_name = ctx.as_ref().map(|c| c.service_name.clone()).unwrap_or_else(|| clog_config.service_name.clone());
-    let env_name = ctx.as_ref().map(|c| c.env_name.clone()).unwrap_or_else(|| clog_config.environment.clone().unwrap_or_default());
+    let env_name = ctx.as_ref().map(|c| c.env_name.clone()).unwrap_or_else(|| clog_config.environment.clone());
     let trace_id = ctx.as_ref().map(|c| c.trace_id.clone()).unwrap_or_default();
     let parent_uid = ctx.as_ref().map(|c| c.endpoint_uid.clone()).unwrap_or_default();
     let user_uid = ctx.as_ref().and_then(|c| c.user_uid.clone()).unwrap_or_default();

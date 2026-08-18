@@ -167,6 +167,7 @@ impl Fuse {
 
                 let clog_config = clog::get_config();
                 let service_name = clog_config.map(|c| c.service_name.clone()).unwrap_or_default();
+                let env_name = clog_config.map(|c| c.environment.clone()).unwrap_or_default();
                 let path_clone = path_for_closure.clone();
                 let is_excluded = clog_config
                     .map(|c| c.exclusion_routes.iter().any(|r| path_clone.starts_with(r) || endpoint_key.contains(r)))
@@ -182,15 +183,13 @@ impl Fuse {
                     .unwrap_or_default()
                     .to_string();
 
-                let env_str = clog_config.and_then(|c| c.environment.as_deref()).unwrap_or("dev").to_string();
-
                 let log_ctx = clog::Context {
                     trace_id: trace_id.clone(),
                     parent_uid: parent_uid.clone(),
                     user_uid: None,
                     endpoint_uid: endpoint_uid.clone(),
                     service_name: service_name.clone(),
-                    env_name: env_str.clone(),
+                    env_name: env_name.clone(),
                 };
 
                 if !is_excluded && clog_config.is_some() {
@@ -205,7 +204,6 @@ impl Fuse {
                         "query_params": query_params,
                         "client_ip": client_ip,
                         "user_agent": user_agent,
-                        "environment": env_str,
                         "hostname": hostname,
                         "request_body": req_body_val,
                     });
@@ -220,7 +218,7 @@ impl Fuse {
                     clog::push_log(clog::LogEntry {
                         uid: endpoint_uid.clone(),
                         timestamp_unix_ms: start_now_ms,
-                        env_name: env_str.clone(),
+                        env_name: env_name.clone(),
                         service_name: service_name.clone(),
                         trace_id: trace_id.clone(),
                         parent_uid: parent_uid.clone().unwrap_or_default(),
@@ -286,7 +284,7 @@ impl Fuse {
                     crate::clog::push_log(crate::clog::LogEntry {
                         uid: crate::uid::new(),
                         timestamp_unix_ms: finish_now_ms,
-                        env_name: env_str,
+                        env_name,
                         service_name,
                         trace_id,
                         parent_uid: endpoint_uid,

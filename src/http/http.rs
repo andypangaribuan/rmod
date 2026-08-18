@@ -67,9 +67,8 @@ async fn request<T: Serialize>(
     };
     let parent_uid = ctx.as_ref().map(|c| c.endpoint_uid.clone());
     let endpoint_uid = crate::uid::new();
-    let clog_config = clog::get_config();
     let service_name = ctx.as_ref().map(|c| c.service_name.clone()).unwrap_or_default();
-    let env_name = ctx.as_ref().map(|c| c.env_name.clone()).unwrap_or_else(|| clog_config.as_ref().and_then(|c| c.environment.clone()).unwrap_or_default());
+    let env_name = ctx.as_ref().map(|c| c.env_name.clone()).unwrap_or_default();
 
     let mut head_map = HeaderMap::new();
     if let Some(h) = headers {
@@ -154,7 +153,7 @@ async fn request<T: Serialize>(
                 clog::push_log(clog::LogEntry {
                     uid: endpoint_uid,
                     timestamp_unix_ms: now_ms,
-                    env_name: env_name.clone(),
+                    env_name,
                     service_name,
                     trace_id,
                     parent_uid: parent_uid.unwrap_or_default(),

@@ -40,7 +40,7 @@ async fn run_job_handler(name: String, handler: fn() -> BoxFuture<'static, ()>) 
 
     let clog_config = clog::get_config();
     let service_name = clog_config.map(|c| c.service_name.clone()).unwrap_or_default();
-    let env_name = clog_config.and_then(|c| c.environment.clone()).unwrap_or_default();
+    let env_name = clog_config.map(|c| c.environment.clone()).unwrap_or_default();
     let is_excluded = clog_config.map(|c| c.exclusion_routes.iter().any(|r| name.contains(r))).unwrap_or(false);
 
     let log_ctx = clog::Context {
