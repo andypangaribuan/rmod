@@ -122,74 +122,79 @@ where
             }
 
             use tower::ServiceExt;
-            let res_result = match inner.ready().await {
-                Ok(ready_svc) => clog::LOG_CTX.scope(std::cell::RefCell::new(log_ctx), ready_svc.call(req_reconstructed)).await,
-                Err(err) => Err(err),
-            };
+            match inner.ready().await {
+                Ok(ready_svc) => {
+                    clog::LOG_CTX
+                        .scope(std::cell::RefCell::new(log_ctx), async move {
+                            let res_result = ready_svc.call(req_reconstructed).await;
+                            match res_result {
+                                Ok(response) => {
+                                    let (res_parts, res_body) = response.into_parts();
+                                    let duration_ms = start_time.elapsed().as_millis() as i32;
 
-            match res_result {
-                Ok(response) => {
-                    let (res_parts, res_body) = response.into_parts();
-                    let duration_ms = start_time.elapsed().as_millis() as i32;
+                                    let grpc_status = res_parts.headers.get("grpc-status").and_then(|v| v.to_str().ok()).unwrap_or("0").to_string();
 
-                    let grpc_status = res_parts.headers.get("grpc-status").and_then(|v| v.to_str().ok()).unwrap_or("0").to_string();
+                                    let status_code = if grpc_status == "0" || res_parts.status.is_success() { 200 } else { 500 };
 
-                    let status_code = if grpc_status == "0" || res_parts.status.is_success() { 200 } else { 500 };
+                                    let res_axum_body = axum::body::Body::new(res_body);
+                                    let res_bytes = axum::body::to_bytes(res_axum_body, limit).await.unwrap_or_default();
 
-                    let res_axum_body = axum::body::Body::new(res_body);
-                    let res_bytes = axum::body::to_bytes(res_axum_body, limit).await.unwrap_or_default();
+                                    if !is_excluded && clog_config.is_some() {
+                                        let res_json = decode_grpc_body_to_json(&res_bytes, &path, false);
 
-                    if !is_excluded && clog_config.is_some() {
-                        let res_json = decode_grpc_body_to_json(&res_bytes, &path, false);
+                                        let mut payload_map = serde_json::json!({
+                                            "endpoint": path,
+                                            "path": path,
+                                            "response_body": res_json,
+                                            "grpc_status": grpc_status,
+                                        });
 
-                        let mut payload_map = serde_json::json!({
-                            "endpoint": path,
-                            "path": path,
-                            "response_body": res_json,
-                            "grpc_status": grpc_status,
-                        });
+                                        let (pod_ip, node_name) = clog::pod_info();
+                                        let info_map = serde_json::json!({
+                                            "pod_ip": pod_ip,
+                                            "node_name": node_name,
+                                        });
 
-                        let (pod_ip, node_name) = clog::pod_info();
-                        let info_map = serde_json::json!({
-                            "pod_ip": pod_ip,
-                            "node_name": node_name,
-                        });
+                                        if status_code != 200 {
+                                            let bt = std::backtrace::Backtrace::force_capture();
+                                            let bt_str = format!("{}", bt);
+                                            let clean_st = clog::clean_stacktrace(&bt_str);
+                                            if !clean_st.trim().is_empty() {
+                                                payload_map["stacktrace"] = serde_json::Value::String(clean_st);
+                                            }
+                                        }
 
-                        if status_code != 200 {
-                            let bt = std::backtrace::Backtrace::force_capture();
-                            let bt_str = format!("{}", bt);
-                            let clean_st = clog::clean_stacktrace(&bt_str);
-                            if !clean_st.trim().is_empty() {
-                                payload_map["stacktrace"] = serde_json::Value::String(clean_st);
+                                        let current_user_uid = clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
+                                        let current_partner_uid = clog::get_current_ctx().and_then(|c| c.partner_uid).unwrap_or_default();
+                                        let finish_now_ms = crate::time::now_ms();
+                                        clog::push_log(clog::LogEntry {
+                                            uid: crate::uid::new(),
+                                            timestamp_unix_ms: finish_now_ms,
+                                            env_name,
+                                            service_name,
+                                            trace_id,
+                                            parent_uid: endpoint_uid,
+                                            user_uid: current_user_uid,
+                                            partner_uid: current_partner_uid,
+                                            log_type: "GRPC_RESPONSE".to_string(),
+                                            action_name: path.clone(),
+                                            duration_ms,
+                                            status_code,
+                                            payload_json: payload_map.to_string(),
+                                            pod_name: clog::pod_name(),
+                                            info_json: info_map.to_string(),
+                                        });
+                                    }
+
+                                    let res_body_box =
+                                        tonic::body::BoxBody::new(http_body_util::Full::new(res_bytes).map_err(|_| tonic::Status::internal("body error")));
+                                    let res_reconstructed = tonic::codegen::http::Response::from_parts(res_parts, res_body_box);
+                                    Ok(res_reconstructed)
+                                }
+                                Err(err) => Err(err),
                             }
-                        }
-
-                        let current_user_uid = clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
-                        let current_partner_uid = clog::get_current_ctx().and_then(|c| c.partner_uid).unwrap_or_default();
-                        let finish_now_ms = crate::time::now_ms();
-                        clog::push_log(clog::LogEntry {
-                            uid: crate::uid::new(),
-                            timestamp_unix_ms: finish_now_ms,
-                            env_name,
-                            service_name,
-                            trace_id,
-                            parent_uid: endpoint_uid,
-                            user_uid: current_user_uid,
-                            partner_uid: current_partner_uid,
-                            log_type: "GRPC_RESPONSE".to_string(),
-                            action_name: path.clone(),
-                            duration_ms,
-                            status_code,
-                            payload_json: payload_map.to_string(),
-                            pod_name: clog::pod_name(),
-                            info_json: info_map.to_string(),
-                        });
-                    }
-
-                    let res_body_box =
-                        tonic::body::BoxBody::new(http_body_util::Full::new(res_bytes).map_err(|_| tonic::Status::internal("body error")));
-                    let res_reconstructed = tonic::codegen::http::Response::from_parts(res_parts, res_body_box);
-                    Ok(res_reconstructed)
+                        })
+                        .await
                 }
                 Err(err) => Err(err),
             }

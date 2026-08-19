@@ -245,72 +245,74 @@ impl Fuse {
                 let mut ctx = FuseRContext::new(Request::from_parts(parts, Body::from(bytes.clone())));
                 ctx.body = Some(bytes.clone());
 
-                let response = crate::clog::LOG_CTX
-                    .scope(std::cell::RefCell::new(log_ctx), ctx.res_handle(precondition, defer, handlers, endpoint_key))
-                    .await;
+                crate::clog::LOG_CTX
+                    .scope(std::cell::RefCell::new(log_ctx), async move {
+                        let response = ctx.res_handle(precondition, defer, handlers, endpoint_key).await;
 
-                let (res_parts, res_body) = response.into_parts();
-                let limit = std::env::var("RMOD_MAX_BODY_SIZE").ok().and_then(|s| s.parse::<usize>().ok()).unwrap_or(100 * 1024 * 1024);
-                let res_bytes = axum::body::to_bytes(res_body, limit).await.unwrap_or_default();
+                        let (res_parts, res_body) = response.into_parts();
+                        let limit = std::env::var("RMOD_MAX_BODY_SIZE").ok().and_then(|s| s.parse::<usize>().ok()).unwrap_or(100 * 1024 * 1024);
+                        let res_bytes = axum::body::to_bytes(res_body, limit).await.unwrap_or_default();
 
-                if !is_excluded && clog_config.is_some() {
-                    let duration_ms = start_time.elapsed().as_millis() as i32;
-                    let status_code = res_parts.status.as_u16() as i32;
+                        if !is_excluded && clog_config.is_some() {
+                            let duration_ms = start_time.elapsed().as_millis() as i32;
+                            let status_code = res_parts.status.as_u16() as i32;
 
-                    let res_body_str = String::from_utf8_lossy(&res_bytes);
-                    let res_body_val = crate::clog::parse_body_to_json_val(&res_body_str);
+                            let res_body_str = String::from_utf8_lossy(&res_bytes);
+                            let res_body_val = crate::clog::parse_body_to_json_val(&res_body_str);
 
-                    let mut payload_map = serde_json::json!({
-                        "endpoint": endpoint_key,
-                        "path": path_clone,
-                        "response_body": res_body_val,
-                    });
+                            let mut payload_map = serde_json::json!({
+                                "endpoint": endpoint_key,
+                                "path": path_clone,
+                                "response_body": res_body_val,
+                            });
 
-                    if status_code >= 400 {
-                        if let Some(loc) = ctx.res_location {
-                            payload_map["location"] = serde_json::Value::String(format!("{}:{}", loc.file(), loc.line()));
-                        }
+                            if status_code >= 400 {
+                                if let Some(loc) = ctx.res_location {
+                                    payload_map["location"] = serde_json::Value::String(format!("{}:{}", loc.file(), loc.line()));
+                                }
 
-                        if let Some(ref bt) = ctx.res_backtrace {
-                            let bt_str = format!("{}", bt);
-                            let clean_st = clog::clean_stacktrace(&bt_str);
-                            if !clean_st.trim().is_empty() {
-                                payload_map["stacktrace"] = serde_json::Value::String(clean_st);
+                                if let Some(ref bt) = ctx.res_backtrace {
+                                    let bt_str = format!("{}", bt);
+                                    let clean_st = clog::clean_stacktrace(&bt_str);
+                                    if !clean_st.trim().is_empty() {
+                                        payload_map["stacktrace"] = serde_json::Value::String(clean_st);
+                                    }
+                                }
                             }
+
+                            let payload_json = payload_map.to_string();
+                            let current_user_uid = crate::clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
+                            let current_partner_uid = crate::clog::get_current_ctx().and_then(|c| c.partner_uid).unwrap_or_default();
+                            let finish_now_ms = crate::time::now_ms();
+
+                            let (pod_ip, node_name) = clog::pod_info();
+                            let info_map = serde_json::json!({
+                                "pod_ip": pod_ip,
+                                "node_name": node_name,
+                            });
+
+                            crate::clog::push_log(crate::clog::LogEntry {
+                                uid: crate::uid::new(),
+                                timestamp_unix_ms: finish_now_ms,
+                                env_name,
+                                service_name,
+                                trace_id,
+                                parent_uid: endpoint_uid,
+                                user_uid: current_user_uid,
+                                partner_uid: current_partner_uid,
+                                log_type: "API_RESPONSE".to_string(),
+                                action_name: endpoint_key.to_string(),
+                                duration_ms,
+                                status_code,
+                                payload_json,
+                                pod_name: clog::pod_name(),
+                                info_json: info_map.to_string(),
+                            });
                         }
-                    }
 
-                    let payload_json = payload_map.to_string();
-                    let current_user_uid = crate::clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
-                    let current_partner_uid = crate::clog::get_current_ctx().and_then(|c| c.partner_uid).unwrap_or_default();
-                    let finish_now_ms = crate::time::now_ms();
-
-                    let (pod_ip, node_name) = clog::pod_info();
-                    let info_map = serde_json::json!({
-                        "pod_ip": pod_ip,
-                        "node_name": node_name,
-                    });
-
-                    crate::clog::push_log(crate::clog::LogEntry {
-                        uid: crate::uid::new(),
-                        timestamp_unix_ms: finish_now_ms,
-                        env_name,
-                        service_name,
-                        trace_id,
-                        parent_uid: endpoint_uid,
-                        user_uid: current_user_uid,
-                        partner_uid: current_partner_uid,
-                        log_type: "API_RESPONSE".to_string(),
-                        action_name: endpoint_key.to_string(),
-                        duration_ms,
-                        status_code,
-                        payload_json,
-                        pod_name: clog::pod_name(),
-                        info_json: info_map.to_string(),
-                    });
-                }
-
-                axum::response::Response::from_parts(res_parts, Body::from(res_bytes))
+                        axum::response::Response::from_parts(res_parts, Body::from(res_bytes))
+                    })
+                    .await
             };
 
             let router = std::mem::take(&mut self.router);
