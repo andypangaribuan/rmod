@@ -44,8 +44,6 @@ pub fn clean_stacktrace(bt_str: &str) -> String {
         return String::new();
     }
 
-    let service_name_sub = crate::clog::get_config().map(|c| c.service_name.replace('-', "_")).unwrap_or_default();
-
     let mut frames: Vec<Vec<&str>> = Vec::new();
     let mut current_frame: Vec<&str> = Vec::new();
 
@@ -76,7 +74,9 @@ pub fn clean_stacktrace(bt_str: &str) -> String {
         let full_frame_text = frame.join("\n");
         let lower = full_frame_text.to_lowercase();
 
-        let is_system_or_dep = lower.contains("/.cargo/registry/")
+        let is_system_or_dep = lower.contains("/cargo/registry/")
+            || lower.contains("/.cargo/registry/")
+            || lower.contains(".cargo")
             || lower.contains("/.rustup/")
             || lower.contains("/rustc/")
             || lower.contains("std::")
@@ -94,14 +94,7 @@ pub fn clean_stacktrace(bt_str: &str) -> String {
             || lower.contains("___rust_try")
             || lower.contains("__pthread");
 
-        let is_rmod = lower.contains("rmod") || lower.contains("/rmod/");
-        let is_service = !service_name_sub.is_empty() && lower.contains(&service_name_sub);
-        let is_app_src = (lower.contains("./src/") || lower.contains("/src/"))
-            && !lower.contains("/.cargo/")
-            && !lower.contains("/.rustup/")
-            && !lower.contains("/rustc/");
-
-        if is_rmod || is_service || is_app_src || !is_system_or_dep {
+        if !is_system_or_dep {
             let mut frame_lines: Vec<String> = frame.iter().map(|s| s.to_string()).collect();
             if let Some(first_line) = frame_lines.first_mut() {
                 let trimmed = first_line.trim_start();
