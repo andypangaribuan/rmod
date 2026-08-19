@@ -19,8 +19,8 @@ pub fn timezone(val: &str) {
     crate::store::update_timezone(val.to_string());
 }
 
-pub fn graceful_shutdown(duration: Duration) {
-    crate::util::lifecycle::graceful_shutdown(Some(duration));
+pub fn graceful_shutdown(duration: &str) {
+    crate::util::lifecycle::graceful_shutdown(Some(crate::time::to_duration(duration)));
 }
 
 pub async fn db_setup(
