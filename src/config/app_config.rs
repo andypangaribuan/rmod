@@ -23,6 +23,10 @@ pub fn graceful_shutdown(duration: &str) {
     crate::util::lifecycle::graceful_shutdown(Some(crate::time::to_duration(duration)));
 }
 
+pub fn handle_prestop() {
+    crate::util::lifecycle::handle_prestop();
+}
+
 pub async fn db_setup(
     key: &str,
     write: DbConfig,

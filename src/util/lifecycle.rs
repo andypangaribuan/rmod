@@ -49,7 +49,22 @@ pub fn graceful_shutdown(wait_duration: Option<Duration>) {
     *guard = wait_duration;
 }
 
+pub fn handle_prestop() {
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() > 1 {
+        let cmd = args[1].to_lowercase();
+        if cmd == "pre-stop" || cmd == "prestop" || cmd == "sleep" {
+            let sec_str = if args.len() > 2 { &args[2] } else { "30s" };
+            let duration = crate::time::to_duration(sec_str);
+            println!("🔥 [pre-stop] sleeping for {:?}...", duration);
+            std::thread::sleep(duration);
+            std::process::exit(0);
+        }
+    }
+}
+
 pub fn start() {
+    handle_prestop();
     let mut started = STARTED.lock().unwrap();
     if *started {
         return;
