@@ -19,12 +19,21 @@ pub fn timezone(val: &str) {
     crate::store::update_timezone(val.to_string());
 }
 
-pub fn graceful_shutdown(duration: &str) {
-    crate::util::lifecycle::graceful_shutdown(Some(crate::time::to_duration(duration)));
+pub fn graceful_shutdown() {
+    let duration = crate::util::env::string_or("GRACEFUL_SHUTDOWN_DURATION", "30s");
+    crate::util::lifecycle::graceful_shutdown(Some(crate::time::to_duration(&duration)));
 }
 
-pub fn handle_prestop() {
-    crate::util::lifecycle::handle_prestop();
+pub async fn healthcheck() {
+    let grpc_port: i16 = crate::util::env::int_or("APP_PORT_GRPC", 0);
+    if grpc_port > 0 {
+        crate::util::ext::grpc_healthcheck(grpc_port).await;
+    }
+
+    let rest_port: i16 = crate::util::env::int_or("APP_PORT_RESTFUL", 0);
+    if rest_port > 0 {
+        crate::util::ext::healthcheck(rest_port);
+    }
 }
 
 pub async fn db_setup(

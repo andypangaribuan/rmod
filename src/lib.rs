@@ -31,7 +31,6 @@ pub use fuse::fuse_handler;
 pub use sqlx;
 pub use sqlx::{decode, postgres};
 pub use types::ArcX;
-pub use util::lifecycle::handle_prestop;
 
 // Proxy re-exports for common dependencies
 pub use ::serde;
