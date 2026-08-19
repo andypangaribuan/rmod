@@ -445,6 +445,7 @@ where
         tracing::error!("Failed to parse gRPC bind address '{}': {}", addr, e);
         std::process::exit(1);
     });
+    crate::util::lifecycle::start();
     let mut shutdown_rx = crate::util::lifecycle::subscribe();
 
     if let Some(f) = on_start {

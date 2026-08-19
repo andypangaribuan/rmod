@@ -309,6 +309,7 @@ impl Fuse {
     }
 
     pub(crate) async fn run<F: FnOnce()>(self, addr: &str, on_start: Option<F>) {
+        crate::util::lifecycle::start();
         let listener = match tokio::net::TcpListener::bind(addr).await {
             Ok(l) => l,
             Err(e) => {

@@ -143,6 +143,7 @@ async fn run_job_handler(name: String, handler: fn() -> BoxFuture<'static, ()>) 
 }
 
 pub fn start() {
+    crate::util::lifecycle::start();
     let mut jobs_lock = get_jobs().lock().unwrap();
     let jobs = std::mem::take(&mut *jobs_lock);
 
