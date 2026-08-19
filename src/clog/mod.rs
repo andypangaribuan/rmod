@@ -27,6 +27,7 @@ pub struct Context {
     pub trace_id: String,
     pub parent_uid: Option<String>,
     pub user_uid: Option<String>,
+    pub partner_uid: Option<String>,
     pub endpoint_uid: String,
     pub service_name: String,
     pub env_name: String,
@@ -78,6 +79,14 @@ pub fn set_user_uid(user_uid: impl Into<String>) {
     });
 }
 
+/// Set the partner_uid for the active request context.
+pub fn set_partner_uid(partner_uid: impl Into<String>) {
+    let uid = partner_uid.into();
+    let _ = LOG_CTX.try_with(|ctx| {
+        ctx.borrow_mut().partner_uid = Some(uid);
+    });
+}
+
 /// Push a log entry asynchronously into the background buffer.
 pub fn push_log(entry: LogEntryRequest) {
     if let Some(sender) = LOG_SENDER.get() {
@@ -117,6 +126,7 @@ pub fn new_log_entry(
     let trace_id = ctx.as_ref().map(|c| c.trace_id.clone()).unwrap_or_default();
     let parent_uid = ctx.as_ref().map(|c| c.endpoint_uid.clone()).unwrap_or_default();
     let user_uid = ctx.as_ref().and_then(|c| c.user_uid.clone()).unwrap_or_default();
+    let partner_uid = ctx.as_ref().and_then(|c| c.partner_uid.clone()).unwrap_or_default();
 
     let now_ms = crate::time::now_ms();
     let uid = crate::uid::new();
@@ -135,6 +145,7 @@ pub fn new_log_entry(
         trace_id,
         parent_uid,
         user_uid,
+        partner_uid,
         log_type: log_type.to_string(),
         action_name: action_name.to_string(),
         duration_ms,

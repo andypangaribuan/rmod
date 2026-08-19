@@ -92,6 +92,18 @@ async fn request<T: Serialize>(
     {
         head_map.insert("x-parent-uid", v);
     }
+    if let Some(u_uid) = ctx.as_ref().and_then(|c| c.user_uid.as_ref())
+        && !head_map.contains_key("x-user-uid")
+        && let Ok(v) = reqwest::header::HeaderValue::from_str(u_uid)
+    {
+        head_map.insert("x-user-uid", v);
+    }
+    if let Some(pt_uid) = ctx.as_ref().and_then(|c| c.partner_uid.as_ref())
+        && !head_map.contains_key("x-partner-uid")
+        && let Ok(v) = reqwest::header::HeaderValue::from_str(pt_uid)
+    {
+        head_map.insert("x-partner-uid", v);
+    }
     rb = rb.headers(head_map);
 
     let req_body_str = if let Some(ref b) = body { serde_json::to_string(b).unwrap_or_default() } else { String::new() };
@@ -120,6 +132,7 @@ async fn request<T: Serialize>(
         });
 
         let current_user_uid = clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
+        let current_partner_uid = clog::get_current_ctx().and_then(|c| c.partner_uid).unwrap_or_default();
         let start_now_ms = crate::time::now_ms();
 
         clog::push_log(clog::LogEntry {
@@ -130,6 +143,7 @@ async fn request<T: Serialize>(
             trace_id: trace_id.clone(),
             parent_uid: parent_uid.clone().unwrap_or_default(),
             user_uid: current_user_uid,
+            partner_uid: current_partner_uid,
             log_type: "HTTP_CALL_START".to_string(),
             action_name: action_name.clone(),
             duration_ms: 0,
@@ -185,6 +199,7 @@ async fn request<T: Serialize>(
 
                 let payload_json = payload_map.to_string();
                 let current_user_uid = clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
+                let current_partner_uid = clog::get_current_ctx().and_then(|c| c.partner_uid).unwrap_or_default();
                 let now_ms = crate::time::now_ms();
 
                 clog::push_log(clog::LogEntry {
@@ -195,6 +210,7 @@ async fn request<T: Serialize>(
                     trace_id,
                     parent_uid: endpoint_uid,
                     user_uid: current_user_uid,
+                    partner_uid: current_partner_uid,
                     log_type: "HTTP_CALL_FINISH".to_string(),
                     action_name: action_name.clone(),
                     duration_ms,
@@ -238,6 +254,7 @@ async fn request<T: Serialize>(
 
                 let payload_json = payload_map.to_string();
                 let current_user_uid = clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
+                let current_partner_uid = clog::get_current_ctx().and_then(|c| c.partner_uid).unwrap_or_default();
                 let now_ms = crate::time::now_ms();
 
                 clog::push_log(clog::LogEntry {
@@ -248,6 +265,7 @@ async fn request<T: Serialize>(
                     trace_id,
                     parent_uid: endpoint_uid,
                     user_uid: current_user_uid,
+                    partner_uid: current_partner_uid,
                     log_type: "HTTP_CALL_FINISH".to_string(),
                     action_name: action_name.clone(),
                     duration_ms,

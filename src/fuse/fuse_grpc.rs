@@ -57,6 +57,7 @@ where
 
             let parent_uid = parts.headers.get("x-parent-uid").and_then(|v| v.to_str().ok()).map(|s| s.to_string());
             let user_uid = parts.headers.get("x-user-uid").and_then(|v| v.to_str().ok()).map(|s| s.to_string());
+            let partner_uid = parts.headers.get("x-partner-uid").and_then(|v| v.to_str().ok()).map(|s| s.to_string());
 
             let endpoint_uid = crate::uid::new();
 
@@ -71,6 +72,7 @@ where
                 trace_id: trace_id.clone(),
                 parent_uid: parent_uid.clone(),
                 user_uid: user_uid.clone(),
+                partner_uid: partner_uid.clone(),
                 endpoint_uid: endpoint_uid.clone(),
                 service_name: service_name.clone(),
                 env_name: env_name.clone(),
@@ -108,6 +110,7 @@ where
                     trace_id: trace_id.clone(),
                     parent_uid: parent_uid.clone().unwrap_or_default(),
                     user_uid: user_uid.clone().unwrap_or_default(),
+                    partner_uid: partner_uid.clone().unwrap_or_default(),
                     log_type: "GRPC_INCOMING".to_string(),
                     action_name: path.clone(),
                     duration_ms: 0,
@@ -162,6 +165,7 @@ where
                         }
 
                         let current_user_uid = clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
+                        let current_partner_uid = clog::get_current_ctx().and_then(|c| c.partner_uid).unwrap_or_default();
                         let finish_now_ms = crate::time::now_ms();
                         clog::push_log(clog::LogEntry {
                             uid: crate::uid::new(),
@@ -171,6 +175,7 @@ where
                             trace_id,
                             parent_uid: endpoint_uid,
                             user_uid: current_user_uid,
+                            partner_uid: current_partner_uid,
                             log_type: "GRPC_RESPONSE".to_string(),
                             action_name: path.clone(),
                             duration_ms,
@@ -246,6 +251,11 @@ where
             {
                 req.headers_mut().insert("x-user-uid", v);
             }
+            if let Some(pt_uid) = ctx.as_ref().and_then(|c| c.partner_uid.as_ref())
+                && let Ok(v) = tonic::codegen::http::HeaderValue::from_str(pt_uid)
+            {
+                req.headers_mut().insert("x-partner-uid", v);
+            }
 
             let (parts, body) = req.into_parts();
             let path = parts.uri.path().to_string();
@@ -291,6 +301,7 @@ where
 
                         let finish_now_ms = crate::time::now_ms();
                         let current_user_uid = clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
+                        let current_partner_uid = clog::get_current_ctx().and_then(|c| c.partner_uid).unwrap_or_default();
 
                         clog::push_log(clog::LogEntry {
                             uid: endpoint_uid,
@@ -300,6 +311,7 @@ where
                             trace_id,
                             parent_uid: parent_uid.unwrap_or_default(),
                             user_uid: current_user_uid,
+                            partner_uid: current_partner_uid,
                             log_type: "GRPC_CALL".to_string(),
                             action_name: path.clone(),
                             duration_ms,
@@ -354,6 +366,7 @@ where
 
                         let payload_json = payload_map.to_string();
                         let current_user_uid = clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
+                        let current_partner_uid = clog::get_current_ctx().and_then(|c| c.partner_uid).unwrap_or_default();
                         let finish_now_ms = crate::time::now_ms();
 
                         clog::push_log(clog::LogEntry {
@@ -364,6 +377,7 @@ where
                             trace_id,
                             parent_uid: parent_uid.unwrap_or_default(),
                             user_uid: current_user_uid,
+                            partner_uid: current_partner_uid,
                             log_type: "GRPC_CALL".to_string(),
                             action_name: path.clone(),
                             duration_ms,
@@ -403,6 +417,7 @@ where
 
                         let finish_now_ms = crate::time::now_ms();
                         let current_user_uid = clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
+                        let current_partner_uid = clog::get_current_ctx().and_then(|c| c.partner_uid).unwrap_or_default();
 
                         clog::push_log(clog::LogEntry {
                             uid: endpoint_uid,
@@ -412,6 +427,7 @@ where
                             trace_id,
                             parent_uid: parent_uid.unwrap_or_default(),
                             user_uid: current_user_uid,
+                            partner_uid: current_partner_uid,
                             log_type: "GRPC_CALL".to_string(),
                             action_name: path.clone(),
                             duration_ms,

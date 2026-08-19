@@ -183,10 +183,14 @@ impl Fuse {
                     .unwrap_or_default()
                     .to_string();
 
+                let user_uid = parts.headers.get("x-user-uid").and_then(|v| v.to_str().ok()).map(|s| s.to_string());
+                let partner_uid = parts.headers.get("x-partner-uid").and_then(|v| v.to_str().ok()).map(|s| s.to_string());
+
                 let log_ctx = clog::Context {
                     trace_id: trace_id.clone(),
                     parent_uid: parent_uid.clone(),
-                    user_uid: None,
+                    user_uid,
+                    partner_uid,
                     endpoint_uid: endpoint_uid.clone(),
                     service_name: service_name.clone(),
                     env_name: env_name.clone(),
@@ -215,6 +219,9 @@ impl Fuse {
                     });
 
                     let start_now_ms = crate::time::now_ms();
+                    let current_user_uid = clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
+                    let current_partner_uid = clog::get_current_ctx().and_then(|c| c.partner_uid).unwrap_or_default();
+
                     clog::push_log(clog::LogEntry {
                         uid: endpoint_uid.clone(),
                         timestamp_unix_ms: start_now_ms,
@@ -222,7 +229,8 @@ impl Fuse {
                         service_name: service_name.clone(),
                         trace_id: trace_id.clone(),
                         parent_uid: parent_uid.clone().unwrap_or_default(),
-                        user_uid: String::new(),
+                        user_uid: current_user_uid,
+                        partner_uid: current_partner_uid,
                         log_type: "API_INCOMING".to_string(),
                         action_name: endpoint_key.to_string(),
                         duration_ms: 0,
@@ -274,6 +282,7 @@ impl Fuse {
 
                     let payload_json = payload_map.to_string();
                     let current_user_uid = crate::clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
+                    let current_partner_uid = crate::clog::get_current_ctx().and_then(|c| c.partner_uid).unwrap_or_default();
                     let finish_now_ms = crate::time::now_ms();
 
                     let (pod_ip, node_name) = clog::pod_info();
@@ -290,6 +299,7 @@ impl Fuse {
                         trace_id,
                         parent_uid: endpoint_uid,
                         user_uid: current_user_uid,
+                        partner_uid: current_partner_uid,
                         log_type: "API_RESPONSE".to_string(),
                         action_name: endpoint_key.to_string(),
                         duration_ms,
@@ -632,6 +642,10 @@ impl FuseRContext {
 
     pub fn set_user_uid(&mut self, user_uid: impl Into<String>) {
         crate::clog::set_user_uid(user_uid);
+    }
+
+    pub fn set_partner_uid(&mut self, partner_uid: impl Into<String>) {
+        crate::clog::set_partner_uid(partner_uid);
     }
 
     fn update_location_and_backtrace(&mut self, status: StatusCode, location: &'static std::panic::Location<'static>) {
