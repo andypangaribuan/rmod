@@ -250,7 +250,8 @@ impl Fuse {
                         let response = ctx.res_handle(precondition, defer, handlers, endpoint_key).await;
 
                         let (res_parts, res_body) = response.into_parts();
-                        let limit = std::env::var("RMOD_MAX_BODY_SIZE").ok().and_then(|s| s.parse::<usize>().ok()).unwrap_or(100 * 1024 * 1024);
+                        let limit =
+                            std::env::var("RMOD_MAX_BODY_SIZE").ok().and_then(|s| s.parse::<usize>().ok()).unwrap_or(100 * 1024 * 1024);
                         let res_bytes = axum::body::to_bytes(res_body, limit).await.unwrap_or_default();
 
                         if !is_excluded && clog_config.is_some() {

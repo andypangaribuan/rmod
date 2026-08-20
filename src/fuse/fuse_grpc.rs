@@ -132,7 +132,8 @@ where
                                     let (res_parts, res_body) = response.into_parts();
                                     let duration_ms = start_time.elapsed().as_millis() as i32;
 
-                                    let grpc_status = res_parts.headers.get("grpc-status").and_then(|v| v.to_str().ok()).unwrap_or("0").to_string();
+                                    let grpc_status =
+                                        res_parts.headers.get("grpc-status").and_then(|v| v.to_str().ok()).unwrap_or("0").to_string();
 
                                     let status_code = if grpc_status == "0" || res_parts.status.is_success() { 200 } else { 500 };
 
@@ -186,8 +187,9 @@ where
                                         });
                                     }
 
-                                    let res_body_box =
-                                        tonic::body::BoxBody::new(http_body_util::Full::new(res_bytes).map_err(|_| tonic::Status::internal("body error")));
+                                    let res_body_box = tonic::body::BoxBody::new(
+                                        http_body_util::Full::new(res_bytes).map_err(|_| tonic::Status::internal("body error")),
+                                    );
                                     let res_reconstructed = tonic::codegen::http::Response::from_parts(res_parts, res_body_box);
                                     Ok(res_reconstructed)
                                 }
