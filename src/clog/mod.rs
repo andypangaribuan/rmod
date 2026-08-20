@@ -45,8 +45,13 @@ pub struct Config {
     pub environment: String,
 }
 
+enum WorkerCommand {
+    Log(LogEntryRequest),
+    Flush(tokio::sync::oneshot::Sender<()>),
+}
+
 static CLOG_CONFIG: OnceLock<Config> = OnceLock::new();
-static LOG_SENDER: OnceLock<mpsc::Sender<LogEntryRequest>> = OnceLock::new();
+static LOG_SENDER: OnceLock<mpsc::Sender<WorkerCommand>> = OnceLock::new();
 
 /// Initialize central logging system in rmod.
 pub fn init(config: Config) {
@@ -57,7 +62,7 @@ pub fn init(config: Config) {
     if let Some(url_str) = url
         && !url_str.trim().is_empty()
     {
-        let (tx, rx) = mpsc::channel::<LogEntryRequest>(10_000);
+        let (tx, rx) = mpsc::channel::<WorkerCommand>(10_000);
         let _ = LOG_SENDER.set(tx);
         tokio::spawn(worker_loop(rx, url_str, service_name));
     }
@@ -69,6 +74,16 @@ pub fn get_config() -> Option<&'static Config> {
 
 pub fn get_current_ctx() -> Option<Context> {
     LOG_CTX.try_with(|ctx| ctx.borrow().clone()).ok()
+}
+
+/// Force flush all pending central log entries asynchronously to the gRPC server.
+pub async fn flush() {
+    if let Some(sender) = LOG_SENDER.get() {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        if sender.send(WorkerCommand::Flush(tx)).await.is_ok() {
+            let _ = rx.await;
+        }
+    }
 }
 
 /// Set the user_uid for the active request context.
@@ -90,15 +105,17 @@ pub fn set_partner_uid(partner_uid: impl Into<String>) {
 /// Push a log entry asynchronously into the background buffer.
 pub fn push_log(entry: LogEntryRequest) {
     if let Some(sender) = LOG_SENDER.get() {
-        match sender.try_send(entry) {
+        match sender.try_send(WorkerCommand::Log(entry)) {
             Ok(_) => {}
-            Err(mpsc::error::TrySendError::Full(dropped_entry)) => {
+            Err(mpsc::error::TrySendError::Full(dropped)) => {
                 // Drop policy: Drop non-ERROR logs when buffer is full under extreme backpressure
-                if dropped_entry.log_type == "ERROR" {
-                    eprintln!(
-                        "[clog][BUFFER_FULL_EMERGENCY] [{}] trace={} action={}",
-                        dropped_entry.service_name, dropped_entry.trace_id, dropped_entry.action_name
-                    );
+                if let WorkerCommand::Log(dropped_entry) = dropped {
+                    if dropped_entry.log_type == "ERROR" {
+                        eprintln!(
+                            "[clog][BUFFER_FULL_EMERGENCY] [{}] trace={} action={}",
+                            dropped_entry.service_name, dropped_entry.trace_id, dropped_entry.action_name
+                        );
+                    }
                 }
             }
             Err(mpsc::error::TrySendError::Closed(_)) => {}
@@ -465,7 +482,7 @@ pub fn log_dist_lock_redis_unlock(action_name: &str, duration_ms: i32, status_co
 }
 
 /// Background worker loop that buffers logs and flushes batches to central-log gRPC server.
-async fn worker_loop(mut rx: mpsc::Receiver<LogEntryRequest>, target_url: String, service_name: String) {
+async fn worker_loop(mut rx: mpsc::Receiver<WorkerCommand>, target_url: String, service_name: String) {
     let mut buffer: Vec<LogEntryRequest> = Vec::with_capacity(500);
     let mut total_bytes: usize = 0;
     let max_batch_size = 500;
@@ -479,15 +496,32 @@ async fn worker_loop(mut rx: mpsc::Receiver<LogEntryRequest>, target_url: String
         let timeout_future = tokio::time::sleep(flush_interval);
         tokio::pin!(timeout_future);
         tokio::select! {
-            maybe_entry = rx.recv() => {
-                match maybe_entry {
-                    Some(entry) => {
+            maybe_cmd = rx.recv() => {
+                match maybe_cmd {
+                    Some(WorkerCommand::Log(entry)) => {
                         total_bytes += entry.payload_json.len();
                         buffer.push(entry);
 
                         if buffer.len() >= max_batch_size || total_bytes >= max_batch_bytes {
                             flush_batch(&mut client, &target_url, &service_name, &mut buffer, &mut total_bytes).await;
                         }
+                    }
+                    Some(WorkerCommand::Flush(done_tx)) => {
+                        while let Ok(cmd) = rx.try_recv() {
+                            match cmd {
+                                WorkerCommand::Log(entry) => {
+                                    total_bytes += entry.payload_json.len();
+                                    buffer.push(entry);
+                                }
+                                WorkerCommand::Flush(tx) => {
+                                    let _ = tx.send(());
+                                }
+                            }
+                        }
+                        if !buffer.is_empty() {
+                            flush_batch(&mut client, &target_url, &service_name, &mut buffer, &mut total_bytes).await;
+                        }
+                        let _ = done_tx.send(());
                     }
                     None => {
                         // Channel closed, flush remaining and exit loop
@@ -505,14 +539,20 @@ async fn worker_loop(mut rx: mpsc::Receiver<LogEntryRequest>, target_url: String
             }
             _ = shutdown_rx.recv() => {
                 // Application shutdown triggered: drain remaining logs and flush batch
-                while let Ok(entry) = rx.try_recv() {
-                    total_bytes += entry.payload_json.len();
-                    buffer.push(entry);
+                while let Ok(cmd) = rx.try_recv() {
+                    match cmd {
+                        WorkerCommand::Log(entry) => {
+                            total_bytes += entry.payload_json.len();
+                            buffer.push(entry);
+                        }
+                        WorkerCommand::Flush(tx) => {
+                            let _ = tx.send(());
+                        }
+                    }
                 }
                 if !buffer.is_empty() {
                     flush_batch(&mut client, &target_url, &service_name, &mut buffer, &mut total_bytes).await;
                 }
-                break;
             }
         }
     }
