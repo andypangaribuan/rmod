@@ -26,3 +26,4 @@ nodelay
 askama
 prestop
 nsecs
+oneshot

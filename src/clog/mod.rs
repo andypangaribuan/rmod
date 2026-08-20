@@ -46,7 +46,7 @@ pub struct Config {
 }
 
 enum WorkerCommand {
-    Log(LogEntryRequest),
+    Log(Box<LogEntryRequest>),
     Flush(tokio::sync::oneshot::Sender<()>),
 }
 
@@ -105,17 +105,17 @@ pub fn set_partner_uid(partner_uid: impl Into<String>) {
 /// Push a log entry asynchronously into the background buffer.
 pub fn push_log(entry: LogEntryRequest) {
     if let Some(sender) = LOG_SENDER.get() {
-        match sender.try_send(WorkerCommand::Log(entry)) {
+        match sender.try_send(WorkerCommand::Log(Box::new(entry))) {
             Ok(_) => {}
             Err(mpsc::error::TrySendError::Full(dropped)) => {
                 // Drop policy: Drop non-ERROR logs when buffer is full under extreme backpressure
-                if let WorkerCommand::Log(dropped_entry) = dropped {
-                    if dropped_entry.log_type == "ERROR" {
-                        eprintln!(
-                            "[clog][BUFFER_FULL_EMERGENCY] [{}] trace={} action={}",
-                            dropped_entry.service_name, dropped_entry.trace_id, dropped_entry.action_name
-                        );
-                    }
+                if let WorkerCommand::Log(dropped_entry) = dropped
+                    && dropped_entry.log_type == "ERROR"
+                {
+                    eprintln!(
+                        "[clog][BUFFER_FULL_EMERGENCY] [{}] trace={} action={}",
+                        dropped_entry.service_name, dropped_entry.trace_id, dropped_entry.action_name
+                    );
                 }
             }
             Err(mpsc::error::TrySendError::Closed(_)) => {}
@@ -500,7 +500,7 @@ async fn worker_loop(mut rx: mpsc::Receiver<WorkerCommand>, target_url: String, 
                 match maybe_cmd {
                     Some(WorkerCommand::Log(entry)) => {
                         total_bytes += entry.payload_json.len();
-                        buffer.push(entry);
+                        buffer.push(*entry);
 
                         if buffer.len() >= max_batch_size || total_bytes >= max_batch_bytes {
                             flush_batch(&mut client, &target_url, &service_name, &mut buffer, &mut total_bytes).await;
@@ -511,7 +511,7 @@ async fn worker_loop(mut rx: mpsc::Receiver<WorkerCommand>, target_url: String, 
                             match cmd {
                                 WorkerCommand::Log(entry) => {
                                     total_bytes += entry.payload_json.len();
-                                    buffer.push(entry);
+                                    buffer.push(*entry);
                                 }
                                 WorkerCommand::Flush(tx) => {
                                     let _ = tx.send(());
@@ -543,7 +543,7 @@ async fn worker_loop(mut rx: mpsc::Receiver<WorkerCommand>, target_url: String, 
                     match cmd {
                         WorkerCommand::Log(entry) => {
                             total_bytes += entry.payload_json.len();
-                            buffer.push(entry);
+                            buffer.push(*entry);
                         }
                         WorkerCommand::Flush(tx) => {
                             let _ = tx.send(());
