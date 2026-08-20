@@ -65,11 +65,11 @@ async fn run_job_handler(name: String, handler: fn() -> BoxFuture<'static, ()>) 
         })
         .to_string();
 
-        let start_now_ms = crate::time::now_ms();
+        let start_now_us = crate::time::now_us();
 
         clog::push_log(clog::LogEntry {
             uid: endpoint_uid.clone(),
-            timestamp_unix_ms: start_now_ms,
+            timestamp_unix_us: start_now_us,
             env_name: env_name.clone(),
             service_name: service_name.clone(),
             trace_id: trace_id.clone(),
@@ -123,11 +123,11 @@ async fn run_job_handler(name: String, handler: fn() -> BoxFuture<'static, ()>) 
         });
 
         let payload_json = payload_map.to_string();
-        let now_ms = crate::time::now_ms();
+        let now_us = crate::time::now_us();
 
         clog::push_log(clog::LogEntry {
             uid: crate::uid::new(),
-            timestamp_unix_ms: now_ms,
+            timestamp_unix_us: now_us,
             env_name,
             service_name,
             trace_id,

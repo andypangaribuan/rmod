@@ -128,7 +128,7 @@ pub fn new_log_entry(
     let user_uid = ctx.as_ref().and_then(|c| c.user_uid.clone()).unwrap_or_default();
     let partner_uid = ctx.as_ref().and_then(|c| c.partner_uid.clone()).unwrap_or_default();
 
-    let now_ms = crate::time::now_ms();
+    let now_us = crate::time::now_us();
     let uid = crate::uid::new();
 
     let (pod_ip, node_name) = pod_info();
@@ -139,7 +139,7 @@ pub fn new_log_entry(
 
     Some(LogEntryRequest {
         uid,
-        timestamp_unix_ms: now_ms,
+        timestamp_unix_us: now_us,
         env_name,
         service_name,
         trace_id,

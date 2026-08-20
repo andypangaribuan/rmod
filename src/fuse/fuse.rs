@@ -218,13 +218,13 @@ impl Fuse {
                         "node_name": node_name,
                     });
 
-                    let start_now_ms = crate::time::now_ms();
+                    let start_now_us = crate::time::now_us();
                     let current_user_uid = clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
                     let current_partner_uid = clog::get_current_ctx().and_then(|c| c.partner_uid).unwrap_or_default();
 
                     clog::push_log(clog::LogEntry {
                         uid: endpoint_uid.clone(),
-                        timestamp_unix_ms: start_now_ms,
+                        timestamp_unix_us: start_now_us,
                         env_name: env_name.clone(),
                         service_name: service_name.clone(),
                         trace_id: trace_id.clone(),
@@ -283,7 +283,7 @@ impl Fuse {
                             let payload_json = payload_map.to_string();
                             let current_user_uid = crate::clog::get_current_ctx().and_then(|c| c.user_uid).unwrap_or_default();
                             let current_partner_uid = crate::clog::get_current_ctx().and_then(|c| c.partner_uid).unwrap_or_default();
-                            let finish_now_ms = crate::time::now_ms();
+                            let finish_now_us = crate::time::now_us();
 
                             let (pod_ip, node_name) = clog::pod_info();
                             let info_map = serde_json::json!({
@@ -293,7 +293,7 @@ impl Fuse {
 
                             crate::clog::push_log(crate::clog::LogEntry {
                                 uid: crate::uid::new(),
-                                timestamp_unix_ms: finish_now_ms,
+                                timestamp_unix_us: finish_now_us,
                                 env_name,
                                 service_name,
                                 trace_id,
