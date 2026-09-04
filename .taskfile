@@ -5,39 +5,50 @@
 # This product is protected by copyright and distributed under
 # licenses restricting copying, distribution and decompilation.
 
+shopt -s expand_aliases
+source ~/.bash_aliases 2> /dev/null
+[ -f .task.env ] && { set -a; . ./.task.env; set +a; }
 
 
-#: check the code with cargo check, build, clippy and fmt
-function check {
-  cargo check
-  cargo build
-  cargo clippy && cargo fmt --check
+
+function main {
+  local options=(
+    "check      check the code with cargo check, build, clippy and fmt"
+    "clean      clean the project"
+    "test       do cargo test"
+    "rmd        remove unused directories"
+    "udeps      show unused dependencies"
+    "spell      run cspell to check the project words"
+    ""
+    "shell      open devbox shell   [opt]: --fresh (delete .cargo and .rustup directories first)"
+  )
+
+  local selected=$(sq choose "$1" "options: " "${options[@]}")
+  [[ -z "$selected" ]] && return 0
+
+  case "$selected" in
+    check) cargo check; cargo build; cargo clippy && cargo fmt --check ;;
+    clean) cargo clean ;;
+    test)  cargo test -q -- --test-threads=1 ;;
+    rmd)   rm -rf .cargo .devbox .rustup debug target test-debug ;;
+    udeps) cargo +nightly udeps ;;
+    spell) spell-rs ;;
+
+    generate) __generate ;;
+    start)    __start ;;
+    dev)      __dev ;;
+    down)     __down ;;
+    kill)     __kill ;;
+    sync)     __sync ;;
+    shell)    __shell ;;
+
+    *) echo "unknown option: $selected"; exit ;;
+  esac
 }
 
 
-#: clean the project
-function clean {
-  cargo clean
-}
 
-
-#: do cargo test
-function test {
-  cargo test -q -- --test-threads=1
-}
-
-
-#: run cspell to check the project words
-function spell {
-  spell-rs
-}
-
-
-#: space
-
-
-#: open devbox shell #: opt: --fresh (delete .cargo and .rustup directories first)
-function shell {
+function __shell {
   if [ "$DEVBOX_SHELL_ENABLED" = "1" ]; then
     echo "ℹ️  You are already in an active Devbox shell."
     return 0
@@ -51,45 +62,5 @@ function shell {
 }
 
 
-#: show unused dependencies
-function udeps {
-  cargo +nightly udeps
-}
 
-
-#: remove unused directories
-function rmd {
-  rm -rf .cargo .devbox .rustup debug target test-debug
-}
-
-
-#: space
-
-
-#: show contributor who make commits
-function contributor {
-  git log --pretty=format:"%an <%ae>" | sort | uniq
-}
-
-
-#: rewrite author
-function rewrite-author {
-  # brew install git-filter-repo
-  git filter-repo --commit-callback '
-  if (b"google-labs-jules" in commit.author_name or
-      b"google-labs-jules" in commit.author_email):
-      commit.author_name = b"Andy Pangaribuan"
-      commit.author_email = b"iam.pangaribuan@gmail.com"
-  '
-
-  git config user.name "Andy Pangaribuan"
-  git config user.email "iam.pangaribuan@gmail.com"
-
-  git push --force --all
-  git push --force --tags
-}
-
-
-
-#: space
-[ -z "$TASKFILE_EXECUTOR" ] && sq taskfile --execute "$@"
+main "$@"

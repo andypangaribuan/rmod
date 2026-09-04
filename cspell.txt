@@ -27,3 +27,6 @@ askama
 prestop
 nsecs
 oneshot
+nonblocking
+keepalive
+addrs

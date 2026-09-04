@@ -22,7 +22,7 @@ use percent_encoding::percent_decode_str;
 use std::any::Any;
 use std::backtrace::Backtrace;
 use std::collections::HashMap;
-use std::net::SocketAddr;
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::{Arc, Mutex, OnceLock};
 
 static MAX_BODY_SIZE: OnceLock<usize> = OnceLock::new();
@@ -323,7 +323,7 @@ impl Fuse {
 
     pub(crate) async fn run<F: FnOnce()>(self, addr: &str, on_start: Option<F>) {
         crate::util::lifecycle::start();
-        let listener = match tokio::net::TcpListener::bind(addr).await {
+        let listener = match Self::bind_listener(addr) {
             Ok(l) => l,
             Err(e) => {
                 tracing::error!("Failed to bind REST server to address '{}': {}", addr, e);
@@ -346,6 +346,32 @@ impl Fuse {
         }
 
         crate::util::lifecycle::wait().await;
+    }
+
+    fn bind_listener(addr: &str) -> Result<tokio::net::TcpListener, Box<dyn std::error::Error + Send + Sync>> {
+        let socket_addr: SocketAddr = addr
+            .to_socket_addrs()?
+            .next()
+            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, format!("unable to resolve address '{}'", addr)))?;
+
+        let domain = if socket_addr.is_ipv6() { socket2::Domain::IPV6 } else { socket2::Domain::IPV4 };
+        let socket = socket2::Socket::new(domain, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?;
+
+        socket.set_reuse_address(true)?;
+        #[cfg(unix)]
+        socket.set_reuse_port(true)?;
+        socket.set_nonblocking(true)?;
+
+        let keepalive =
+            socket2::TcpKeepalive::new().with_time(std::time::Duration::from_secs(60)).with_interval(std::time::Duration::from_secs(10));
+        let _ = socket.set_tcp_keepalive(&keepalive);
+
+        socket.bind(&socket_addr.into())?;
+        socket.listen(4096)?;
+
+        let std_listener: std::net::TcpListener = socket.into();
+        let listener = tokio::net::TcpListener::from_std(std_listener)?;
+        Ok(listener)
     }
 }
 
