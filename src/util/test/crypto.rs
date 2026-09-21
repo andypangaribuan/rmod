@@ -94,7 +94,7 @@ fn test_encrypt_as_bytes_it_works() {
 
 #[test]
 fn test_argon2id() {
-    let password = "W_r5xifLgRZX1cg0QnqDPt0w15ec8TNkDTN8FkVyrb33CQvFQK";
+    let password = "my-secret-password";
     let hash = argon2id_hash(password, None).unwrap();
     println!("hash: {}", hash);
 

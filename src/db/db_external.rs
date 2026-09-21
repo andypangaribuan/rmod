@@ -9,4 +9,5 @@
  */
 
 pub use sqlx::Error;
+pub use sqlx::postgres::PgQueryResult;
 pub use sqlx::postgres::PgRow;
