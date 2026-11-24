@@ -14,7 +14,7 @@ Lightweight, modular Rust toolkit designed for composable and maintainable archi
 
 ## Toolchain
 
-- **Rust:** 1.96.0
+- **Rust:** 1.100
 - **Cargo:** Managed via `rustup`
 - **Edition:** 2024
 
